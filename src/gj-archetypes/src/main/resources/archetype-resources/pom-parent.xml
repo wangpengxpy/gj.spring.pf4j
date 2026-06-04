@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>io.github.wangpengxpy</groupId>
+    <artifactId>gj-plugin-build-parent</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+    <properties>
+        <!-- 排除主应用已提供的groupId列表 -->
+        <excludeGroupIds>
+            com.ganweicloud,
+            com.google.protobuf,
+            com.google.j2objc,
+            com.alibaba,
+            com.github.yulichang,
+            com.github.virtuald,
+            com.baomidou,
+            com.fasterxml.jackson.core,
+            com.fasterxml.jackson.datatype,
+            com.fasterxml.jackson.module,
+            com.github.zafarkhaja,
+            com.zaxxer,
+            org.apache.tomcat,
+            org.apache.poi,
+            org.apache.commons,
+            org.apache.xmlbeans,
+            org.ehcache,
+            org.springframework,
+            org.springframework.boot,
+            org.springdoc,
+            org.webjars,
+            org.mybatis,
+            org.projectlombok,
+            org.modelmapper,
+            org.pf4j,
+            org.apache.logging.log4j,
+            org.slf4j,
+            org.yaml,
+            io.grpc,
+            io.micrometer,
+            io.swagger.core.v3,
+            jakarta.servlet,
+            jakarta.annotation,
+            mysql,
+            javax.annotation,
+            ch.qos.logback,
+            commons-io,
+            commons-codec,
+            io.netty,
+            com.corundumstudio.socketio,
+            org.jetbrains,
+            net.lingala.zip4j,
+            com.github.jsqlparser,
+            org.springdoc,
+            org.jboss.logging,
+            com.fasterxml,
+            jakarta.xml.bind,
+            jakarta.validation,
+            com.sun.activation,
+            org.hibernate.validator
+        </excludeGroupIds>
+        <!-- 排除主应用已提供的groupId列表-->
+    </properties>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>repackage</id>
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Execution 0: 拷贝依赖-->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <!-- 排除主应用已提供的 groupId -->
+                            <excludeGroupIds>${excludeGroupIds}</excludeGroupIds>
+                            <!-- 可进一步排除 provided/test 依赖 -->
+                            <includeScope>runtime</includeScope>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                            <overWriteIfNewer>true</overWriteIfNewer>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Execution 1: 重建插件目录 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <executions>
+                    <!-- Execution 0: 清空插件输出目录 -->
+                    <execution>
+                        <id>clean-plugin-output-dir</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <delete dir="${project.build.directory}/plugins/${project.artifactId}"/>
+                            </target>
+                        </configuration>
+                    </execution>
+                    <!-- Execution 1: 复制JAR -->
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <copy file="${project.build.directory}/${project.build.finalName}.jar"
+                                      tofile="${project.build.directory}/plugins/${project.artifactId}/${project.artifactId}-${project.version}.jar"/>
+                            </target>
+                        </configuration>
+                    </execution>
+                    <!-- Execution 2: 默认创建空的lib目录-->
+                    <execution>
+                        <id>ensure-lib-dir</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <mkdir dir="${project.build.directory}/lib"/>
+                            </target>
+                        </configuration>
+                    </execution>
+                    <!-- Execution 3: 复制私有lib-->
+                    <execution>
+                        <id>copy-src-lib</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <echo message="Checking for private jars in src/lib directory..."/>
+                                <!-- 使用fashioner="false"确保即使目录不存在也不会失败 -->
+                                <copy todir="${project.build.directory}/lib" overwrite="true" failonerror="false"
+                                      verbose="true">
+                                    <fileset dir="${project.basedir}/src/lib" includes="**/*.jar"
+                                             erroronmissingdir="false"/>
+                                </copy>
+                                <!-- 检查是否复制了任何文件 -->
+                                <resourcecount property="jars.copied.count">
+                                    <fileset dir="${project.build.directory}/lib" includes="**/*.jar"/>
+                                </resourcecount>
+                                <condition property="jars.were.copied">
+                                    <not>
+                                        <equals arg1="${jars.copied.count}" arg2="0"/>
+                                    </not>
+                                </condition>
+                                <condition property="final.message"
+                                           value="Successfully copied ${jars.copied.count} private jars from src/lib"
+                                           else="No private jars to copy">
+                                    <isset property="jars.were.copied"/>
+                                </condition>
+                                <echo message="${final.message}"/>
+                            </target>
+                        </configuration>
+                    </execution>
+                    <!-- Execution 4: 复制 lib 目录-->
+                    <execution>
+                        <id>copy-dependency-lib</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <!-- 复制 maven-dependency-plugin 生成的依赖 -->
+                                <copy todir="${project.build.directory}/plugins/${project.artifactId}/lib">
+                                    <fileset dir="${project.build.directory}/lib" includes="**/*.jar"/>
+                                </copy>
+                            </target>
+                        </configuration>
+                    </execution>
+                    <!-- Execution 5: 生成 MANIFEST.MF（只包含 lib/ 下的 JAR） -->
+                    <execution>
+                        <id>generate-manifest</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <mkdir dir="${project.build.directory}/generated-manifest"/>
+
+                                <!-- 创建包含所有jar文件的fileset -->
+                                <fileset id="all.lib.jars" dir="${project.build.directory}/lib" includes="*.jar"
+                                         erroronmissingdir="false"/>
+
+                                <!-- 生成classpath字符串，用空格分隔 -->
+                                <pathconvert property="classpath.value" refid="all.lib.jars" pathsep=" ">
+                                    <map from="${project.build.directory}/lib/" to="lib/"/>
+                                </pathconvert>
+
+                                <!-- 使用Ant的manifest任务，它会自动处理长行换行 -->
+                                <manifest file="${project.build.directory}/generated-manifest/MANIFEST.MF">
+                                    <attribute name="Manifest-Version" value="1.0"/>
+                                    <attribute name="Class-Path" value="${classpath.value}"/>
+                                    <attribute name="Plugin-Id" value="${project.artifactId}"/>
+                                    <attribute name="Plugin-Version" value="${project.version}"/>
+                                </manifest>
+
+                                <!-- 调试信息 -->
+                                <echo message="Class-Path value: ${classpath.value}"/>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Execution 2: 资源文件拷贝 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <!-- Execution 0: 复制 .json 文件 -->
+                    <execution>
+                        <id>copy-plugin-json</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/plugins/${project.artifactId}
+                            </outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>src/main/resources</directory>
+                                    <includes>
+                                        <include>${project.artifactId}.json</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <!-- Execution 1: 复制 Localization 目录（如果存在） -->
+                    <execution>
+                        <id>copy-localization-resources</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/plugins/${project.artifactId}
+                            </outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>src/main/resources</directory>
+                                    <includes>
+                                        <include>Localization/**</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Execution 3: 构建MANIFEST.MF -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <archive>
+                        <manifestFile>${project.build.directory}/generated-manifest/MANIFEST.MF</manifestFile>
+                    </archive>
+                </configuration>
+            </plugin>
+        </plugins>
+        <resources>
+            <!-- 普通资源：不启用过滤 -->
+            <resource>
+                <directory>src/main/resources</directory>
+                <excludes>
+                    <exclude>plugin.properties</exclude>
+                </excludes>
+            </resource>
+            <!-- 仅 plugin.properties 启用过滤 -->
+            <resource>
+                <directory>src/main/resources</directory>
+                <includes>
+                    <include>plugin.properties</include>
+                </includes>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+    </build>
+</project>

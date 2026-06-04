@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.wangpengxpy</groupId>
+        <artifactId>gj-plugin-build-parent</artifactId>
+        <version>1.0.0</version>
+        <relativePath>pom-parent.xml</relativePath>
+    </parent>
+
+    <groupId>${groupId}</groupId>
+    <artifactId>${packagePrefix}.${pluginName}</artifactId>
+    <version>${version}</version>
+    <packaging>jar</packaging>
+
+    <properties>
+        <version>1.0.0</version>
+        <gj.pf4j.version>1.0.3</gj.pf4j.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.github.wangpengxpy</groupId>
+            <artifactId>gj-pf4j</artifactId>
+            <version>${gj.pf4j.version}</version>
+        </dependency>
+    </dependencies>
+</project>

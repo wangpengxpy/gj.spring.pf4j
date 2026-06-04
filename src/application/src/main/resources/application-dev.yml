@@ -1,0 +1,66 @@
+server:
+  address: 0.0.0.0
+  port: 9000
+spring:
+  mvc:
+    path-match:
+      matching-strategy: ant_path_matcher
+  datasource:
+    druid:
+      url: jdbc:sqlite:D:\ideas\plugin.test.demo\gj.db
+      driver-class-name: org.sqlite.JDBC
+      db-type: com.alibaba.druid.pool.DruidDataSource
+      initialSize: 5
+      minIdle: 10
+      maxActive: 20
+      maxWait: 60000
+      connectTimeout: 30000
+      socketTimeout: 60000
+      timeBetweenEvictionRunsMillis: 60000
+      minEvictableIdleTimeMillis: 300000
+      maxEvictableIdleTimeMillis: 900000
+      validationQuery: SELECT 1
+      testWhileIdle: true
+      testOnBorrow: false
+      testOnReturn: false
+  messages:
+    basename: i18n/messages
+    encoding: UTF-8
+    cache-duration: -1
+    use-code-as-default-message: false
+mybatis-plus:
+  global-config:
+    banner: false
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+logging:
+  level:
+    org.springframework.security.web: DEBUG
+    org.springframework.context.annotation: DEBUG
+spring-doc:
+  remove-broken-reference-definitions: false
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+    version: OPENAPI_3_0
+    path-sorting: alpha
+  swagger-ui:
+    default-models-expand-depth: -1
+    doc-expansion: none
+    tryItOutEnabled: true
+    filter: false
+    display-request-duration: true
+    enabled: true
+    operations-sorter: method
+    tags-sorter: alpha
+    groups-order: DESC
+socket-io:
+  port: 9600
+  bossCount: 1
+  upgradeTimeout: 10000 #从 HTTP polling升级到 WebSocket的最大等待时间（毫秒），默认10秒
+  pingTimeout: 60000 # 服务器发送 ping 后，等待客户端 pong 的超时时间，默认60秒
+  pingInterval: 30000 #服务器每隔多久发送一次 ping（心跳间隔），默认30秒
+  maxConnections: 50000 #最大连接数
+  maxFramePayloadLength: 64 #WebSocket帧 ≤ 64KB
+  maxHttpContentLength: 64 #HTTP polling body ≤ 64KB
+  maxConnectionsPerSecond: 100 #每秒最大建链数限制

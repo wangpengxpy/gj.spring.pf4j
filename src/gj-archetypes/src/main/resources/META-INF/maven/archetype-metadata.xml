@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<archetype-descriptor name="gj-plugin-archetype">
+    <requiredProperties>
+        <requiredProperty key="groupId">
+            <defaultValue>com.example</defaultValue>
+        </requiredProperty>
+        <requiredProperty key="pluginName">
+            <defaultValue>test</defaultValue>
+        </requiredProperty>
+        <requiredProperty key="packagePrefix">
+            <defaultValue>gj.module</defaultValue>
+        </requiredProperty>
+    </requiredProperties>
+
+    <fileSets>
+        <fileSet filtered="true" packaged="false" encoding="UTF-8">
+            <directory>src/main/java</directory>
+            <includes>
+                <include>**/*.java</include>
+            </includes>
+        </fileSet>
+
+        <fileSet filtered="true" encoding="UTF-8">
+            <directory>src/main/resources</directory>
+            <includes>
+                <include>**/*.properties</include>
+                <include>**/*.json</include>
+            </includes>
+        </fileSet>
+        <fileSet filtered="false" encoding="UTF-8">
+            <directory>.claude</directory>
+            <includes>
+                <include>**/*.md</include>
+            </includes>
+        </fileSet>
+        <fileSet filtered="false" encoding="UTF-8">
+            <includes>
+                <include>**/*.xml</include>
+            </includes>
+        </fileSet>
+    </fileSets>
+</archetype-descriptor>

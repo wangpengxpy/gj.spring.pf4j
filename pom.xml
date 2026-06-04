@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>io.github.wangpengxpy</groupId>
+    <artifactId>gj.spring.pf4j</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+    <name>gj.spring.pf4j</name>
+    <description>Aggregator POM for local development — includes all modules for building and testing.</description>
+
+    <modules>
+        <module>src/gj-parent</module>
+        <module>src/gj-archetypes</module>
+    </modules>
+
+    <profiles>
+        <profile>
+            <id>dev</id>
+            <modules>
+                <module>src/gj-data</module>
+                <module>src/gj-plugin-demo</module>
+                <module>src/application</module>
+            </modules>
+        </profile>
+    </profiles>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <version>4.0.0-RC1</version>
+                    <executions>
+                        <execution>
+                            <id>repackage</id>
+                            <configuration>
+                                <skip>true</skip>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+</project>
