@@ -858,7 +858,6 @@ Retrieve current connection information inside hub methods via `getContext()`:
 ```java
 GJHubCallerContext ctx = getContext();
 String connectionId = ctx.getConnectionId();
-String userId = ctx.getUserId();
 Map<String, String> queryParams = ctx.getQueryParams();
 ```
 
