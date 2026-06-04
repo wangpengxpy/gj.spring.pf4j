@@ -124,7 +124,6 @@ user-plugin/
         │               └── UserServiceImpl.java         # 服务实现
         └── resources/
             ├── plugin.properties                # PF4J 插件描述
-            ├── gj.module.user.json              # 插件 JSON 描述文件
             └── gj.module.user.properties        # 插件业务配置
 ```
 
@@ -939,7 +938,7 @@ public class UserController {
 
 基于 [EasyExcel](https://easyexcel.opensource.alibaba.com/)，提供 `IImportManager` 和 `IExportManager` 接口，支持多 Sheet 读写及 i18n 表头自动翻译。
 
-### 13.1 导出示例
+### 12.1 导出示例
 
 ```java
 @Service
@@ -981,7 +980,7 @@ public class UserExportService {
 }
 ```
 
-### 13.2 导入示例
+### 12.2 导入示例
 
 ```java
 @Service
@@ -1012,7 +1011,7 @@ public class UserImportService {
 }
 ```
 
-### 13.3 表头 i18n
+### 12.3 表头 i18n
 
 EasyExcel 的 `@ExcelProperty` 注解值会在导入/导出时通过 i18n 自动翻译。框架重写了 `SimpleWriteHandler` 和 `ReadEventListener`，确保生成和解析的 Excel 表头与当前语言环境匹配。
 
@@ -1033,11 +1032,11 @@ public class UserExcelVO {
 
 基于 [Quartz](https://www.quartz-scheduler.org/) 提供插件定时任务调度能力。插件只需实现 `IPluginJob` 接口并标注 `@PluginJob` 注解，框架会在插件启动后自动扫描并注册到 Quartz 调度器。
 
-### 14.1 依赖说明
+### 13.1 依赖说明
 
 框架已内置 Quartz 支持（`org.quartz-scheduler:quartz`），通过 `GJQuartzConfig` 自动创建 `Scheduler` Bean（`@ConditionalOnMissingBean`）。主应用无需额外引入任何 Quartz 依赖。若主应用已有自定义 `Scheduler` Bean，框架自动复用。
 
-### 14.2 创建定时任务
+### 13.2 创建定时任务
 
 在插件中创建实现 `IPluginJob` 的 Bean，用 `@PluginJob` 注解标记：
 
@@ -1062,7 +1061,7 @@ public class TokenCleanupJob implements IPluginJob {
 }
 ```
 
-### 14.3 @PluginJob 参数说明
+### 13.3 @PluginJob 参数说明
 
 | 参数 | 类型 | 默认值 | 说明 |
 |---|---|---|---|
@@ -1072,7 +1071,7 @@ public class TokenCleanupJob implements IPluginJob {
 | `runOnce` | boolean | false | 是否仅执行一次 |
 | `disallowConcurrentExecution` | boolean | true | 是否禁止并发执行 |
 
-### 14.4 Cron 表达式示例
+### 13.4 Cron 表达式示例
 
 ```java
 @PluginJob(name = "dailyReport", cronExpression = "0 0 8 * * ?")       // 每天 8:00
@@ -1080,7 +1079,7 @@ public class TokenCleanupJob implements IPluginJob {
 @PluginJob(name = "initData", runOnce = true)                            // 启动后执行一次
 ```
 
-### 14.5 手动触发（注入 Scheduler）
+### 13.5 手动触发（注入 Scheduler）
 
 对于需要在业务逻辑中手动触发的场景，可直接注入 Quartz `Scheduler`：
 
@@ -1106,7 +1105,7 @@ public class ReportService {
 
 框架提供轻量级进程内事件总线，支持插件间解耦通信。监听器通过实现 `GJPluginLocalEventListener<T>` 接口处理特定类型的事件，事件类通过 `@EventName` 注解标记名称，支持 Ant 风格通配符匹配。
 
-### 15.1 定义事件
+### 14.1 定义事件
 
 事件类需要标注 `@EventName`，名称支持 `.` 分隔的层级结构：
 
@@ -1124,7 +1123,7 @@ public class UserCreatedEvent {
 }
 ```
 
-### 15.2 创建监听器
+### 14.2 创建监听器
 
 实现 `GJPluginLocalEventListener<T>` 接口，标注 `@Component` 注册为 Spring Bean：
 
@@ -1148,7 +1147,7 @@ public class UserCreatedListener implements GJPluginLocalEventListener<UserCreat
 }
 ```
 
-### 15.3 发布事件
+### 14.3 发布事件
 
 在任何 Spring Bean 中注入 `GJPluginLocalEventBus` 发布事件：
 
@@ -1174,7 +1173,7 @@ public class UserService {
 }
 ```
 
-### 15.4 通配符匹配
+### 14.4 通配符匹配
 
 `@EventName` 支持 Ant 风格通配符，`.` 作为路径分隔符：
 
@@ -1189,11 +1188,11 @@ public class UserService {
 
 ## 15. OpenAPI 文档
 
-### 16.1 自动分组
+### 15.1 自动分组
 
 框架为每个已注册 Controller 的插件自动创建独立的 `GroupedOpenApi` Bean（SpringDoc），分组名规则为 `pluginGroupedOpenApi-{pluginId}`。访问 Swagger-UI 时，通过右上角下拉菜单选择对应插件查看其 API 文档。
 
-### 16.2 Controller 示例（配合 Swagger）
+### 15.2 Controller 示例（配合 Swagger）
 
 ```java
 @RestController
@@ -1217,7 +1216,7 @@ public class UserController {
 }
 ```
 
-### 16.3 访问地址
+### 15.3 访问地址
 
 启动后访问：`http://localhost:{port}/swagger-ui/index.html`
 
@@ -1225,14 +1224,14 @@ public class UserController {
 
 ## 16. 插件打包与部署
 
-### 17.1 构建插件
+### 16.1 构建插件
 
 ```bash
 cd user-plugin
 mvn clean package
 ```
 
-### 17.2 输出目录结构
+### 16.2 输出目录结构
 
 构建完成后，`target/plugins/{artifactId}/` 目录结构如下：
 
@@ -1245,7 +1244,7 @@ target/plugins/gj.module.user/
     └── ...
 ```
 
-### 17.3 MANIFEST.MF
+### 16.3 MANIFEST.MF
 
 ```manifest
 Plugin-Id: gj.module.user
@@ -1253,7 +1252,7 @@ Plugin-Version: 1.0.0-SNAPSHOT
 Class-Path: lib/some-third-party.jar lib/another-lib.jar
 ```
 
-### 17.4 部署到主应用
+### 16.4 部署到主应用
 
 将 `target/plugins/gj.module.user/` 整个目录复制到主应用的 `plugins/` 目录下：
 
@@ -1271,7 +1270,7 @@ Class-Path: lib/some-third-party.jar lib/another-lib.jar
 
 生产环境（非 dev/debug profile）下，插件目录位于 `ApplicationHome`（Spring Boot JAR 所在目录）下的 `plugins/`。
 
-### 17.5 版本管理
+### 16.5 版本管理
 
 `GJJarPluginRepository` 自动扫描每个插件目录，解析 JAR 文件名中的版本号（格式 `{pluginId}-{version}.jar`），选择最新版本加载。目录中存在多个版本时只加载最高版本，并在日志中记录。
 
@@ -1279,7 +1278,7 @@ Class-Path: lib/some-third-party.jar lib/another-lib.jar
 
 ## 17. 插件运行时管理 API
 
-### 18.1 注入 GJPluginService
+### 17.1 注入 GJPluginService
 
 ```java
 @RestController
@@ -1296,7 +1295,7 @@ public class PluginAdminController {
 }
 ```
 
-### 18.2 加载并启动所有插件
+### 17.2 加载并启动所有插件
 
 ```java
 @PostMapping("/load-all")
@@ -1305,7 +1304,7 @@ public void loadAndStartAll() {
 }
 ```
 
-### 18.3 启动单个插件
+### 17.3 启动单个插件
 
 ```java
 @PostMapping("/{pluginId}/start")
@@ -1317,7 +1316,7 @@ public String startPlugin(@PathVariable String pluginId) {
 
 > 启动时会自动解析并先启动该插件的依赖插件。
 
-### 18.4 停止单个插件
+### 17.4 停止单个插件
 
 ```java
 @PostMapping("/{pluginId}/stop")
@@ -1329,7 +1328,7 @@ public String stopPlugin(@PathVariable String pluginId) {
 
 > 停止时会先停止所有依赖该插件的反向依赖插件。
 
-### 18.5 重启单个插件
+### 17.5 重启单个插件
 
 ```java
 @PostMapping("/{pluginId}/restart")
@@ -1339,7 +1338,7 @@ public String restartPlugin(@PathVariable String pluginId) {
 }
 ```
 
-### 18.6 热加载 / 热卸载单个插件
+### 17.6 热加载 / 热卸载单个插件
 
 ```java
 // 热卸载（从内存中移除，但不删除文件）
@@ -1357,7 +1356,7 @@ public String reloadPlugin(@PathVariable String pluginId) {
 }
 ```
 
-### 18.7 重载全部插件
+### 17.7 重载全部插件
 
 ```java
 @PostMapping("/reload-all")
@@ -1366,7 +1365,7 @@ public void reloadAll() {
 }
 ```
 
-### 18.8 删除插件
+### 17.8 删除插件
 
 ```java
 @DeleteMapping("/{pluginId}")

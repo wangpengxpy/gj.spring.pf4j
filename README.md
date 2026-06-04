@@ -124,7 +124,6 @@ user-plugin/
         │               └── UserServiceImpl.java         # Service implementation
         └── resources/
             ├── plugin.properties                # PF4J plugin descriptor
-            ├── gj.module.user.json              # Plugin JSON descriptor
             └── gj.module.user.properties        # Plugin business configuration
 ```
 
@@ -875,7 +874,6 @@ socketio.maxConnectionsPerSecond=10
 ```
 
 See `GJSocketIOConfig` source for all available properties and their defaults.
-```
 
 ---
 
@@ -942,7 +940,7 @@ public class UserController {
 
 Built on [EasyExcel](https://easyexcel.opensource.alibaba.com/), provides `IImportManager` and `IExportManager` interfaces with multi-sheet read/write and automatic i18n header translation.
 
-### 13.1 Export Example
+### 12.1 Export Example
 
 ```java
 @Service
@@ -984,7 +982,7 @@ public class UserExportService {
 }
 ```
 
-### 13.2 Import Example
+### 12.2 Import Example
 
 ```java
 @Service
@@ -1015,7 +1013,7 @@ public class UserImportService {
 }
 ```
 
-### 13.3 Header i18n
+### 12.3 Header i18n
 
 EasyExcel `@ExcelProperty` annotation values are automatically translated via i18n during both import and export. The framework overrides `SimpleWriteHandler` and `ReadEventListener` to ensure generated and parsed Excel headers match the current locale.
 
@@ -1036,11 +1034,11 @@ public class UserExcelVO {
 
 Powered by [Quartz](https://www.quartz-scheduler.org/). Plugins simply implement the `IPluginJob` interface and annotate it with `@PluginJob` — the framework automatically scans and registers them with the Quartz scheduler after the plugin starts.
 
-### 14.1 Dependency Note
+### 13.1 Dependency Note
 
 The framework includes built-in Quartz support (`org.quartz-scheduler:quartz`) and auto-creates a `Scheduler` bean via `GJQuartzConfig` (`@ConditionalOnMissingBean`). The host application does not need to add any Quartz dependency. If the host app already has a custom `Scheduler` bean, the framework reuses it automatically.
 
-### 14.2 Creating a Scheduled Job
+### 13.2 Creating a Scheduled Job
 
 Create a bean implementing `IPluginJob` in your plugin and annotate it with `@PluginJob`:
 
@@ -1065,7 +1063,7 @@ public class TokenCleanupJob implements IPluginJob {
 }
 ```
 
-### 14.3 @PluginJob Parameters
+### 13.3 @PluginJob Parameters
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -1075,7 +1073,7 @@ public class TokenCleanupJob implements IPluginJob {
 | `runOnce` | boolean | false | Execute only once |
 | `disallowConcurrentExecution` | boolean | true | Disallow concurrent execution of the same job |
 
-### 14.4 Cron Expression Examples
+### 13.4 Cron Expression Examples
 
 ```java
 @PluginJob(name = "dailyReport", cronExpression = "0 0 8 * * ?")       // Every day at 8:00
@@ -1083,7 +1081,7 @@ public class TokenCleanupJob implements IPluginJob {
 @PluginJob(name = "initData", runOnce = true)                            // Run once on startup
 ```
 
-### 14.5 Manual Trigger (Injecting Scheduler)
+### 13.5 Manual Trigger (Injecting Scheduler)
 
 For scenarios requiring manual trigger in business logic, inject the Quartz `Scheduler` directly:
 
@@ -1109,7 +1107,7 @@ public class ReportService {
 
 The framework provides a lightweight in-process event bus for decoupled inter-plugin communication. Listeners implement `GJPluginLocalEventListener<T>` to handle typed events, while event classes use `@EventName` for Ant-style wildcard pattern matching.
 
-### 15.1 Defining Events
+### 14.1 Defining Events
 
 Annotate event classes with `@EventName`; name components are dot-separated:
 
@@ -1127,7 +1125,7 @@ public class UserCreatedEvent {
 }
 ```
 
-### 15.2 Creating Listeners
+### 14.2 Creating Listeners
 
 Implement `GJPluginLocalEventListener<T>` and annotate with `@Component` to register as a Spring bean:
 
@@ -1151,7 +1149,7 @@ public class UserCreatedListener implements GJPluginLocalEventListener<UserCreat
 }
 ```
 
-### 15.3 Publishing Events
+### 14.3 Publishing Events
 
 Inject `GJPluginLocalEventBus` into any Spring bean:
 
@@ -1177,7 +1175,7 @@ public class UserService {
 }
 ```
 
-### 15.4 Wildcard Matching
+### 14.4 Wildcard Matching
 
 `@EventName` supports Ant-style wildcards with `.` as the path separator:
 
@@ -1192,11 +1190,11 @@ Multiple listeners can match a single event; each listener executes independentl
 
 ## 15. OpenAPI Documentation
 
-### 16.1 Automatic Grouping
+### 15.1 Automatic Grouping
 
 The framework automatically creates an independent `GroupedOpenApi` bean (SpringDoc) for each plugin that registers controllers. The group name follows the pattern `pluginGroupedOpenApi-{pluginId}`. In Swagger-UI, select the desired plugin from the top-right dropdown to view its API documentation.
 
-### 16.2 Controller Example (with Swagger Annotations)
+### 15.2 Controller Example (with Swagger Annotations)
 
 ```java
 @RestController
@@ -1220,7 +1218,7 @@ public class UserController {
 }
 ```
 
-### 16.3 Access URL
+### 15.3 Access URL
 
 Visit `http://localhost:{port}/swagger-ui/index.html` after startup.
 
@@ -1228,14 +1226,14 @@ Visit `http://localhost:{port}/swagger-ui/index.html` after startup.
 
 ## 16. Plugin Packaging & Deployment
 
-### 17.1 Build the Plugin
+### 16.1 Build the Plugin
 
 ```bash
 cd user-plugin
 mvn clean package
 ```
 
-### 17.2 Output Directory Structure
+### 16.2 Output Directory Structure
 
 After a successful build, `target/plugins/{artifactId}/` contains:
 
@@ -1248,7 +1246,7 @@ target/plugins/gj.module.user/
     └── ...
 ```
 
-### 17.3 MANIFEST.MF
+### 16.3 MANIFEST.MF
 
 ```manifest
 Plugin-Id: gj.module.user
@@ -1256,7 +1254,7 @@ Plugin-Version: 1.0.0-SNAPSHOT
 Class-Path: lib/some-third-party.jar lib/another-lib.jar
 ```
 
-### 17.4 Deploy to the Host Application
+### 16.4 Deploy to the Host Application
 
 Copy the entire `target/plugins/gj.module.user/` directory into the host application's `plugins/` directory:
 
@@ -1274,7 +1272,7 @@ Host application root/       ← current working directory in dev/debug mode
 
 In production (non-dev/debug profiles), the plugin directory is located at `plugins/` under the Spring Boot JAR's `ApplicationHome` directory.
 
-### 17.5 Version Management
+### 16.5 Version Management
 
 `GJJarPluginRepository` scans each plugin directory, parses version numbers from JAR filenames (format: `{pluginId}-{version}.jar`), and loads the latest version. When multiple versions exist in a directory, only the highest version is loaded, with a log entry recording the selection.
 
@@ -1282,7 +1280,7 @@ In production (non-dev/debug profiles), the plugin directory is located at `plug
 
 ## 17. Runtime Plugin Management API
 
-### 18.1 Injecting GJPluginService
+### 17.1 Injecting GJPluginService
 
 ```java
 @RestController
@@ -1299,7 +1297,7 @@ public class PluginAdminController {
 }
 ```
 
-### 18.2 Load and Start All Plugins
+### 17.2 Load and Start All Plugins
 
 ```java
 @PostMapping("/load-all")
@@ -1308,7 +1306,7 @@ public void loadAndStartAll() {
 }
 ```
 
-### 18.3 Start a Single Plugin
+### 17.3 Start a Single Plugin
 
 ```java
 @PostMapping("/{pluginId}/start")
@@ -1320,7 +1318,7 @@ public String startPlugin(@PathVariable String pluginId) {
 
 > Dependencies are automatically resolved — dependent plugins are started first.
 
-### 18.4 Stop a Single Plugin
+### 17.4 Stop a Single Plugin
 
 ```java
 @PostMapping("/{pluginId}/stop")
@@ -1332,7 +1330,7 @@ public String stopPlugin(@PathVariable String pluginId) {
 
 > Reverse dependencies are stopped first before stopping the target plugin.
 
-### 18.5 Restart a Single Plugin
+### 17.5 Restart a Single Plugin
 
 ```java
 @PostMapping("/{pluginId}/restart")
@@ -1342,7 +1340,7 @@ public String restartPlugin(@PathVariable String pluginId) {
 }
 ```
 
-### 18.6 Hot-Unload / Hot-Reload a Plugin
+### 17.6 Hot-Unload / Hot-Reload a Plugin
 
 ```java
 // Hot-unload (remove from memory without deleting files)
@@ -1360,7 +1358,7 @@ public String reloadPlugin(@PathVariable String pluginId) {
 }
 ```
 
-### 18.7 Reload All Plugins
+### 17.7 Reload All Plugins
 
 ```java
 @PostMapping("/reload-all")
@@ -1369,7 +1367,7 @@ public void reloadAll() {
 }
 ```
 
-### 18.8 Delete a Plugin
+### 17.8 Delete a Plugin
 
 ```java
 @DeleteMapping("/{pluginId}")
