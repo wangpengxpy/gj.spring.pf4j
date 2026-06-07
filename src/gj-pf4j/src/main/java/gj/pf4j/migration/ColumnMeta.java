@@ -8,8 +8,8 @@ import com.baomidou.mybatisplus.annotation.FieldStrategy;
 
 public record ColumnMeta(
     String columnName,
-    String javaFieldName,
-    Class<?> javaType,
+    String fieldName,
+    Class<?> type,
     String columnTypeOverride,
     boolean isPrimaryKey,
     FieldStrategy insertStrategy

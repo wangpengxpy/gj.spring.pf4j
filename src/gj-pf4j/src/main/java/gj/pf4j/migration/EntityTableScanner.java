@@ -67,11 +67,11 @@ class EntityTableScanner {
         }
         String tableName = StringUtils.isNotBlank(tableNameAnn.value())
                 ? tableNameAnn.value()
-                : camelToSnake(clazz.getSimpleName());
+                : clazz.getSimpleName();
 
         List<ColumnMeta> columns = new ArrayList<>();
         String primaryKeyColumn = null;
-        String primaryKeyJavaType = null;
+        String primaryKeyType = null;
         EntityTableMeta.PrimaryKeyStrategy primaryKeyStrategy = EntityTableMeta.PrimaryKeyStrategy.NONE;
 
         for (Field field : clazz.getDeclaredFields()) {
@@ -91,14 +91,14 @@ class EntityTableScanner {
                 TableId tableIdAnn = field.getAnnotation(TableId.class);
                 columnName = StringUtils.isNotBlank(tableIdAnn.value())
                         ? tableIdAnn.value()
-                        : camelToSnake(field.getName());
+                        : field.getName();
                 primaryKeyColumn = columnName;
-                primaryKeyJavaType = field.getType().getSimpleName();
+                primaryKeyType = field.getType().getSimpleName();
                 primaryKeyStrategy = mapIdType(tableIdAnn.type());
             } else if (tableFieldAnn != null && StringUtils.isNotBlank(tableFieldAnn.value())) {
                 columnName = tableFieldAnn.value();
             } else {
-                columnName = camelToSnake(field.getName());
+                columnName = field.getName();
             }
 
             ColumnType columnTypeAnn = field.getAnnotation(ColumnType.class);
@@ -127,7 +127,7 @@ class EntityTableScanner {
             for (int i = 0; i < columns.size(); i++) {
                 ColumnMeta cm = columns.get(i);
                 if (cm.columnName().equalsIgnoreCase("id")
-                        || cm.javaFieldName().equalsIgnoreCase("id")) {
+                        || cm.fieldName().equalsIgnoreCase("id")) {
                     idIndex = i;
                     break;
                 }
@@ -135,15 +135,15 @@ class EntityTableScanner {
             if (idIndex >= 0) {
                 ColumnMeta old = columns.get(idIndex);
                 columns.set(idIndex, new ColumnMeta(
-                        old.columnName(), old.javaFieldName(), old.javaType(),
+                        old.columnName(), old.fieldName(), old.type(),
                         old.columnTypeOverride(), true, old.insertStrategy()
                 ));
                 primaryKeyColumn = old.columnName();
-                primaryKeyJavaType = old.javaType().getSimpleName();
+                primaryKeyType = old.type().getSimpleName();
                 primaryKeyStrategy = EntityTableMeta.PrimaryKeyStrategy.AUTO;
                 log.info("[{}] Table '{}': no @TableId found, using field '{}' (column '{}')"
                         + " as auto-increment primary key",
-                        pluginId, tableName, old.javaFieldName(), old.columnName());
+                        pluginId, tableName, old.fieldName(), old.columnName());
             } else {
                 log.error("[{}] Table '{}' (class: {}) has no primary key set. "
                         + "Add @TableId annotation or define a field named 'id' (case-insensitive).",
@@ -159,7 +159,7 @@ class EntityTableScanner {
                 tableName,
                 clazz.getName(),
                 primaryKeyColumn,
-                primaryKeyJavaType,
+                primaryKeyType,
                 primaryKeyStrategy,
                 columns
         );
@@ -171,24 +171,5 @@ class EntityTableScanner {
             case INPUT, ASSIGN_ID, ASSIGN_UUID -> EntityTableMeta.PrimaryKeyStrategy.INPUT;
             case NONE -> EntityTableMeta.PrimaryKeyStrategy.NONE;
         };
-    }
-
-    static String camelToSnake(String camelCase) {
-        if (camelCase == null || camelCase.isEmpty()) {
-            return camelCase;
-        }
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < camelCase.length(); i++) {
-            char c = camelCase.charAt(i);
-            if (Character.isUpperCase(c)) {
-                if (i > 0) {
-                    sb.append('_');
-                }
-                sb.append(Character.toLowerCase(c));
-            } else {
-                sb.append(c);
-            }
-        }
-        return sb.toString();
     }
 }

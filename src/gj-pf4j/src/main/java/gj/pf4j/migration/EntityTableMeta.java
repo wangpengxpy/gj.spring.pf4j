@@ -10,7 +10,7 @@ public record EntityTableMeta(
     String tableName,
     String className,
     String primaryKeyColumn,
-    String primaryKeyJavaType,
+    String primaryKeyType,
     PrimaryKeyStrategy primaryKeyStrategy,
     List<ColumnMeta> columns
 ) {

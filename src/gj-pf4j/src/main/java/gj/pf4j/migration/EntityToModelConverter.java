@@ -32,11 +32,11 @@ class EntityToModelConverter {
         DatabaseColumn pkColumn = null;
 
         for (ColumnMeta cm : entity.columns()) {
-            String storeType = dialect.resolveStoreType(cm.javaType(), cm.columnTypeOverride());
+            String storeType = dialect.resolveStoreType(cm.type(), cm.columnTypeOverride());
             boolean nullable = determineNullable(cm);
 
             DatabaseColumn col = new DatabaseColumn(cm.columnName(), storeType, nullable);
-            col.setDefaultValue(defaultValueFor(cm.javaType()));
+            col.setDefaultValue(defaultValueFor(cm.type()));
             col.setCollation(collationFor(storeType, dbModel));
 
             allColumns.add(col);
@@ -77,7 +77,7 @@ class EntityToModelConverter {
             return true;
         }
         // DEFAULT or unannotated: infer from type
-        return !isNonNullableByDefault(cm.javaType());
+        return !isNonNullableByDefault(cm.type());
     }
 
     /**
