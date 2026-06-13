@@ -33,8 +33,9 @@
 18. [附录：主应用集成](#18-附录主应用集成)
     * [版本兼容性说明](#181-版本兼容性说明)
     * [主应用入口配置](#182-主应用入口配置)
-    * [Claude Code 集成](#183-claude-code-集成)
-    * [按需配置：@GJModelMapperScan（共享模型）](#184-按需配置gjmodelmapperscan共享模型)
+    * [按需配置：@GJModelMapperScan（共享模型）](#183-按需配置gjmodelmapperscan共享模型)
+19. [Claude Code 集成](#19-claude-code-集成)
+20. [FAQ](#20-faq)
 
 ---
 
@@ -50,6 +51,7 @@ gj.spring.pf4j 是基于 [PF4J](https://pf4j.org/) 的轻量级 Spring 插件化
 - **[双路由模式支持](#52-spring-mvc-与-webflux-双路由模式)** — 同时支持 Spring MVC（Servlet）和 Spring WebFlux（Reactive）路由
 - **[OpenAPI 文档](#15-openapi-文档)** — 基于 SpringDoc，每个插件自动生成独立 GroupedOpenApi
 - **[数据访问](#6-数据访问)** — 基于 [MyBatis-Plus](https://baomidou.com/)，每个插件独立 SqlSessionFactory / SqlSessionTemplate / TransactionManager，共享主应用 DataSource
+- **[SQL 关键字引号处理](#66-sql-关键字引号处理)** — MyBatis-Plus `InnerInterceptor` 自动识别数据库类型，对保留关键字列名自动包裹正确引号字符；主应用和插件均可通过 `GJTableKeywordProvider` 注册关键字定义
 - **[数据库自动迁移](#7-数据库自动迁移)** — @TableName 实体 Schema 自动迁移（仅建表/加字段），支持 7 种数据库，可安全用于生产环境
 - **[对象映射](#8-对象映射)** — 基于 [ModelMapper](https://modelmapper.org/)，插件实现 `GJPluginModelMapperConfig`，Spring Bean 扫描自动发现并注册类型映射
 - **[导入导出](#12-导入导出)** — 基于 [EasyExcel](https://easyexcel.opensource.alibaba.com/)，多 Sheet 读写，i18n 表头自动翻译
@@ -75,7 +77,7 @@ mvn clean install
 mvn archetype:generate \
   -DarchetypeGroupId=io.github.wangpengxpy \
   -DarchetypeArtifactId=gj-archetype \
-  -DarchetypeVersion=1.0.2 \
+  -DarchetypeVersion=1.0.4 \
   -DgroupId=com.example \
   -DpluginName=user \
   -DpackagePrefix=gj.module
@@ -514,6 +516,64 @@ public class UserServiceImpl implements UserService {
 - 通过 `MapperScannerConfigurer` 只扫描当前插件的 DAO 包
 
 所有插件共享主应用注入的 `DataSource`。插件停止时自动清理缓存。
+
+### 6.6 SQL 关键字引号处理
+
+框架内置 MyBatis-Plus `InnerInterceptor`，运行时自动检测数据库类型，当列名与数据库保留关键字（如 `order`、`comment`、`context`）冲突时，自动包裹正确的引号字符，避免 SQL 语法错误。
+
+**各数据库引号字符：**
+
+| 数据库 | 引号 |
+|--------|------|
+| MySQL | `` ` ``（反引号） |
+| DM / PostgreSQL / GaussDB / KingbaseES / SQLite / Oracle | `"`（双引号） |
+
+**扩展接口：** `GJTableKeywordProvider` —— 主应用和插件均可实现此接口并注册为 Spring Bean，声明可能与数据库关键字冲突的表-列映射关系。
+
+**主应用示例：**
+
+```java
+package com.example.config;
+
+import gj.pf4j.mybatis.interceptor.GJTableKeywordProvider;
+import org.springframework.stereotype.Component;
+import java.util.Map;
+import java.util.Set;
+
+@Component
+public class AppKeywords implements GJTableKeywordProvider {
+    @Override
+    public Map<String, Set<String>> getTableKeywords() {
+        return Map.of(
+            "el-t1",   Set.of("order"),
+            "el-t2", Set.of("comment")
+        );
+    }
+}
+```
+
+**插件示例：**
+
+```java
+package gj.module.user.keyword;
+
+import gj.pf4j.mybatis.interceptor.GJTableKeywordProvider;
+import org.springframework.stereotype.Component;
+import java.util.Map;
+import java.util.Set;
+
+@Component
+public class UserKeywords implements GJTableKeywordProvider {
+    @Override
+    public Map<String, Set<String>> getTableKeywords() {
+        return Map.of(
+            "user_table", Set.of("level", "comment", "type")
+        );
+    }
+}
+```
+
+主应用的 Provider 在启动时自动扫描注册；插件的 Provider 在插件上下文 refresh 后自动扫描注册。表名和列名不区分大小写。
 
 ---
 
@@ -1393,7 +1453,7 @@ gj-pf4j 自身依赖 Spring 核心包（spring-webmvc、spring-beans、spring-jd
         <dependency>
             <groupId>io.github.wangpengxpy</groupId>
             <artifactId>gj-dependencies</artifactId>
-            <version>1.0.2</version>
+            <version>1.0.3</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -1437,7 +1497,7 @@ gj BOM 中与 Spring Boot 重叠的依赖（spring-webmvc、spring-beans 等）�
 <dependency>
     <groupId>io.github.wangpengxpy</groupId>
     <artifactId>gj-pf4j</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.5</version>
 </dependency>
 ```
 
@@ -1458,7 +1518,7 @@ public class GJApplication {
 - 框架已内置 `GJPluginConfig` 和 `GJPluginWebFluxConfig`，随 `@ComponentScan("gj")` 自动激活。
 - 框架会在主应用 `ContextRefreshedEvent` 触发后自动加载并启动 `plugins/` 目录下的所有插件。
 
-> 如需在主应用中配置共享 ModelMapper 映射（基础模型包），参见 [18.4](#184-按需配置gjmodelmapperscan共享模型)。
+> 如需在主应用中配置共享 ModelMapper 映射（基础模型包），参见 [18.3](#183-按需配置gjmodelmapperscan共享模型)。
 
 ### Spring MVC 模式（默认）
 
@@ -1535,30 +1595,7 @@ gj-pf4j 检测到 `GJPluginWebFluxRequestMappingHandlerMapping` Bean 后，自�
 | 插件 Controller 写法 | `@RestController` | `@RestController`（完全一样） |
 | 路由注册 | `GJPluginRequestMappingHandlerMapping` | `GJPluginWebFluxRequestMappingHandlerMapping` |
 
-### 18.3 Claude Code 集成
-
-框架内置 [Claude Code](https://claude.ai/code) skills，通过 AI 命令驱动插件开发：
-
-```bash
-/gj-plugin-new "用户管理插件，CRUD + 实时推送 + 定时清理"
-```
-
-**新项目**（archetype 生成后自动携带）：
-
-```bash
-mvn archetype:generate -DarchetypeGroupId=io.github.wangpengxpy -DarchetypeArtifactId=gj-archetype ...
-```
-
-**已有项目**：从 `tools/claude-skills/` 复制到项目根目录：
-
-```bash
-git clone --depth 1 https://github.com/wangpengxpy/gj.spring.pf4j.git /tmp/gj-pf4j
-cp -r /tmp/gj-pf4j/tools/claude-skills/* .claude/
-```
-
-> 内部通过 OpenSpec 进行需求分析和任务拆解，然后调用 `gj-plugin` skill 自动生成代码。
-
-### 18.4 按需配置：`@GJModelMapperScan`（共享模型）
+### 18.3 按需配置：`@GJModelMapperScan`（共享模型）
 
 当主应用有通用的基础模型包（如 `User`、`Menu`、`Role` 等实体及其 Mapper、DTO、ModelMapper 映射配置），可以单独引入 `gj-modelmapper` artifact 并用 `@GJModelMapperScan` 扫描，将这些映射注入全局 `ModelMapper` Bean。业务插件通过父容器继承自动共享：
 
@@ -1616,3 +1653,109 @@ public class AppModelMapperConfig implements GJModelMapperConfig {
 ```
 
 > **关键理解：** `@GJModelMapperScan` 和插件 `GJPluginModelMapperConfig` 是两个独立机制。前者归主应用（注入全局 `ModelMapper`），后者归插件（实现接口并标注 `@Component`，通过 Spring Bean 扫描自动发现，追加映射到共享 `ModelMapper` 实例）。主应用不配 `@GJModelMapperScan` 不影响插件 ModelMapper 正常工作——框架会自动创建。
+
+---
+
+## 19. Claude Code 集成
+
+框架内置 [Claude Code](https://claude.ai/code) skills，通过 AI 命令驱动插件开发：
+
+```bash
+/gj-plugin-new "用户管理插件，CRUD + 实时推送 + 定时清理"
+```
+
+**新项目**（archetype 生成后自动携带）：
+
+```bash
+mvn archetype:generate -DarchetypeGroupId=io.github.wangpengxpy -DarchetypeArtifactId=gj-archetype ...
+```
+
+**已有项目**：从 `tools/claude-skills/` 复制到项目根目录：
+
+```bash
+git clone --depth 1 https://github.com/wangpengxpy/gj.spring.pf4j.git /tmp/gj-pf4j
+cp -r /tmp/gj-pf4j/tools/claude-skills/* .claude/
+```
+
+> 内部通过 OpenSpec 进行需求分析和任务拆解，然后调用 `gj-plugin` skill 自动生成代码。
+
+---
+
+## 20. FAQ
+
+### Q1: 插件启动报 `plugin.id` 与包名不一致错误？
+
+`plugin.properties` 中的 `plugin.id` 必须与插件主类的包名**完全一致**。例如 `plugin.id=gj.module.user`，则插件主类必须在 `gj.module.user` 包下。不一致会在启动时抛出 `IllegalStateException`。详见 [3.2 节](#32-pluginproperties)。
+
+### Q2: 插件启动失败/启动异常，如何排查？
+
+查看日志中的 `[PF4J]` 条目。启动失败会记录为 `GJPluginStartingError`，包含插件 ID 和异常详情。常见原因：
+
+- **缺少 JAR**：`plugins/` 目录下必须有匹配 `{pluginId}-*.jar` 的 JAR 文件
+- **依赖冲突**：插件引入的库版本与主应用不兼容
+- **Bean 装配失败**：插件中的 `@Component` 因缺少依赖而构造失败
+
+详见 [第 4 章](#4-插件生命周期)。
+
+### Q3: SQL 在 MySQL 正常，但切换到达梦/PostgreSQL 报"无效的标识符"？
+
+列名可能与数据库保留关键字（如 `order`、`comment`、`context`）冲突。实现 `GJTableKeywordProvider` 接口并注册为 `@Component`：
+
+```java
+@Component
+public class MyKeywords implements GJTableKeywordProvider {
+    @Override
+    public Map<String, Set<String>> getTableKeywords() {
+        return Map.of("table_name", Set.of("order", "comment"));
+    }
+}
+```
+
+框架运行时自动为这些列名包裹正确的引号字符。详见 [6.6 节](#66-sql-关键字引号处理)。
+
+### Q4: 主应用有 Controller 但 Swagger-UI 下拉菜单里看不到？
+
+框架只为**插件**自动创建 `GroupedOpenApi`，不会为主应用自动分组。需在 `application.yml` 中添加 `default` 分组：
+
+```yaml
+springdoc:
+  group-configs:
+    - group: default
+      displayName: default
+      packagesToScan: com.example.controller
+```
+
+>`packagesToScan` 是主应用 Controller 所在包路径，不能填插件包路径。详见 [第 15 章](#15-openapi-文档)。
+
+### Q5: 主应用最低需要什么配置？
+
+只需一个注解：
+
+```java
+@SpringBootApplication
+@ComponentScan("gj")   // 激活所有框架 Bean
+public class GJApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(GJApplication.class, args);
+    }
+}
+```
+
+不加 `@ComponentScan("gj")`，框架所有 Bean 都不会被发现，整个框架处于停用状态。详见 [18.2 节](#182-主应用入口配置)。
+
+### Q6: 如何让主应用和插件共享 ModelMapper 映射？
+
+引入 `gj-modelmapper` 依赖，并在主应用使用 `@GJModelMapperScan`：
+
+```java
+@GJModelMapperScan(
+    basePackages = "com.example.model",
+    markerInterface = GJModelMapperConfig.class
+)
+```
+
+插件会自动将自己的映射追加到共享 `ModelMapper` 实例上。详见 [18.3 节](#183-按需配置gjmodelmapperscan共享模型)。
+
+### Q7: 自动迁移会删表或删字段吗？
+
+不会。迁移引擎遵循**严格的纯增量策略** —— 仅在表不存在时 `CREATE TABLE`，字段不存在时 `ALTER TABLE ADD COLUMN`。已有的表结构、字段和数据不会被修改或删除。详见 [7.2 节](#72-生产安全性)。

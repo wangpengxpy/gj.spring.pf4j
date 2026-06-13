@@ -33,8 +33,9 @@ A lightweight, modular plugin framework powered by PF4J and Spring, with no heav
 18. [Appendix: Host Application Integration](#18-appendix-host-application-integration)
     * [Version Compatibility](#181-version-compatibility)
     * [Host Application Entry Point](#182-host-application-entry-point)
-    * [Claude Code Integration](#183-claude-code-integration)
-    * [Optional: @GJModelMapperScan (Shared Models)](#184-optional-gjmodelmapperscan-shared-models)
+    * [Optional: @GJModelMapperScan (Shared Models)](#183-optional-gjmodelmapperscan-shared-models)
+19. [Claude Code Integration](#19-claude-code-integration)
+20. [FAQ](#20-faq)
 
 ---
 
@@ -50,6 +51,7 @@ gj.spring.pf4j is a lightweight, modular plugin framework built on [PF4J](https:
 - **[Dual Routing Mode](#52-spring-mvc-vs-webflux-dual-routing)** — supports both Spring MVC (Servlet) and Spring WebFlux (Reactive) routing; plugins require zero changes
 - **[OpenAPI Documentation](#15-openapi-documentation)** — powered by SpringDoc; each plugin auto-generates an independent `GroupedOpenApi`
 - **[Data Access](#6-data-access)** — powered by [MyBatis-Plus](https://baomidou.com/); each plugin gets its own `SqlSessionFactory`, `SqlSessionTemplate`, and `TransactionManager`, all sharing the main application's `DataSource`
+- **[SQL Keyword Quoting](#66-sql-keyword-quoting)** — MyBatis-Plus `InnerInterceptor` automatically wraps column names with database-specific quote characters to prevent reserved-keyword conflicts; both host app and plugins can register keyword definitions via `GJTableKeywordProvider`
 - **[Database Auto-Migration](#7-database-auto-migration)** — automatic `@TableName` entity schema migration (CREATE TABLE / ADD COLUMN only), supports 7 databases, production-safe
 - **[Object Mapping](#8-object-mapping)** — powered by [ModelMapper](https://modelmapper.org/); plugins implement `GJPluginModelMapperConfig`, auto-discovered via Spring bean scanning
 - **[Import/Export](#12-importexport)** — powered by [EasyExcel](https://easyexcel.opensource.alibaba.com/); multi-sheet read/write with automatic i18n header translation
@@ -75,7 +77,7 @@ mvn clean install
 mvn archetype:generate \
   -DarchetypeGroupId=io.github.wangpengxpy \
   -DarchetypeArtifactId=gj-archetype \
-  -DarchetypeVersion=1.0.2 \
+  -DarchetypeVersion=1.0.4 \
   -DgroupId=com.example \
   -DpluginName=user \
   -DpackagePrefix=gj.module
@@ -515,6 +517,64 @@ public class UserServiceImpl implements UserService {
 - A `MapperScannerConfigurer` scoped to the plugin's DAO package only
 
 All plugins share the main application's `DataSource`. Resources are cleaned up automatically when a plugin stops.
+
+### 6.6 SQL Keyword Quoting
+
+The framework includes a MyBatis-Plus `InnerInterceptor` that automatically detects the database type at runtime and wraps column names with the correct quote character when they conflict with reserved keywords (e.g., `order`, `comment`, `context`).
+
+**Quote character by database:**
+
+| Database | Quote |
+|----------|-------|
+| MySQL | `` ` `` (backtick) |
+| DM / PostgreSQL / GaussDB / KingbaseES / SQLite / Oracle | `"` (double quote) |
+
+**Extension point:** `GJTableKeywordProvider` — both the host application and plugins implement this interface and register as Spring Beans to declare table-column mappings that may conflict with database keywords.
+
+**Host application example:**
+
+```java
+package com.example.config;
+
+import gj.pf4j.mybatis.interceptor.GJTableKeywordProvider;
+import org.springframework.stereotype.Component;
+import java.util.Map;
+import java.util.Set;
+
+@Component
+public class AppKeywords implements GJTableKeywordProvider {
+    @Override
+    public Map<String, Set<String>> getTableKeywords() {
+        return Map.of(
+            "el-t1",   Set.of("order"),
+            "el-t2", Set.of("comment")
+        );
+    }
+}
+```
+
+**Plugin example:**
+
+```java
+package gj.module.user.keyword;
+
+import gj.pf4j.mybatis.interceptor.GJTableKeywordProvider;
+import org.springframework.stereotype.Component;
+import java.util.Map;
+import java.util.Set;
+
+@Component
+public class UserKeywords implements GJTableKeywordProvider {
+    @Override
+    public Map<String, Set<String>> getTableKeywords() {
+        return Map.of(
+            "user_table", Set.of("level", "comment", "type")
+        );
+    }
+}
+```
+
+Host app providers are auto-scanned at startup; plugin providers are auto-scanned after the plugin context is refreshed. Table and column names are case-insensitive.
 
 ---
 
@@ -1394,7 +1454,7 @@ In `dependencyManagement`, import the gj BOM followed by the Spring Boot BOM —
         <dependency>
             <groupId>io.github.wangpengxpy</groupId>
             <artifactId>gj-dependencies</artifactId>
-            <version>1.0.2</version>
+            <version>1.0.3</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -1438,7 +1498,7 @@ You can also skip the BOM and depend on gj-pf4j directly, but you must ensure Sp
 <dependency>
     <groupId>io.github.wangpengxpy</groupId>
     <artifactId>gj-pf4j</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.5</version>
 </dependency>
 ```
 
@@ -1459,7 +1519,7 @@ public class GJApplication {
 - The framework includes `GJPluginConfig` and `GJPluginWebFluxConfig`; both are auto-activated via `@ComponentScan("gj")`.
 - Plugins under the `plugins/` directory are automatically loaded and started after the main application's `ContextRefreshedEvent` fires.
 
-> For configuring shared ModelMapper mappings in the host app (base model packages), see [18.4](#184-optional-gjmodelmapperscan-shared-models).
+> For configuring shared ModelMapper mappings in the host app (base model packages), see [18.3](#183-optional-gjmodelmapperscan-shared-models).
 
 ### Spring MVC Mode (Default)
 
@@ -1536,30 +1596,7 @@ Once gj-pf4j detects a `GJPluginWebFluxRequestMappingHandlerMapping` bean, it au
 | Plugin Controller Code | `@RestController` | `@RestController` (identical) |
 | Route Registration | `GJPluginRequestMappingHandlerMapping` | `GJPluginWebFluxRequestMappingHandlerMapping` |
 
-### 18.3 Claude Code Integration
-
-The framework ships with built-in [Claude Code](https://claude.ai/code) skills for AI-driven plugin development:
-
-```bash
-/gj-plugin-new "user management plugin with CRUD, real-time push, scheduled cleanup"
-```
-
-**New projects** (included automatically when generating from archetype):
-
-```bash
-mvn archetype:generate -DarchetypeGroupId=io.github.wangpengxpy -DarchetypeArtifactId=gj-archetype ...
-```
-
-**Existing projects**: copy from `tools/claude-skills/` into the project root:
-
-```bash
-git clone --depth 1 https://github.com/wangpengxpy/gj.spring.pf4j.git /tmp/gj-pf4j
-cp -r /tmp/gj-pf4j/tools/claude-skills/* .claude/
-```
-
-> Internally uses OpenSpec for requirements analysis and task decomposition, then delegates to the `gj-plugin` skill for code generation.
-
-### 18.4 Optional: `@GJModelMapperScan` (Shared Models)
+### 18.3 Optional: `@GJModelMapperScan` (Shared Models)
 
 When the host application has common base model packages (entities such as `User`, `Menu`, `Role`, plus their Mappers, DTOs, and ModelMapper mappings), add the `gj-modelmapper` artifact and use `@GJModelMapperScan` to register those mappings into a global `ModelMapper` bean. Business plugins inherit this shared instance via the parent context:
 
@@ -1617,3 +1654,109 @@ public class AppModelMapperConfig implements GJModelMapperConfig {
 ```
 
 > **Key insight:** `@GJModelMapperScan` (host app) and plugin `GJPluginModelMapperConfig` are independent mechanisms. The former injects a global `ModelMapper` for the host; the latter is auto-discovered as a Spring bean by `GJPluginModelMapperRegistry` and appends mappings to the shared instance. If the host app does not configure `@GJModelMapperScan`, plugin ModelMapper still works — the framework creates one automatically.
+
+---
+
+## 19. Claude Code Integration
+
+The framework ships with built-in [Claude Code](https://claude.ai/code) skills for AI-driven plugin development:
+
+```bash
+/gj-plugin-new "user management plugin with CRUD, real-time push, scheduled cleanup"
+```
+
+**New projects** (included automatically when generating from archetype):
+
+```bash
+mvn archetype:generate -DarchetypeGroupId=io.github.wangpengxpy -DarchetypeArtifactId=gj-archetype ...
+```
+
+**Existing projects**: copy from `tools/claude-skills/` into the project root:
+
+```bash
+git clone --depth 1 https://github.com/wangpengxpy/gj.spring.pf4j.git /tmp/gj-pf4j
+cp -r /tmp/gj-pf4j/tools/claude-skills/* .claude/
+```
+
+> Internally uses OpenSpec for requirements analysis and task decomposition, then delegates to the `gj-plugin` skill for code generation.
+
+---
+
+## 20. FAQ
+
+### Q1: Plugin startup fails with `plugin.id` mismatch error?
+
+The `plugin.id` in `plugin.properties` must **exactly match** the plugin main class package name. For example, if `plugin.id=gj.module.user`, the plugin entry class must be in the `gj.module.user` package. Any mismatch throws an `IllegalStateException` at startup. See [Section 3.2](#32-pluginproperties).
+
+### Q2: Plugin failed to start / how to troubleshoot startup failure?
+
+Check the logs for `[PF4J]` entries. Startup failures are recorded in `GJPluginStartingError` with the plugin ID and exception detail. Common causes:
+
+- **Missing JAR**: the plugin directory under `plugins/` must contain a JAR matching `{pluginId}-*.jar`
+- **Dependency conflict**: plugin brings a library version incompatible with the host app
+- **Bean wiring failure**: a `@Component` in the plugin fails to construct due to missing dependencies
+
+See [Section 4](#4-plugin-lifecycle) for the full lifecycle flow.
+
+### Q3: SQL works in MySQL but fails on DM/PostgreSQL with "invalid identifier"?
+
+A column name likely conflicts with that database's reserved keywords (e.g., `order`, `comment`, `context`). Implement `GJTableKeywordProvider` and register it as a `@Component`:
+
+```java
+@Component
+public class MyKeywords implements GJTableKeywordProvider {
+    @Override
+    public Map<String, Set<String>> getTableKeywords() {
+        return Map.of("table_name", Set.of("order", "comment"));
+    }
+}
+```
+
+The framework automatically wraps these columns with the correct quote character at runtime. See [Section 6.6](#66-sql-keyword-quoting).
+
+### Q4: Host app has Controllers but they don't appear in Swagger-UI?
+
+The framework auto-creates `GroupedOpenApi` for **plugins only**, not for the host app. Add a `default` group in `application.yml`:
+
+```yaml
+springdoc:
+  group-configs:
+    - group: default
+      displayName: default
+      packagesToScan: com.example.controller
+```
+
+>`packagesToScan` must point to the host application's Controller package, not a plugin package. See [Section 15](#15-openapi-documentation).
+
+### Q5: What is the minimum configuration for the host app?
+
+Only one annotation is required:
+
+```java
+@SpringBootApplication
+@ComponentScan("gj")   // activates all framework beans
+public class GJApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(GJApplication.class, args);
+    }
+}
+```
+
+Without `@ComponentScan("gj")`, no framework beans are discovered and the entire framework stays inactive. See [Section 18.2](#182-host-application-entry-point).
+
+### Q6: How to share ModelMapper mappings between host app and plugins?
+
+Add the `gj-modelmapper` dependency and use `@GJModelMapperScan` on the host app:
+
+```java
+@GJModelMapperScan(
+    basePackages = "com.example.model",
+    markerInterface = GJModelMapperConfig.class
+)
+```
+
+Plugins append their own mappings to the shared `ModelMapper` instance automatically. See [Section 18.3](#183-optional-gjmodelmapperscan-shared-models).
+
+### Q7: Does auto-migration ever drop tables or columns?
+
+No. The migration engine follows a **strict additive-only policy** — only `CREATE TABLE` (when table is missing) and `ALTER TABLE ADD COLUMN` (when column is missing) are generated. Existing tables, columns, and data are never modified or deleted. See [Section 7.2](#72-production-safety).
