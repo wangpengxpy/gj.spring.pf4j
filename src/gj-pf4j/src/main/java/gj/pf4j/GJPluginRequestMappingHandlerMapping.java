@@ -4,9 +4,6 @@
 
 package gj.pf4j;
 
-import gj.pf4j.openapi.GJPluginOpenApiConfig;
-import gj.pf4j.openapi.GJPluginOpenApiInfo;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aop.support.AopUtils;
@@ -38,7 +35,7 @@ public class GJPluginRequestMappingHandlerMapping extends RequestMappingHandlerM
     protected void initHandlerMethods() {
     }
 
-    public void registerControllers(GJPluginContext pluginContext) {
+    public Set<Object> registerControllers(GJPluginContext pluginContext) {
         String pluginId = pluginContext.getPluginId();
         long startTime = System.currentTimeMillis();
         log.debug("Starting to register controllers for plugin: {}", pluginId);
@@ -52,20 +49,14 @@ public class GJPluginRequestMappingHandlerMapping extends RequestMappingHandlerM
             log.info("Found {} controllers in plugin {}: {}",
                     controllers.size(), pluginId, controllerNames);
 
-            GJPluginOpenApiInfo pluginOpenApiInfo = new GJPluginOpenApiInfo();
-            pluginOpenApiInfo.setGroupName(pluginId);
-            List<String> controllerPackages = new ArrayList<>();
             for (Object controller : controllers) {
-                controllerPackages.add(controller.getClass().getPackageName());
                 registerController(pluginId, controller);
             }
-            pluginOpenApiInfo.setControllerPackages(controllerPackages);
-            GJPluginOpenApiConfig.registerPluginOpenApiBeans(pluginContext.getMainApplicationContext(), pluginOpenApiInfo);
 
             long duration = System.currentTimeMillis() - startTime;
             log.info("Successfully registered {} controllers for plugin: {} (took {} ms)",
                     controllers.size(), pluginId, duration);
-
+            return controllers;
         } catch (Exception e) {
             long duration = System.currentTimeMillis() - startTime;
             log.error("Failed to register controllers for plugin: {} (took {} ms)", pluginId, duration, e);

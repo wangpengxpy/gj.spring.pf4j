@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.github.wangpengxpy</groupId>
     <artifactId>gj-dependencies</artifactId>
-    <version>1.0.2</version>
+    <version>1.0.3</version>
     <packaging>pom</packaging>
     <name>gj-dependencies</name>
     <description>gj.spring.pf4j Bill of Materials (BOM) — manages all dependency versions for the gj-pf4j plugin framework ecosystem.</description>
@@ -58,7 +58,7 @@
         <mybatis.plus.version>3.5.15</mybatis.plus.version>
         <netty.socketio.version>2.0.13</netty.socketio.version>
         <netty.transport.native.epoll.version>4.1.115.Final</netty.transport.native.epoll.version>
-        <org.springdoc.starter.webmvc.ui.version>2.8.13</org.springdoc.starter.webmvc.ui.version>
+        <springdoc.version>2.8.13</springdoc.version>
         <easyexcel.version>4.0.3</easyexcel.version>
         <lombok.version>1.18.42</lombok.version>
         <slf4j.api.version>2.0.17</slf4j.api.version>
@@ -153,13 +153,28 @@
             </dependency>
             <dependency>
                 <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-common</artifactId>
+                <version>${springdoc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
+                <version>${springdoc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webflux-api</artifactId>
+                <version>${springdoc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springdoc</groupId>
                 <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-                <version>${org.springdoc.starter.webmvc.ui.version}</version>
+                <version>${springdoc.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.springdoc</groupId>
                 <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
-                <version>${org.springdoc.starter.webmvc.ui.version}</version>
+                <version>${springdoc.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.projectlombok</groupId>

@@ -5,11 +5,11 @@
     <parent>
         <groupId>io.github.wangpengxpy</groupId>
         <artifactId>gj-dependencies</artifactId>
-        <version>1.0.0</version>
+        <version>1.0.3</version>
         <relativePath>../gj-parent/pom.xml</relativePath>
     </parent>
     <artifactId>gj-modelmapper</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <name>gj-modelmapper</name>
     <description>A lightweight ModelMapper wrapper with Spring integration, designed for use with gj-pf4j modules.</description>
     <url>https://github.com/wangpengxpy/gj.spring.pf4j</url>

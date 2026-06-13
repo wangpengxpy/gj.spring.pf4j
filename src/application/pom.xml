@@ -5,7 +5,7 @@
     <parent>
         <groupId>io.github.wangpengxpy</groupId>
         <artifactId>gj-dependencies</artifactId>
-        <version>1.0.2</version>
+        <version>1.0.3</version>
         <relativePath>../gj-parent/pom.xml</relativePath>
     </parent>
     <artifactId>gj-application</artifactId>
@@ -16,11 +16,12 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
-        <gj.pf4j.version>1.0.4</gj.pf4j.version>
+        <gj.pf4j.version>1.0.5</gj.pf4j.version>
         <gj.data.version>0.0.1-SNAPSHOT</gj.data.version>
         <gj.modelmapper.version>1.0.0</gj.modelmapper.version>
     </properties>
     <dependencies>
+        <!-- MVC -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
@@ -30,15 +31,19 @@
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>org.springdoc</groupId>-->
-<!--            <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>-->
-<!--        </dependency>-->
-<!--        <dependency>-->
-<!--            <groupId>org.springframework.boot</groupId>-->
-<!--            <artifactId>spring-boot-starter-webflux</artifactId>-->
-<!--            <version>3.5.5</version>-->
-<!--        </dependency>-->
+
+        <!-- WebFlux (switch: comment MVC above, uncomment below) -->
+        <!--
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+            <version>3.5.5</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
+        </dependency>
+        -->
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>druid-spring-boot-starter</artifactId>

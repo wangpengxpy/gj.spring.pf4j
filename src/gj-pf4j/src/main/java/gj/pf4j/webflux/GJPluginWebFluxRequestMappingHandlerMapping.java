@@ -36,7 +36,7 @@ public class GJPluginWebFluxRequestMappingHandlerMapping extends RequestMappingH
     protected void detectHandlerMethods(Object handler) {
     }
 
-    public void registerControllers(String pluginId, ApplicationContext pluginAppContext) {
+    public Set<Object> registerControllers(String pluginId, ApplicationContext pluginAppContext) {
         long startTime = System.currentTimeMillis();
         log.debug("Starting to register WebFlux controllers for plugin: {}", pluginId);
 
@@ -56,7 +56,7 @@ public class GJPluginWebFluxRequestMappingHandlerMapping extends RequestMappingH
             long duration = System.currentTimeMillis() - startTime;
             log.info("Successfully registered {} WebFlux controllers for plugin: {} (took {} ms)",
                     controllers.size(), pluginId, duration);
-
+            return controllers;
         } catch (Exception e) {
             long duration = System.currentTimeMillis() - startTime;
             log.error("Failed to register WebFlux controllers for plugin: {} (took {} ms)",

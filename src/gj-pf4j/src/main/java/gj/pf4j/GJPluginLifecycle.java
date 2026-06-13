@@ -18,6 +18,7 @@ import gj.pf4j.webflux.GJPluginWebFluxRequestMappingHandlerMapping;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory;
 import org.springframework.context.ApplicationContext;
@@ -28,6 +29,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.ResourcePropertySource;
 
+import java.lang.reflect.Field;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -207,28 +209,28 @@ class GJPluginLifecycle {
 
     private void registerControllers(AnnotationConfigApplicationContext applicationContext,
                                      GenericApplicationContext mainCtx) {
+        Set<Object> controllers;
         Map<String, GJPluginWebFluxRequestMappingHandlerMapping> webFluxMappings =
                 mainCtx.getBeansOfType(GJPluginWebFluxRequestMappingHandlerMapping.class);
         if (!webFluxMappings.isEmpty()) {
             GJPluginWebFluxRequestMappingHandlerMapping handlerMapping =
                     webFluxMappings.values().iterator().next();
-            handlerMapping.registerControllers(
+            controllers = handlerMapping.registerControllers(
                     pluginContext.getPluginId(), pluginContext.getApplicationContext());
-            registerPluginOpenApi();
-            return;
+        } else {
+            Map<String, GJPluginRequestMappingHandlerMapping> mvcMappings =
+                    mainCtx.getBeansOfType(GJPluginRequestMappingHandlerMapping.class);
+            if (!mvcMappings.isEmpty()) {
+                GJPluginRequestMappingHandlerMapping handlerMapping =
+                        mvcMappings.values().iterator().next();
+                controllers = handlerMapping.registerControllers(pluginContext);
+            } else {
+                log.debug("[Plugin: {}] No HandlerMapping found (non-web application), " +
+                        "skipping controller registration.", pluginContext.getPluginId());
+                return;
+            }
         }
-
-        Map<String, GJPluginRequestMappingHandlerMapping> mvcMappings =
-                mainCtx.getBeansOfType(GJPluginRequestMappingHandlerMapping.class);
-        if (!mvcMappings.isEmpty()) {
-            GJPluginRequestMappingHandlerMapping handlerMapping =
-                    mvcMappings.values().iterator().next();
-            handlerMapping.registerControllers(pluginContext);
-            return;
-        }
-
-        log.debug("[Plugin: {}] No HandlerMapping found (non-web application), " +
-                "skipping controller registration.", pluginContext.getPluginId());
+        registerPluginOpenApi(controllers);
     }
 
     private void registerHubs(AnnotationConfigApplicationContext applicationContext,
@@ -288,25 +290,20 @@ class GJPluginLifecycle {
         jobManager.registerJobs(pluginContext.getPluginId(), pluginContext.getApplicationContext());
     }
 
-    private void registerPluginOpenApi() {
-        ApplicationContext pluginAppCtx = pluginContext.getApplicationContext();
-        Set<Object> controllers = new LinkedHashSet<>();
-        controllers.addAll(pluginAppCtx.getBeansWithAnnotation(
-                org.springframework.stereotype.Controller.class).values());
-        controllers.addAll(pluginAppCtx.getBeansWithAnnotation(
-                org.springframework.web.bind.annotation.RestController.class).values());
-
+    private void registerPluginOpenApi(Set<Object> controllers) {
         if (controllers.isEmpty()) {
             return;
         }
-
         GJPluginOpenApiInfo pluginOpenApiInfo = new GJPluginOpenApiInfo();
         pluginOpenApiInfo.setGroupName(pluginContext.getPluginId());
-        List<String> controllerPackages = controllers.stream()
-                .map(c -> c.getClass().getPackageName())
-                .distinct()
-                .collect(Collectors.toList());
-        pluginOpenApiInfo.setControllerPackages(controllerPackages);
+        List<String> controllerPackages = new ArrayList<>();
+        List<Class<?>> controllerClasses = new ArrayList<>();
+        for (Object controller : controllers) {
+            controllerPackages.add(controller.getClass().getPackageName());
+            controllerClasses.add(controller.getClass());
+        }
+        pluginOpenApiInfo.setControllerPackages(controllerPackages.stream().distinct().collect(Collectors.toList()));
+        pluginOpenApiInfo.setControllerClasses(controllerClasses);
         GJPluginOpenApiConfig.registerPluginOpenApiBeans(
                 pluginContext.getMainApplicationContext(), pluginOpenApiInfo);
     }
@@ -357,18 +354,32 @@ class GJPluginLifecycle {
                 mainAppCtx.getBeansOfType(GJPluginWebFluxRequestMappingHandlerMapping.class);
         if (!webFluxMappings.isEmpty()) {
             webFluxMappings.values().iterator().next().unregisterHandlerMethods(pluginId);
-            ((AbstractAutowireCapableBeanFactory) mainAppCtx.getBeanFactory())
-                    .destroySingleton(GJPluginOpenApiConfig.PLUGIN_SWAGGER_BEAN_PREFIX + pluginId);
-            return;
+        } else {
+            // MVC mode (default)
+            Map<String, GJPluginRequestMappingHandlerMapping> mvcMappings =
+                    mainAppCtx.getBeansOfType(GJPluginRequestMappingHandlerMapping.class);
+            if (!mvcMappings.isEmpty()) {
+                mvcMappings.values().iterator().next().unregisterController(pluginId);
+            }
         }
 
-        // MVC mode (default)
-        Map<String, GJPluginRequestMappingHandlerMapping> mvcMappings =
-                mainAppCtx.getBeansOfType(GJPluginRequestMappingHandlerMapping.class);
-        if (!mvcMappings.isEmpty()) {
-            mvcMappings.values().iterator().next().unregisterController(pluginId);
-            ((AbstractAutowireCapableBeanFactory) mainAppCtx.getBeanFactory())
-                    .destroySingleton(GJPluginOpenApiConfig.PLUGIN_SWAGGER_BEAN_PREFIX + pluginId);
+        // OpenAPI cleanup
+        ((AbstractAutowireCapableBeanFactory) mainAppCtx.getBeanFactory())
+                .destroySingleton(GJPluginOpenApiConfig.PLUGIN_SWAGGER_BEAN_PREFIX + pluginId);
+        GJPluginOpenApiConfig.unregisterPluginOpenApiBeans(pluginId);
+        Object resource = GJPluginOpenApiConfig.findMultipleOpenApiResource(mainAppCtx);
+        if (resource != null) {
+            try {
+                Field groupedOpenApisField =
+                        GJPluginOpenApiConfig.getGroupedOpenApisField(resource);
+                @SuppressWarnings("unchecked")
+                List<GroupedOpenApi> groupedOpenApis =
+                        (List<GroupedOpenApi>) groupedOpenApisField.get(resource);
+                groupedOpenApis.removeIf(g -> g.getGroup().equals(pluginId));
+                resource.getClass().getMethod("afterPropertiesSet").invoke(resource);
+            } catch (Exception e) {
+                log.warn("[Plugin: {}] Failed to remove OpenAPI group from springdoc", pluginId, e);
+            }
         }
     }
 

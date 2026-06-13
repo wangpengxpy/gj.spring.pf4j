@@ -7,11 +7,11 @@
     <parent>
         <groupId>io.github.wangpengxpy</groupId>
         <artifactId>gj-dependencies</artifactId>
-        <version>1.0.2</version>
+        <version>1.0.3</version>
         <relativePath>../gj-parent/pom.xml</relativePath>
     </parent>
     <artifactId>gj-pf4j</artifactId>
-    <version>1.0.4</version>
+    <version>1.0.5</version>
     <name>gj-pf4j</name>
     <description>A lightweight, modular plugin framework powered by PF4J and Spring, with no heavyweight Spring Boot dependency.</description>
     <url>https://github.com/wangpengxpy/gj.spring.pf4j</url>
@@ -110,23 +110,17 @@
         </dependency>
         <dependency>
             <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.springframework.boot</groupId>
-                    <artifactId>spring-boot-starter-web</artifactId>
-                </exclusion>
-            </exclusions>
+            <artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.springframework.boot</groupId>
-                    <artifactId>spring-boot-starter-webflux</artifactId>
-                </exclusion>
-            </exclusions>
+            <artifactId>springdoc-openapi-starter-webflux-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-common</artifactId>
         </dependency>
         <dependency>
             <groupId>org.quartz-scheduler</groupId>

@@ -12,6 +12,7 @@ import java.util.List;
 @Setter
 @Getter
 public class GJPluginOpenApiInfo {
-    public String GroupName;
-    public List<String> ControllerPackages;
+    private String groupName;
+    private List<String> controllerPackages;
+    private List<Class<?>> controllerClasses;
 }
