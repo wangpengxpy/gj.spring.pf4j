@@ -6,6 +6,7 @@ package gj.pf4j.mybatis;
 
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.config.GlobalConfig;
+import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionTemplate;
@@ -30,9 +31,12 @@ public class GJPluginMybatisSqlSessionManager {
 
     private final ConcurrentHashMap<String, SqlSessionTemplate> pluginSessionCache = new ConcurrentHashMap<>();
     private final DataSource dataSource;
+    private final MybatisPlusInterceptor mybatisPlusInterceptor;
 
-    public GJPluginMybatisSqlSessionManager(@NonNull DataSource dataSource) {
+    public GJPluginMybatisSqlSessionManager(@NonNull DataSource dataSource,
+                                            MybatisPlusInterceptor mybatisPlusInterceptor) {
         this.dataSource = dataSource;
+        this.mybatisPlusInterceptor = mybatisPlusInterceptor;
         log.info("PluginMybatisSqlSessionManager initialized with shared DataSource: {}",
                 dataSource != null ? dataSource.getClass().getSimpleName() : "null");
     }
@@ -139,6 +143,7 @@ public class GJPluginMybatisSqlSessionManager {
         MybatisSqlSessionFactoryBean factory = new MybatisSqlSessionFactoryBean();
         factory.setDataSource(dataSource);
         factory.setConfiguration(configuration);
+        factory.setPlugins(mybatisPlusInterceptor);
         factory.setGlobalConfig(new GlobalConfig());
         factory.setTransactionFactory(new SpringManagedTransactionFactory());
         log.info("MyBatis factory configured with plugin: '{}'", pluginId);

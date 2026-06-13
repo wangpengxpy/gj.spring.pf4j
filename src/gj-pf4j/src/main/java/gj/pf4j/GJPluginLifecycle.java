@@ -9,6 +9,8 @@ import gj.pf4j.i18n.GJPluginReloadableMessageSource;
 import gj.pf4j.migration.GJPluginModelMigrator;
 import gj.pf4j.modelmapper.GJPluginModelMapperRegistry;
 import gj.pf4j.mybatis.GJPluginMybatisSqlSessionManager;
+import gj.pf4j.mybatis.interceptor.GJTableKeywordProvider;
+import gj.pf4j.mybatis.interceptor.GJTableKeywordRegistry;
 import gj.pf4j.openapi.GJPluginOpenApiConfig;
 import gj.pf4j.openapi.GJPluginOpenApiInfo;
 import gj.pf4j.quartzjob.PluginJobManager;
@@ -205,6 +207,7 @@ class GJPluginLifecycle {
         registerModelMappers(applicationContext);
         registerEventListeners(applicationContext, mainCtx);
         registerQuartzJobs(applicationContext, mainCtx);
+        registerPluginTableKeywords(applicationContext, mainCtx);
     }
 
     private void registerControllers(AnnotationConfigApplicationContext applicationContext,
@@ -288,6 +291,33 @@ class GJPluginLifecycle {
         }
         PluginJobManager jobManager = mainCtx.getBean(PluginJobManager.class);
         jobManager.registerJobs(pluginContext.getPluginId(), pluginContext.getApplicationContext());
+    }
+
+    private void registerPluginTableKeywords(AnnotationConfigApplicationContext applicationContext,
+                                             GenericApplicationContext mainCtx) {
+        Map<String, GJTableKeywordProvider> providers =
+                applicationContext.getBeansOfType(GJTableKeywordProvider.class);
+        if (providers.isEmpty()) {
+            return;
+        }
+        if (mainCtx.getBeansOfType(GJTableKeywordRegistry.class).isEmpty()) {
+            log.debug("[Plugin: {}] GJTableKeywordRegistry not registered, skipping keyword registration",
+                    pluginContext.getPluginId());
+            return;
+        }
+        GJTableKeywordRegistry registry = mainCtx.getBean(GJTableKeywordRegistry.class);
+        Map<String, Set<String>> merged = new HashMap<>();
+        for (GJTableKeywordProvider provider : providers.values()) {
+            Map<String, Set<String>> entries = provider.getTableKeywords();
+            if (entries != null) {
+                merged.putAll(entries);
+            }
+        }
+        if (!merged.isEmpty()) {
+            registry.register(merged);
+            log.info("[Plugin: {}] Registered {} table(s) keywords from plugin",
+                    pluginContext.getPluginId(), merged.size());
+        }
     }
 
     private void registerPluginOpenApi(Set<Object> controllers) {

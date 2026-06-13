@@ -4,13 +4,18 @@
 
 package gj.pf4j;
 
+import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import gj.pf4j.modelmapper.GJPluginModelMapperRegistry;
 import gj.pf4j.mybatis.GJPluginMybatisSqlSessionManager;
+import gj.pf4j.mybatis.interceptor.GJSqlKeywordQuoteInterceptor;
+import gj.pf4j.mybatis.interceptor.GJTableKeywordRegistry;
 import gj.pf4j.utils.GJPluginUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.system.ApplicationHome;
 import org.springframework.context.ApplicationContext;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication.Type;
 import org.springframework.context.annotation.Bean;
@@ -67,8 +72,33 @@ public class GJPluginConfig {
     }
 
     @Bean
-    public GJPluginMybatisSqlSessionManager pluginMybatisSqlSessionManager(DataSource dataSource) {
-        return new GJPluginMybatisSqlSessionManager(dataSource);
+    @ConditionalOnBean(DataSource.class)
+    @ConditionalOnMissingBean(MybatisPlusInterceptor.class)
+    public MybatisPlusInterceptor mybatisPlusInterceptor(
+            GJSqlKeywordQuoteInterceptor sqlKeywordQuoteInterceptor) {
+        MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
+        interceptor.addInnerInterceptor(sqlKeywordQuoteInterceptor);
+        return interceptor;
+    }
+
+    @Bean
+    @ConditionalOnBean(DataSource.class)
+    public GJTableKeywordRegistry tableKeywordRegistry() {
+        return new GJTableKeywordRegistry();
+    }
+
+    @Bean
+    @ConditionalOnBean(DataSource.class)
+    public GJSqlKeywordQuoteInterceptor sqlKeywordQuoteInterceptor(
+            GJTableKeywordRegistry registry) {
+        return new GJSqlKeywordQuoteInterceptor(registry);
+    }
+
+    @Bean
+    public GJPluginMybatisSqlSessionManager pluginMybatisSqlSessionManager(
+            DataSource dataSource,
+            MybatisPlusInterceptor mybatisPlusInterceptor) {
+        return new GJPluginMybatisSqlSessionManager(dataSource, mybatisPlusInterceptor);
     }
 
     @Bean

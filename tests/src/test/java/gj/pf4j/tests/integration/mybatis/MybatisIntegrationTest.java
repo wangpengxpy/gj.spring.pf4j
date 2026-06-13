@@ -1,5 +1,6 @@
 package gj.pf4j.tests.integration.mybatis;
 
+import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import gj.pf4j.mybatis.GJPluginMybatisSqlSessionManager;
 import gj.pf4j.tests.integration.IntegrationTestConfig;
 import org.junit.jupiter.api.DisplayName;
@@ -53,8 +54,9 @@ class MybatisIntegrationTest {
         }
 
         @Bean
-        GJPluginMybatisSqlSessionManager sessionManager(DataSource ds) {
-            return new GJPluginMybatisSqlSessionManager(ds);
+        GJPluginMybatisSqlSessionManager sessionManager(DataSource ds,
+                                                         MybatisPlusInterceptor mybatisPlusInterceptor) {
+            return new GJPluginMybatisSqlSessionManager(ds, mybatisPlusInterceptor);
         }
     }
 }
