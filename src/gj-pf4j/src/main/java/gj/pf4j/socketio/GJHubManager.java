@@ -4,7 +4,6 @@
 
 package gj.pf4j.socketio;
 
-import com.alibaba.excel.util.StringUtils;
 import com.corundumstudio.socketio.AckRequest;
 import com.corundumstudio.socketio.SocketIOClient;
 import com.corundumstudio.socketio.SocketIOServer;
@@ -23,6 +22,7 @@ import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -69,6 +69,10 @@ public class GJHubManager {
 
     private final GJSocketIOConfig socketIOConfig;
     private final GJHubSocketConnectionRateLimiter connectionRateLimiter;
+
+    // ================ Shutdown Flag ================
+
+    private volatile boolean shuttingDown = false;
 
     // ================ Configuration Constants ================
 
@@ -687,7 +691,17 @@ public class GJHubManager {
         if (hubClass == null) {
             throw new IllegalArgumentException("Hub class must not be null");
         }
-        GJHub iotHub = getHubInstance(hubClass);
+        GJHub iotHub;
+        try {
+            iotHub = getHubInstance(hubClass);
+        } catch (IllegalStateException e) {
+            if (shuttingDown) {
+                return new NoopGJHubContext<>();
+            }
+            log.error("{} is not registered or does not implement GJHub", hubClass.getName(), e);
+            throw new IllegalStateException(
+                    hubClass.getName() + " is not registered or does not implement GJHub. Check if the plugin is correctly registered.", e);
+        }
         String hubName = iotHub.getHubName();
         if (hubName == null || hubName.isEmpty()) {
             throw new IllegalStateException("No IoTHub registered for class: " + hubClass.getName() +
@@ -941,4 +955,46 @@ public class GJHubManager {
         return client.getHandshakeData().getSingleUrlParam("hub");
     }
 
+    @PreDestroy
+    public void shutdown() {
+        shuttingDown = true;
+        log.info("HubManager shutting down...");
+
+        // 1. Stop stats scheduler
+        statsScheduler.shutdownNow();
+
+        // 2. Shutdown async thread pool
+        asyncExecutor.shutdown();
+        try {
+            if (!asyncExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                asyncExecutor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            asyncExecutor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+
+        // 3. Destroy all registered hubs
+        for (Map.Entry<String, GJHub> entry : hubRegistry.entrySet()) {
+            try {
+                entry.getValue().destroy();
+            } catch (Exception e) {
+                log.error("Error destroying hub: {}", entry.getKey(), e);
+            }
+        }
+        hubRegistry.clear();
+        clientRegistry.clear();
+        hubContexts.clear();
+        userConnections.clear();
+        groupConnections.clear();
+        connectionInfoCache.clear();
+
+        // 4. Stop Socket.IO server
+        if (server != null) {
+            server.stop();
+            log.info("Socket.IO server stopped");
+        }
+
+        log.info("HubManager shutdown completed");
+    }
 }
