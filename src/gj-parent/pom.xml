@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.github.wangpengxpy</groupId>
     <artifactId>gj-dependencies</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.4</version>
     <packaging>pom</packaging>
     <name>gj-dependencies</name>
     <description>gj.spring.pf4j Bill of Materials (BOM) — manages all dependency versions for the gj-pf4j plugin framework ecosystem.</description>
@@ -63,6 +63,9 @@
         <lombok.version>1.18.42</lombok.version>
         <slf4j.api.version>2.0.17</slf4j.api.version>
         <quartz.version>2.4.0</quartz.version>
+        <spring.data.jpa.version>3.5.5</spring.data.jpa.version>
+        <hibernate.core.version>6.6.0.Final</hibernate.core.version>
+        <jakarta.persistence.api.version>3.1.0</jakarta.persistence.api.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -200,6 +203,21 @@
                 <groupId>org.springframework</groupId>
                 <artifactId>spring-jdbc</artifactId>
                 <version>${spring.jdbc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.data</groupId>
+                <artifactId>spring-data-jpa</artifactId>
+                <version>${spring.data.jpa.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.hibernate.orm</groupId>
+                <artifactId>hibernate-core</artifactId>
+                <version>${hibernate.core.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>jakarta.persistence</groupId>
+                <artifactId>jakarta.persistence-api</artifactId>
+                <version>${jakarta.persistence.api.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

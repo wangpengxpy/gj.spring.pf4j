@@ -13,6 +13,7 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -34,6 +35,7 @@ public class GJPluginModelMigrator {
 
     private final DataSource dataSource;
     private final EntityTableScanner entityTableScanner;
+    private final JpaEntityTableMetaParser jpaEntityScanner;
     private final EntityToModelConverter modelConverter;
     private final SchemaDiffEngine diffEngine;
     private final MigrationSqlGenerator sqlGenerator;
@@ -44,6 +46,7 @@ public class GJPluginModelMigrator {
         this.dataSource = dataSource;
         this.shareModelMigrator = shareModelMigrator;
         this.entityTableScanner = new EntityTableScanner();
+        this.jpaEntityScanner = new JpaEntityTableMetaParser();
         this.modelConverter = new EntityToModelConverter();
         this.diffEngine = new SchemaDiffEngine();
         this.sqlGenerator = new MigrationSqlGenerator();
@@ -67,12 +70,19 @@ public class GJPluginModelMigrator {
             long t0 = System.currentTimeMillis();
             log.info("[{}] Starting database auto-migration...", pluginId);
 
-            List<EntityTableMeta> entities = entityTableScanner.scan(pluginId, basePackage, classLoader);
+            // Scan MyBatis-Plus entities (@TableName)
+            List<EntityTableMeta> mpEntities = entityTableScanner.scan(pluginId, basePackage, classLoader);
+            // Scan JPA entities (@Entity)
+            List<EntityTableMeta> jpaEntities = jpaEntityScanner.scan(pluginId, basePackage, classLoader);
+
+            // Merge, deduplicate by tableName (JPA metadata takes priority)
+            List<EntityTableMeta> entities = mergeEntities(mpEntities, jpaEntities);
             if (entities.isEmpty()) {
-                log.debug("[{}] No @TableName entities found, skipping migration", pluginId);
+                log.debug("[{}] No @TableName or @Entity entities found, skipping migration", pluginId);
                 return;
             }
-            log.info("[{}] Found {} entities to check: {}", pluginId, entities.size(),
+            log.info("[{}] Found {} entities to check (MyBatis: {}, JPA: {}): {}",
+                    pluginId, entities.size(), mpEntities.size(), jpaEntities.size(),
                     entities.stream().map(EntityTableMeta::tableName).toList());
 
             doMigrate(pluginId, entities, classLoader);
@@ -211,6 +221,19 @@ public class GJPluginModelMigrator {
                     addCol.tableName(), addCol.column().getName(), addCol.column().getStoreType());
         }
         return op.tableName();
+    }
+
+    private static List<EntityTableMeta> mergeEntities(List<EntityTableMeta> mpEntities,
+                                                        List<EntityTableMeta> jpaEntities) {
+        java.util.LinkedHashMap<String, EntityTableMeta> merged = new java.util.LinkedHashMap<>();
+        for (EntityTableMeta e : mpEntities) {
+            merged.put(e.tableName().toLowerCase(), e);
+        }
+        for (EntityTableMeta e : jpaEntities) {
+            // JPA metadata takes priority for the same table
+            merged.put(e.tableName().toLowerCase(), e);
+        }
+        return new ArrayList<>(merged.values());
     }
 
     private static String pluginIdToPackage(String pluginId) {

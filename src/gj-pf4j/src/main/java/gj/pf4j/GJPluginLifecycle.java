@@ -6,6 +6,7 @@ package gj.pf4j;
 
 import gj.pf4j.eventbus.GJPluginLocalEventBus;
 import gj.pf4j.i18n.GJPluginReloadableMessageSource;
+import gj.pf4j.jpa.GJPluginJpaEntityManagerManager;
 import gj.pf4j.migration.GJPluginModelMigrator;
 import gj.pf4j.modelmapper.GJPluginModelMapperRegistry;
 import gj.pf4j.mybatis.GJPluginMybatisSqlSessionManager;
@@ -66,6 +67,7 @@ class GJPluginLifecycle {
         ops.add(this::registerResource);
         ops.add(this::registerI18NMessageSource);
         ops.add(this::registerMybatis);
+        ops.add(this::registerJpa);
         ops.add(this::registerAutoMigration);
         return ops;
     }
@@ -75,6 +77,7 @@ class GJPluginLifecycle {
         ops.add(this::unregisterControllers);
         ops.add(this::unregisterHubs);
         ops.add(this::unregisterI18NMessageSource);
+        ops.add(this::unregisterJpa);
         ops.add(this::unregisterMybatis);
         ops.add(this::unregisterEventListeners);
         ops.add(this::unregisterQuartzJobs);
@@ -187,6 +190,18 @@ class GJPluginLifecycle {
         String pluginId = pluginContext.getPluginId();
         GJPluginMybatisSqlSessionManager mybatisRegistry = pluginContext.getMainApplicationContext().getBean(GJPluginMybatisSqlSessionManager.class);
         mybatisRegistry.initializeMyBatisForPlugin(pluginId, applicationContext);
+    }
+
+    private void registerJpa(AnnotationConfigApplicationContext applicationContext) {
+        String pluginId = pluginContext.getPluginId();
+        ApplicationContext mainCtx = pluginContext.getMainApplicationContext();
+        var managers = mainCtx.getBeansOfType(GJPluginJpaEntityManagerManager.class);
+        if (managers.isEmpty()) {
+            log.debug("[Plugin: {}] JPA EntityManagerManager not available (Hibernate not on classpath), skipping JPA initialization", pluginId);
+            return;
+        }
+        GJPluginJpaEntityManagerManager jpaManager = managers.values().iterator().next();
+        jpaManager.initializeJpaForPlugin(pluginId, applicationContext);
     }
 
     private void registerAutoMigration(AnnotationConfigApplicationContext applicationContext) {
@@ -339,6 +354,17 @@ class GJPluginLifecycle {
     }
 
     // ── Unregistration ─────────────────────────────────────────
+
+    private void unregisterJpa() {
+        String pluginId = pluginContext.getPluginId();
+        ApplicationContext mainCtx = pluginContext.getMainApplicationContext();
+        var managers = mainCtx.getBeansOfType(GJPluginJpaEntityManagerManager.class);
+        if (managers.isEmpty()) {
+            return;
+        }
+        GJPluginJpaEntityManagerManager jpaManager = managers.values().iterator().next();
+        jpaManager.cleanupPluginResources(pluginId, pluginContext.getApplicationContext());
+    }
 
     private void unregisterMybatis() {
         String pluginId = pluginContext.getPluginId();

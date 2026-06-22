@@ -5,6 +5,8 @@
 package gj.pf4j;
 
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
+import gj.pf4j.jpa.GJPluginJpaEntityManagerManager;
+import gj.pf4j.jpa.GJPluginJpaProperties;
 import gj.pf4j.modelmapper.GJPluginModelMapperRegistry;
 import gj.pf4j.mybatis.GJPluginMybatisSqlSessionManager;
 import gj.pf4j.mybatis.interceptor.GJSqlKeywordQuoteInterceptor;
@@ -12,6 +14,7 @@ import gj.pf4j.mybatis.interceptor.GJTableKeywordRegistry;
 import gj.pf4j.utils.GJPluginUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.system.ApplicationHome;
 import org.springframework.context.ApplicationContext;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -22,6 +25,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
+import org.springframework.orm.jpa.JpaVendorAdapter;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.util.AntPathMatcher;
 
 import javax.sql.DataSource;
@@ -109,5 +114,31 @@ public class GJPluginConfig {
     @Bean
     public GJPluginService pluginService(GJPluginManager pluginManager) {
         return new GJPluginService(pluginManager);
+    }
+
+    // ── JPA Beans (activated by host adding hibernate-core dependency) ──────
+    @Bean
+    @ConditionalOnClass(name = "org.hibernate.jpa.HibernatePersistenceProvider")
+    @ConditionalOnMissingBean(JpaVendorAdapter.class)
+    public JpaVendorAdapter jpaVendorAdapter() {
+        HibernateJpaVendorAdapter adapter = new HibernateJpaVendorAdapter();
+        adapter.setShowSql(false);
+        return adapter;
+    }
+
+    @Bean
+    @ConditionalOnBean(JpaVendorAdapter.class)
+    @ConditionalOnMissingBean(GJPluginJpaProperties.class)
+    public GJPluginJpaProperties pluginJpaProperties() {
+        return new GJPluginJpaProperties();
+    }
+
+    @Bean
+    @ConditionalOnBean({DataSource.class, JpaVendorAdapter.class})
+    public GJPluginJpaEntityManagerManager pluginJpaEntityManagerManager(
+            DataSource dataSource,
+            JpaVendorAdapter jpaVendorAdapter,
+            GJPluginJpaProperties properties) {
+        return new GJPluginJpaEntityManagerManager(dataSource, jpaVendorAdapter, properties);
     }
 }

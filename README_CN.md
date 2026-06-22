@@ -19,6 +19,9 @@
 4. [插件生命周期](#4-插件生命周期)
 5. [REST 端点](#5-rest-端点)
 6. [数据访问](#6-数据访问)
+    * [6.1 MyBatis-Plus](#61-mybatis-plus-数据访问)
+    * [6.2 JPA](#62-jpa-数据访问)
+    * [6.3 SQL 关键字引号处理](#63-sql-关键字引号处理)
 7. [数据库自动迁移](#7-数据库自动迁移)
 8. [对象映射](#8-对象映射)
 9. [插件配置管理](#9-插件配置管理)
@@ -50,8 +53,9 @@ gj.spring.pf4j 是基于 [PF4J](https://pf4j.org/) 的轻量级 Spring 插件化
 - **[REST 端点](#5-rest-端点)** — 插件内 @RestController 自动发现并注册到主应用路由表，支持 MVC 和 WebFlux 双路由模式
 - **[双路由模式支持](#52-spring-mvc-与-webflux-双路由模式)** — 同时支持 Spring MVC（Servlet）和 Spring WebFlux（Reactive）路由
 - **[OpenAPI 文档](#15-openapi-文档)** — 基于 SpringDoc，每个插件自动生成独立 GroupedOpenApi
-- **[数据访问](#6-数据访问)** — 基于 [MyBatis-Plus](https://baomidou.com/)，每个插件独立 SqlSessionFactory / SqlSessionTemplate / TransactionManager，共享主应用 DataSource
-- **[SQL 关键字引号处理](#66-sql-关键字引号处理)** — MyBatis-Plus `InnerInterceptor` 自动识别数据库类型，对保留关键字列名自动包裹正确引号字符；主应用和插件均可通过 `GJTableKeywordProvider` 注册关键字定义
+- **[MyBatis-Plus 数据访问](#61-mybatis-plus-数据访问)** — 基于 [MyBatis-Plus](https://baomidou.com/)，每个插件独立 SqlSessionFactory / SqlSessionTemplate / TransactionManager，共享主应用 DataSource
+- **[JPA 数据访问](#62-jpa-数据访问)** — 基于 Hibernate 的 JPA（Jakarta Persistence API）；每个插件拥有独立的 `EntityManagerFactory` 和 `JpaTransactionManager`，共享主应用 `DataSource`。与 MyBatis-Plus 可共存，宿主引入 `hibernate-core` 即激活
+- **[SQL 关键字引号处理](#63-sql-关键字引号处理)** — MyBatis-Plus `InnerInterceptor` 自动识别数据库类型，对保留关键字列名自动包裹正确引号字符；主应用和插件均可通过 `GJTableKeywordProvider` 注册关键字定义
 - **[数据库自动迁移](#7-数据库自动迁移)** — @TableName 实体 Schema 自动迁移（仅建表/加字段），支持 7 种数据库，可安全用于生产环境
 - **[对象映射](#8-对象映射)** — 基于 [ModelMapper](https://modelmapper.org/)，插件实现 `GJPluginModelMapperConfig`，Spring Bean 扫描自动发现并注册类型映射
 - **[导入导出](#12-导入导出)** — 基于 [EasyExcel](https://easyexcel.opensource.alibaba.com/)，多 Sheet 读写，i18n 表头自动翻译
@@ -77,7 +81,7 @@ mvn clean install
 mvn archetype:generate \
   -DarchetypeGroupId=io.github.wangpengxpy \
   -DarchetypeArtifactId=gj-archetype \
-  -DarchetypeVersion=1.0.4 \
+  -DarchetypeVersion=1.0.5 \
   -DgroupId=com.example \
   -DpluginName=user \
   -DpackagePrefix=gj.module
@@ -113,6 +117,10 @@ user-plugin/
         │       │   └── EgroupDTO.java                   # 数据传输对象
         │       ├── model/
         │       │   └── Test.java                        # 数据库实体
+        │       ├── entity/
+        │       │   └── UserEntity.java                  # JPA @Entity 实体（需宿主引入 hibernate-core）
+        │       ├── repository/
+        │       │   └── UserRepository.java              # JPA JpaRepository 接口（需宿主引入 hibernate-core）
         │       ├── modelmapper/
         │       │   └── UserModelMapperConfig.java       # ModelMapper 映射配置
         │       ├── request/
@@ -142,6 +150,8 @@ user-plugin/
 | `controllers/` | REST 控制器 | `@RestController`，自动注册路由 |
 | `dao/` | 数据访问层 | MyBatis Mapper 接口，继承 `BaseMapper<T>` |
 | `model/` | 数据库实体 | MyBatis-Plus `@TableName` 实体 |
+| `entity/` | JPA 实体 | `@Entity` + `@Table`，可选（需宿主引入 hibernate-core） |
+| `repository/` | JPA 数据访问层 | Spring Data JPA `JpaRepository<T, ID>` 接口，可选（需宿主引入 hibernate-core） |
 | `dto/` | 数据传输对象 | 非持久化 DTO |
 | `request/` | 请求对象 | 接口入参 DTO |
 | `response/` | 响应对象 | 接口返回 DTO |
@@ -419,13 +429,15 @@ public class UserRouterConfig {
 
 ## 6. 数据访问
 
-基于 [MyBatis-Plus](https://baomidou.com/) 实现数据访问层。
+框架支持双 ORM — [MyBatis-Plus](https://baomidou.com/)（有 DataSource 即激活）和 JPA/Hibernate（宿主引入 `hibernate-core` 即激活）。两者共享主应用 `DataSource`，在同一插件内可共存，使用统一的 `@Primary` 事务管理器。
 
-### 6.1 DAO 包约定
+### 6.1 MyBatis-Plus 数据访问
+
+#### 6.1.1 DAO 包约定
 
 Mapper 接口必须放在 `{pluginId}.dao` 包下（点号分隔，连字符自动替换）。例如 `plugin.id = gj.module.user`，则 DAO 包为 `gj.module.user.dao`。
 
-### 6.2 实体类
+#### 6.1.2 实体类
 
 ```java
 package gj.module.user.model;
@@ -451,7 +463,7 @@ public class User {
 }
 ```
 
-### 6.3 Mapper 接口
+#### 6.1.3 Mapper 接口
 
 ```java
 package gj.module.user.dao;
@@ -463,7 +475,7 @@ public interface UserMapper extends BaseMapper<User> {
 }
 ```
 
-### 6.4 Service 实现
+#### 6.1.4 Service 实现
 
 ```java
 package gj.module.user.serviceimpl;
@@ -506,7 +518,7 @@ public class UserServiceImpl implements UserService {
 }
 ```
 
-### 6.5 数据层隔离机制
+#### 6.1.5 数据层隔离机制
 
 `GJPluginMybatisSqlSessionManager` 为每个插件：
 
@@ -517,9 +529,125 @@ public class UserServiceImpl implements UserService {
 
 所有插件共享主应用注入的 `DataSource`。插件停止时自动清理缓存。
 
-### 6.6 SQL 关键字引号处理
+### 6.2 JPA 数据访问
 
-框架内置 MyBatis-Plus `InnerInterceptor`，运行时自动检测数据库类型，当列名与数据库保留关键字（如 `order`、`comment`、`context`）冲突时，自动包裹正确的引号字符，避免 SQL 语法错误。
+基于 Hibernate 的 JPA（Jakarta Persistence API）数据访问。每个插件拥有独立的 `EntityManagerFactory` 和 `JpaRepository` 自动扫描。MyBatis-Plus 与 JPA 使用统一的 `@Primary` 事务管理器——`@Transactional` 无需 qualifier，跨 ORM 透明工作。
+
+**前提条件：** 宿主需引入 `hibernate-core`。未引入时 JPA 完全不激活，零影响。
+
+#### 6.2.1 包约定
+
+| 用途 | 包路径 | 示例 |
+|------|--------|------|
+| JPA 实体 | `{pluginId}.entity` | `gj.module.user.entity` |
+| JPA Repository | `{pluginId}.repository` | `gj.module.user.repository` |
+
+这是**目录级别**的包约定，不是单个文件——可以在包下放置任意数量的实体类和 Repository 接口。框架根据 `plugin.id` 自动推断包路径（连字符替换为点号），无需额外配置。
+
+```
+gj/module/user/
+├── entity/
+│   ├── UserEntity.java          ← Hibernate 自动扫描
+│   ├── RoleEntity.java          ← Hibernate 自动扫描
+│   └── PermissionEntity.java    ← Hibernate 自动扫描
+├── repository/
+│   ├── UserRepository.java      ← 自动注册为 JpaRepository Bean
+│   ├── RoleRepository.java      ← 自动注册为 JpaRepository Bean
+│   └── PermissionRepository.java ← 自动注册为 JpaRepository Bean
+└── ...
+```
+
+#### 6.2.2 实体类
+
+```java
+package gj.module.user.entity;
+
+import jakarta.persistence.*;
+import lombok.Data;
+
+@Data
+@Entity
+@Table(name = "user")
+public class UserEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "name", nullable = false)
+    private String name;
+
+    @Column(name = "email")
+    private String email;
+
+    @Column(name = "description")
+    private String description;
+}
+```
+
+#### 6.2.3 Repository 接口
+
+```java
+package gj.module.user.repository;
+
+import gj.module.user.entity.UserEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface UserRepository extends JpaRepository<UserEntity, Long> {
+}
+```
+
+#### 6.2.4 Service 实现
+
+```java
+package gj.module.user.serviceimpl;
+
+import gj.module.user.entity.UserEntity;
+import gj.module.user.repository.UserRepository;
+import gj.module.user.service.UserService;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Slf4j
+@Service
+@Transactional
+public class UserServiceImpl implements UserService {
+
+    private final UserRepository userRepository;
+
+    public UserServiceImpl(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
+    @Override
+    public List<UserEntity> getList() {
+        return userRepository.findAll();
+    }
+}
+```
+
+> `@Transactional` 无需指定 qualifier —— 对 MyBatis 和 JPA 均有效。
+
+#### 6.2.5 数据层隔离机制
+
+`GJPluginJpaEntityManagerManager` 为每个插件：
+
+- 创建独立的 `LocalContainerEntityManagerFactoryBean`（`persistenceUnitName = pluginId`，`@Primary`）
+- 创建独立的 `JpaTransactionManager`（MyBatis 与 JPA 共存时复用同一个 TM）
+- 自动扫描 `JpaRepositoryFactoryBean` 注册 repository 包下的所有接口
+- 注册 `PersistenceExceptionTranslationPostProcessor` 实现 Spring 异常转换
+
+JPA 激活时，MyBatis 复用同一个 `JpaTransactionManager`，不创建额外的 `DataSourceTransactionManager`。所有插件共享宿主 `DataSource`。插件停止时显式调用 `EntityManagerFactory.close()` 释放 Hibernate 资源。
+
+**宿主控制激活：** 宿主未引入 `hibernate-core` 时，不会为任何插件创建 JPA Bean，零开销。
+
+---
+
+### 6.3 SQL 关键字引号处理
+
+框架内置 MyBatis-Plus `InnerInterceptor`，运行时自动检测数据库类型，当列名与数据库保留关键字（如 `order`、`comment`、`context`）冲突时，自动包裹正确的引号字符。JPA/Hibernate 通过自身的 dialect 或 `hibernate.auto_quote_keyword` 配置处理关键字引号。
 
 **各数据库引号字符：**
 
@@ -579,7 +707,7 @@ public class UserKeywords implements GJTableKeywordProvider {
 
 ## 7. 数据库自动迁移
 
-框架为插件实体提供数据库 Schema 自动迁移能力。插件启动时，自动扫描 `@TableName` 实体并与当前数据库结构对比，缺失的表和字段会被自动创建，无需手写 SQL 迁移脚本。
+框架为插件实体提供数据库 Schema 自动迁移能力。插件启动时，自动扫描 `@TableName`（MyBatis-Plus）和 `@Entity`（JPA）实体并与当前数据库结构对比，缺失的表和字段会被自动创建，无需手写 SQL 迁移脚本。
 
 ### 7.1 支持的数据库
 
@@ -610,7 +738,7 @@ public class UserKeywords implements GJTableKeywordProvider {
 
 ### 7.3 插件自动迁移
 
-插件**无需任何配置**即可享受迁移能力。插件包路径下的所有 `@TableName` 实体类在插件启动时被自动扫描，框架对比实体模型与数据库实际结构，执行必要的建表或加字段操作。
+插件**无需任何配置**即可享受迁移能力。插件包路径下的所有 `@TableName`（MyBatis-Plus）和 `@Entity`（JPA）实体类在插件启动时被自动扫描，框架对比实体模型与数据库实际结构，执行必要的建表或加字段操作。
 
 以下场景均会自动触发迁移：
 
@@ -1453,7 +1581,7 @@ gj-pf4j 自身依赖 Spring 核心包（spring-webmvc、spring-beans、spring-jd
         <dependency>
             <groupId>io.github.wangpengxpy</groupId>
             <artifactId>gj-dependencies</artifactId>
-            <version>1.0.3</version>
+            <version>1.0.4</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -1497,7 +1625,7 @@ gj BOM 中与 Spring Boot 重叠的依赖（spring-webmvc、spring-beans 等）�
 <dependency>
     <groupId>io.github.wangpengxpy</groupId>
     <artifactId>gj-pf4j</artifactId>
-    <version>1.0.5</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 
@@ -1711,7 +1839,7 @@ public class MyKeywords implements GJTableKeywordProvider {
 }
 ```
 
-框架运行时自动为这些列名包裹正确的引号字符。详见 [6.6 节](#66-sql-关键字引号处理)。
+框架运行时自动为这些列名包裹正确的引号字符。详见 [6.3 节](#63-sql-关键字引号处理)。
 
 ### Q4: 主应用有 Controller 但 Swagger-UI 下拉菜单里看不到？
 
@@ -1759,3 +1887,40 @@ public class GJApplication {
 ### Q7: 自动迁移会删表或删字段吗？
 
 不会。迁移引擎遵循**严格的纯增量策略** —— 仅在表不存在时 `CREATE TABLE`，字段不存在时 `ALTER TABLE ADD COLUMN`。已有的表结构、字段和数据不会被修改或删除。详见 [7.2 节](#72-生产安全性)。
+
+### Q8: 插件 JPA 实体 / Repository 不生效，没报错但注入失败？
+
+JPA 能力由**宿主决定激活**。检查宿主 `pom.xml` 是否引入了 `hibernate-core`：
+
+```xml
+<dependency>
+    <groupId>org.hibernate.orm</groupId>
+    <artifactId>hibernate-core</artifactId>
+    <version>${hibernate.version}</version>
+</dependency>
+```
+
+未引入时框架静默跳过 JPA 链路，不会创建 `EntityManagerFactory` 和 Repository Bean。查看启动日志是否有：
+```
+[Plugin: xxx] JPA EntityManagerManager not available, skipping
+```
+
+MyBatis-Plus 不受影响，正常工作。详见 [6.2 节](#62-jpa-数据访问)。
+
+### Q9: 配置了 `spring.jpa.hibernate.ddl-auto=update` 为什么不生效？
+
+框架默认 `ddl-auto` 为 `none`。DDL 自动维护由框架自带的迁移引擎接管（详见 [第 7 节](#7-数据库自动迁移)），支持 7 种数据库，只做纯增量操作（仅 CREATE TABLE / ADD COLUMN）。如需启用 Hibernate 自带的 DDL，在宿主应用覆盖 `GJPluginJpaProperties` Bean：
+
+```java
+@Bean
+@Primary
+public GJPluginJpaProperties customJpaProperties() {
+    GJPluginJpaProperties props = new GJPluginJpaProperties();
+    props.setDdlAuto("update");  // 或 "validate"、"create"、"create-drop"
+    return props;
+}
+```
+
+### Q10: 用了 `@OneToMany` / `@ManyToOne` / `@Embedded` / `@Inheritance` 为什么没有自动生成关联表？
+
+v1 的 DDL 迁移系统只处理单表实体（基本字段）。关联映射、值嵌入、继承层次涉及的外键约束、中间表和集合表需开发者手动创建。Hibernate 运行时能正常使用这些表。`@Embedded` 和 `@ElementCollection` 预计后续版本支持。

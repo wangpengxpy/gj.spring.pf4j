@@ -19,6 +19,9 @@ A lightweight, modular plugin framework powered by PF4J and Spring, with no heav
 4. [Plugin Lifecycle](#4-plugin-lifecycle)
 5. [REST Endpoints](#5-rest-endpoints)
 6. [Data Access](#6-data-access)
+    * [6.1 MyBatis-Plus](#61-mybatis-plus-data-access)
+    * [6.2 JPA](#62-jpa-data-access)
+    * [6.3 SQL Keyword Quoting](#63-sql-keyword-quoting)
 7. [Database Auto-Migration](#7-database-auto-migration)
 8. [Object Mapping](#8-object-mapping)
 9. [Plugin Configuration Management](#9-plugin-configuration-management)
@@ -50,8 +53,9 @@ gj.spring.pf4j is a lightweight, modular plugin framework built on [PF4J](https:
 - **[REST Endpoints](#5-rest-endpoints)** — `@RestController` beans are auto-detected and registered into the main application's route table, supporting both MVC and WebFlux
 - **[Dual Routing Mode](#52-spring-mvc-vs-webflux-dual-routing)** — supports both Spring MVC (Servlet) and Spring WebFlux (Reactive) routing; plugins require zero changes
 - **[OpenAPI Documentation](#15-openapi-documentation)** — powered by SpringDoc; each plugin auto-generates an independent `GroupedOpenApi`
-- **[Data Access](#6-data-access)** — powered by [MyBatis-Plus](https://baomidou.com/); each plugin gets its own `SqlSessionFactory`, `SqlSessionTemplate`, and `TransactionManager`, all sharing the main application's `DataSource`
-- **[SQL Keyword Quoting](#66-sql-keyword-quoting)** — MyBatis-Plus `InnerInterceptor` automatically wraps column names with database-specific quote characters to prevent reserved-keyword conflicts; both host app and plugins can register keyword definitions via `GJTableKeywordProvider`
+- **[MyBatis-Plus Data Access](#61-mybatis-plus-data-access)** — [MyBatis-Plus](https://baomidou.com/) (built-in); each plugin gets its own `SqlSessionFactory`, `SqlSessionTemplate`, and `TransactionManager`, all sharing the main application's `DataSource`
+- **[JPA Data Access](#62-jpa-data-access)** — JPA (Jakarta Persistence API) powered by Hibernate; each plugin gets its own `EntityManagerFactory` and `JpaTransactionManager`, sharing the host's `DataSource`. Works alongside MyBatis-Plus, activated by adding `hibernate-core` to the host application
+- **[SQL Keyword Quoting](#63-sql-keyword-quoting)** — MyBatis-Plus `InnerInterceptor` automatically wraps column names with database-specific quote characters to prevent reserved-keyword conflicts; both host app and plugins can register keyword definitions via `GJTableKeywordProvider`
 - **[Database Auto-Migration](#7-database-auto-migration)** — automatic `@TableName` entity schema migration (CREATE TABLE / ADD COLUMN only), supports 7 databases, production-safe
 - **[Object Mapping](#8-object-mapping)** — powered by [ModelMapper](https://modelmapper.org/); plugins implement `GJPluginModelMapperConfig`, auto-discovered via Spring bean scanning
 - **[Import/Export](#12-importexport)** — powered by [EasyExcel](https://easyexcel.opensource.alibaba.com/); multi-sheet read/write with automatic i18n header translation
@@ -77,7 +81,7 @@ mvn clean install
 mvn archetype:generate \
   -DarchetypeGroupId=io.github.wangpengxpy \
   -DarchetypeArtifactId=gj-archetype \
-  -DarchetypeVersion=1.0.4 \
+  -DarchetypeVersion=1.0.5 \
   -DgroupId=com.example \
   -DpluginName=user \
   -DpackagePrefix=gj.module
@@ -113,6 +117,10 @@ user-plugin/
         │       │   └── EgroupDTO.java                   # Data transfer object
         │       ├── model/
         │       │   └── Test.java                        # Database entity
+        │       ├── entity/
+        │       │   └── UserEntity.java                  # JPA @Entity (requires host hibernate-core)
+        │       ├── repository/
+        │       │   └── UserRepository.java              # JPA JpaRepository (requires host hibernate-core)
         │       ├── modelmapper/
         │       │   └── UserModelMapperConfig.java       # ModelMapper config
         │       ├── request/
@@ -142,6 +150,8 @@ user-plugin/
 | `controllers/` | REST controllers | `@RestController`, auto-registered as routes |
 | `dao/` | Data access layer | MyBatis Mapper interfaces, extending `BaseMapper<T>` |
 | `model/` | Database entities | MyBatis-Plus `@TableName` entities |
+| `entity/` | JPA entities | `@Entity` + `@Table`, optional (requires host to add `hibernate-core`) |
+| `repository/` | JPA data access | Spring Data JPA `JpaRepository<T, ID>` interfaces, optional (requires host to add `hibernate-core`) |
 | `dto/` | Data transfer objects | Non-persistent DTOs |
 | `request/` | Request objects | API input DTOs |
 | `response/` | Response objects | API return DTOs |
@@ -420,13 +430,15 @@ public class UserRouterConfig {
 
 ## 6. Data Access
 
-Powered by [MyBatis-Plus](https://baomidou.com/).
+The framework supports dual ORM — [MyBatis-Plus](https://baomidou.com/) (always active with `DataSource`) and JPA/Hibernate (host-opt-in via `hibernate-core`). Both share the host's `DataSource` and coexist within the same plugin under a single `@Primary` transaction manager.
 
-### 6.1 DAO Package Convention
+### 6.1 MyBatis-Plus Data Access
+
+#### 6.1.1 DAO Package Convention
 
 Mapper interfaces must reside in the `{pluginId}.dao` package (dots replace hyphens). For example, `plugin.id = gj.module.user` → DAO package is `gj.module.user.dao`.
 
-### 6.2 Entity Class
+#### 6.1.2 Entity Class
 
 ```java
 package gj.module.user.model;
@@ -452,7 +464,7 @@ public class User {
 }
 ```
 
-### 6.3 Mapper Interface
+#### 6.1.3 Mapper Interface
 
 ```java
 package gj.module.user.dao;
@@ -464,7 +476,7 @@ public interface UserMapper extends BaseMapper<User> {
 }
 ```
 
-### 6.4 Service Implementation
+#### 6.1.4 Service Implementation
 
 ```java
 package gj.module.user.serviceimpl;
@@ -507,20 +519,142 @@ public class UserServiceImpl implements UserService {
 }
 ```
 
-### 6.5 Data Layer Isolation
+#### 6.1.5 Data Layer Isolation
 
 `GJPluginMybatisSqlSessionManager` creates for each plugin:
 
 - A dedicated `SqlSessionFactory` (camelCase mapping, no cache, no lazy loading)
 - A dedicated `SqlSessionTemplate` (cached for reuse)
-- A dedicated `DataSourceTransactionManager`
 - A `MapperScannerConfigurer` scoped to the plugin's DAO package only
 
 All plugins share the main application's `DataSource`. Resources are cleaned up automatically when a plugin stops.
 
-### 6.6 SQL Keyword Quoting
+### 6.2 JPA Data Access
 
-The framework includes a MyBatis-Plus `InnerInterceptor` that automatically detects the database type at runtime and wraps column names with the correct quote character when they conflict with reserved keywords (e.g., `order`, `comment`, `context`).
+Powered by Hibernate, providing the JPA (Jakarta Persistence API) programming model. Each plugin gets its own isolated `EntityManagerFactory` and `JpaRepository` scanning. MyBatis-Plus and JPA work under the same `@Primary` transaction manager — `@Transactional` just works across both ORMs without qualifiers.
+
+**Prerequisite:** The host application must add `hibernate-core` to its `pom.xml`. Without it, no JPA beans are created — zero impact.
+
+```xml
+<dependency>
+    <groupId>org.hibernate.orm</groupId>
+    <artifactId>hibernate-core</artifactId>
+    <version>${hibernate.version}</version>
+</dependency>
+```
+
+#### 6.2.1 Package Convention
+
+| Purpose | Package | Example |
+|---------|---------|---------|
+| JPA entities | `{pluginId}.entity` | `gj.module.user.entity` |
+| JPA repositories | `{pluginId}.repository` | `gj.module.user.repository` |
+
+These are **directory-level** packages, not single files — any number of entity classes and repository interfaces can reside under them. The framework auto-infers the package path from `plugin.id` (dots replace hyphens). No additional configuration needed.
+
+```
+gj/module/user/
+├── entity/
+│   ├── UserEntity.java          ← scanned by Hibernate
+│   ├── RoleEntity.java          ← scanned by Hibernate
+│   └── PermissionEntity.java    ← scanned by Hibernate
+├── repository/
+│   ├── UserRepository.java      ← auto-registered as JpaRepository bean
+│   ├── RoleRepository.java      ← auto-registered as JpaRepository bean
+│   └── PermissionRepository.java ← auto-registered as JpaRepository bean
+└── ...
+```
+
+#### 6.2.2 Entity Class
+
+```java
+package gj.module.user.entity;
+
+import jakarta.persistence.*;
+import lombok.Data;
+
+@Data
+@Entity
+@Table(name = "user")
+public class UserEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @Column(name = "name")
+    private String name;
+
+    @Column(name = "email")
+    private String email;
+
+    @Column(name = "description")
+    private String description;
+}
+```
+
+#### 6.2.3 Repository Interface
+
+```java
+package gj.module.user.repository;
+
+import gj.module.user.entity.UserEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface UserRepository extends JpaRepository<UserEntity, Integer> {
+}
+```
+
+#### 6.2.4 Service Implementation
+
+```java
+package gj.module.user.serviceimpl;
+
+import gj.module.user.entity.UserEntity;
+import gj.module.user.repository.UserRepository;
+import gj.module.user.service.UserService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Slf4j
+@Service
+@Transactional
+public class UserServiceImpl implements UserService {
+
+    private final UserRepository userRepository;
+
+    public UserServiceImpl(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
+    @Override
+    public List<UserEntity> getList() {
+        return userRepository.findAll();
+    }
+}
+```
+
+> **Note:** `@Transactional` works seamlessly with both MyBatis and JPA without any qualifier.
+
+#### 6.2.5 Data Layer Isolation
+
+`GJPluginJpaEntityManagerManager` creates for each plugin:
+
+- A dedicated `LocalContainerEntityManagerFactoryBean` (persistence unit per plugin, `@Primary`)
+- A dedicated `JpaTransactionManager` (shared with MyBatis when both ORMs coexist)
+- Auto-scanned `JpaRepositoryFactoryBean` for each interface in the repository package
+- A `PersistenceExceptionTranslationPostProcessor` for Spring exception translation
+
+When JPA is active, MyBatis reuses the same `JpaTransactionManager` — no separate `DataSourceTransactionManager` is created. All plugins share the host's `DataSource`. `EntityManagerFactory.close()` is called on plugin stop to release Hibernate resources.
+
+**Host controls activation:** If the host does not include `hibernate-core`, no JPA beans are created — zero runtime overhead.
+
+### 6.3 SQL Keyword Quoting
+
+The framework includes a MyBatis-Plus `InnerInterceptor` that automatically detects the database type at runtime and wraps column names with the correct quote character when they conflict with reserved keywords (e.g., `order`, `comment`, `context`). For JPA/Hibernate, keyword quoting is handled by the Hibernate dialect or `hibernate.auto_quote_keyword` configuration.
 
 **Quote character by database:**
 
@@ -580,7 +714,7 @@ Host app providers are auto-scanned at startup; plugin providers are auto-scanne
 
 ## 7. Database Auto-Migration
 
-The framework provides automatic database schema migration for plugin entities. When a plugin starts, `@TableName` entities are automatically scanned and compared against the current database schema. Missing tables and columns are created automatically — no manual SQL migration scripts required.
+The framework provides automatic database schema migration for plugin entities. When a plugin starts, `@TableName` or `@Entity` entities are automatically scanned and compared against the current database schema. Missing tables and columns are created automatically — no manual SQL migration scripts required.
 
 ### 7.1 Supported Databases
 
@@ -611,7 +745,7 @@ No `DROP TABLE`, `DROP COLUMN`, `ALTER COLUMN`, `RENAME`, or any other destructi
 
 ### 7.3 Plugin Auto-Migration
 
-Plugins require **zero configuration** for migration. Any `@TableName` entity class placed under the plugin's package is automatically scanned during plugin startup. The framework compares the entity model against the live database schema and executes any necessary `CREATE TABLE` or `ADD COLUMN` statements.
+Plugins require **zero configuration** for migration. Any `@TableName` or `@Entity` entity class placed under the plugin's package is automatically scanned during plugin startup. The framework compares the entity model against the live database schema and executes any necessary `CREATE TABLE` or `ADD COLUMN` statements.
 
 Migration is triggered automatically when:
 
@@ -1454,7 +1588,7 @@ In `dependencyManagement`, import the gj BOM followed by the Spring Boot BOM —
         <dependency>
             <groupId>io.github.wangpengxpy</groupId>
             <artifactId>gj-dependencies</artifactId>
-            <version>1.0.3</version>
+            <version>1.0.4</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -1498,7 +1632,7 @@ You can also skip the BOM and depend on gj-pf4j directly, but you must ensure Sp
 <dependency>
     <groupId>io.github.wangpengxpy</groupId>
     <artifactId>gj-pf4j</artifactId>
-    <version>1.0.5</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 
@@ -1712,7 +1846,7 @@ public class MyKeywords implements GJTableKeywordProvider {
 }
 ```
 
-The framework automatically wraps these columns with the correct quote character at runtime. See [Section 6.6](#66-sql-keyword-quoting).
+The framework automatically wraps these columns with the correct quote character at runtime. See [Section 6.3](#63-sql-keyword-quoting).
 
 ### Q4: Host app has Controllers but they don't appear in Swagger-UI?
 
@@ -1760,3 +1894,40 @@ Plugins append their own mappings to the shared `ModelMapper` instance automatic
 ### Q7: Does auto-migration ever drop tables or columns?
 
 No. The migration engine follows a **strict additive-only policy** — only `CREATE TABLE` (when table is missing) and `ALTER TABLE ADD COLUMN` (when column is missing) are generated. Existing tables, columns, and data are never modified or deleted. See [Section 7.2](#72-production-safety).
+
+### Q8: JPA `@Entity` / `JpaRepository` beans not working — no error but not injected?
+
+JPA support is **host-controlled**. Add `hibernate-core` to the host application's `pom.xml`:
+
+```xml
+<dependency>
+    <groupId>org.hibernate.orm</groupId>
+    <artifactId>hibernate-core</artifactId>
+    <version>${hibernate.version}</version>
+</dependency>
+```
+
+Without it, the framework silently skips JPA initialization — no `EntityManagerFactory` or repository beans are created. Check the startup log for:
+```
+[Plugin: xxx] JPA EntityManagerManager not available, skipping
+```
+
+MyBatis-Plus is unaffected and works normally regardless. See [Section 6.2](#62-jpa-data-access).
+
+### Q9: I set `spring.jpa.hibernate.ddl-auto=update` but it's not working?
+
+The framework defaults `ddl-auto` to `none`. Automatic DDL is handled by the framework's own migration engine (see [Section 7](#7-database-auto-migration)), which supports 7 databases with a strict additive-only policy (CREATE TABLE / ADD COLUMN only). To enable Hibernate's own DDL generation, override the `GJPluginJpaProperties` bean in the host application:
+
+```java
+@Bean
+@Primary
+public GJPluginJpaProperties customJpaProperties() {
+    GJPluginJpaProperties props = new GJPluginJpaProperties();
+    props.setDdlAuto("update");  // or "validate", "create", "create-drop"
+    return props;
+}
+```
+
+### Q10: Why aren't `@OneToMany` / `@ManyToOne` / `@Embedded` / `@Inheritance` generated by auto-migration?
+
+v1 migration only handles single-table entities with basic fields. Relationship mappings, embeddables, and inheritance hierarchies require manual DDL for the associated tables, foreign keys, or join tables. Hibernate will use these tables normally at runtime once they exist. `@Embedded` and `@ElementCollection` are planned for a future release.

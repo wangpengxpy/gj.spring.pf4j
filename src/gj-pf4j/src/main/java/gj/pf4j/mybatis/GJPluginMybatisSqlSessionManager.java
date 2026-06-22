@@ -14,12 +14,13 @@ import org.mybatis.spring.mapper.MapperScannerConfigurer;
 import org.mybatis.spring.transaction.SpringManagedTransactionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import gj.pf4j.jpa.GJPluginJpaEntityManagerManager;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.lang.NonNull;
-import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.annotation.PreDestroy;
 import javax.sql.DataSource;
@@ -77,18 +78,28 @@ public class GJPluginMybatisSqlSessionManager {
                 log.warn("SqlSessionTemplate bean '{}' already exists in plugin context, skipping registration", sqlSessionBeanName);
             }
 
-            // 5. Create an independent TransactionManager for the plugin
-            PlatformTransactionManager transactionManager = new DataSourceTransactionManager(dataSource);
-            log.info("TransactionManager created for plugin [{}]", pluginId);
-
-            // 6. Register the plugin-specific TransactionManager
+            // 5. Register TransactionManager for the plugin
+            // If JPA is active, the JpaTransactionManager (registered by GJPluginJpaEntityManagerManager)
+            // will handle both JPA and MyBatis transactions since they share the same DataSource.
+            // Only register a standalone DataSourceTransactionManager when JPA is not available.
+            boolean jpaActive = isJpaActive(context);
             String txManagerBeanName = pluginId + "_transactionManager";
-            if (!beanFactory.containsBeanDefinition(txManagerBeanName)) {
-                beanFactory.registerSingleton(txManagerBeanName, transactionManager);
-                log.info("Registered plugin-specific TransactionManager as bean '{}' for plugin [{}]", txManagerBeanName, pluginId);
+            if (!jpaActive) {
+                if (!beanFactory.containsBeanDefinition(txManagerBeanName)) {
+                    BeanDefinitionBuilder tmBuilder = BeanDefinitionBuilder
+                            .genericBeanDefinition(DataSourceTransactionManager.class);
+                    tmBuilder.addConstructorArgValue(dataSource);
+                    tmBuilder.setPrimary(true);
+                    beanFactory.registerBeanDefinition(txManagerBeanName, tmBuilder.getBeanDefinition());
+                    log.info("Registered DataSourceTransactionManager (@Primary) as bean '{}' for plugin [{}]",
+                            txManagerBeanName, pluginId);
+                }
+            } else {
+                log.info("JPA is active, skipping DataSourceTransactionManager registration for plugin [{}] " +
+                        "(JpaTransactionManager will be registered by GJPluginJpaEntityManagerManager)", pluginId);
             }
 
-            // 7. Scan DAO packages via MapperScannerConfigurer
+            // 6. Scan DAO packages via MapperScannerConfigurer
             String scannerBeanName = pluginId + "_mapperScannerConfigurer";
             if (!beanFactory.containsBeanDefinition(scannerBeanName)) {
                 BeanDefinitionBuilder scannerBuilder = BeanDefinitionBuilder
@@ -159,6 +170,14 @@ public class GJPluginMybatisSqlSessionManager {
                 log.debug("No cached SqlSessionTemplate found for plugin: '{}'", pluginId);
             }
         }
+    }
+
+    private static boolean isJpaActive(GenericApplicationContext pluginContext) {
+        ApplicationContext parent = pluginContext.getParent();
+        if (parent != null) {
+            return !parent.getBeansOfType(GJPluginJpaEntityManagerManager.class).isEmpty();
+        }
+        return false;
     }
 
     @PreDestroy

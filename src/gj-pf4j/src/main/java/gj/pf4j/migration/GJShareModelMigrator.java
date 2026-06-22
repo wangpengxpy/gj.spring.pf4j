@@ -26,11 +26,13 @@ public class GJShareModelMigrator {
     private final ClassLoader mainClassLoader;
     private final String[] basePackages;
     private final EntityTableScanner scanner;
+    private final JpaEntityTableMetaParser jpaScanner;
 
     public GJShareModelMigrator(ApplicationContext mainAppCtx, String[] basePackages) {
         this.mainClassLoader = mainAppCtx.getClassLoader();
         this.basePackages = (basePackages != null) ? basePackages.clone() : new String[0];
         this.scanner = new EntityTableScanner();
+        this.jpaScanner = new JpaEntityTableMetaParser();
     }
 
     void migrateOnce(GJPluginModelMigrator pipeline) {
@@ -48,12 +50,24 @@ public class GJShareModelMigrator {
         int totalEntities = 0;
         for (String pkg : basePackages) {
             String scope = "share-model:" + pkg;
-            List<EntityTableMeta> entities = scanner.scan(scope, pkg, mainClassLoader);
+            List<EntityTableMeta> mpEntities = scanner.scan(scope, pkg, mainClassLoader);
+            List<EntityTableMeta> jpaEntities = jpaScanner.scan(scope, pkg, mainClassLoader);
+
+            java.util.LinkedHashMap<String, EntityTableMeta> merged = new java.util.LinkedHashMap<>();
+            for (EntityTableMeta e : mpEntities) {
+                merged.put(e.tableName().toLowerCase(), e);
+            }
+            for (EntityTableMeta e : jpaEntities) {
+                merged.put(e.tableName().toLowerCase(), e);
+            }
+            List<EntityTableMeta> entities = new java.util.ArrayList<>(merged.values());
+
             if (entities.isEmpty()) {
-                log.info("[{}] No @TableName entities found, skipping", scope);
+                log.info("[{}] No @TableName or @Entity entities found, skipping", scope);
                 continue;
             }
-            log.info("[{}] Found {} share entities to check: {}", scope, entities.size(),
+            log.info("[{}] Found {} share entities to check (MyBatis: {}, JPA: {}): {}",
+                    scope, entities.size(), mpEntities.size(), jpaEntities.size(),
                     entities.stream().map(EntityTableMeta::tableName).toList());
             totalEntities += entities.size();
             pipeline.doMigrate(scope, entities, mainClassLoader);
