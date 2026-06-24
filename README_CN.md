@@ -1772,7 +1772,7 @@ gj-pf4j 自身依赖 Spring 核心包（spring-webmvc、spring-beans、spring-jd
         <dependency>
             <groupId>io.github.wangpengxpy</groupId>
             <artifactId>gj-dependencies</artifactId>
-            <version>1.0.4</version>
+            <version>1.0.5</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>

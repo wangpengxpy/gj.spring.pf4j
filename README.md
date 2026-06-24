@@ -1780,7 +1780,7 @@ In `dependencyManagement`, import the gj BOM followed by the Spring Boot BOM —
         <dependency>
             <groupId>io.github.wangpengxpy</groupId>
             <artifactId>gj-dependencies</artifactId>
-            <version>1.0.4</version>
+            <version>1.0.5</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
