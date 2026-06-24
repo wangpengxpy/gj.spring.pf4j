@@ -8,9 +8,12 @@ import gj.pf4j.GJPluginManager;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 @Component
+@Order(Ordered.LOWEST_PRECEDENCE)
 public class GJMainApplicationStartedListener implements ApplicationListener<ContextRefreshedEvent> {
 
     private final GJPluginManager pluginManager;
@@ -29,6 +32,7 @@ public class GJMainApplicationStartedListener implements ApplicationListener<Con
             return;
         }
         if (pluginManager.isAutoStartPlugin()) {
+            pluginManager.loadPlugins();
             pluginManager.startPlugins();
         }
         pluginManager.setMainApplicationStarted(true);

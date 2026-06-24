@@ -81,7 +81,7 @@ mvn clean install
 mvn archetype:generate \
   -DarchetypeGroupId=io.github.wangpengxpy \
   -DarchetypeArtifactId=gj-archetype \
-  -DarchetypeVersion=1.0.5 \
+  -DarchetypeVersion=1.0.6 \
   -DgroupId=com.example \
   -DpluginName=user \
   -DpackagePrefix=gj.module
@@ -170,6 +170,7 @@ plugin.version=1.0.0-SNAPSHOT
 plugin.description=
 plugin.provider=
 plugin.dependencies=
+plugin.order=100000
 ```
 
 > **约束：** `plugin.id` 必须与插件主包名完全一致。
@@ -253,6 +254,50 @@ target/plugins/gj.module.user/
 ```
 
 整个目录可直接复制到主应用的 `plugins/` 目录下部署使用（详见第 16 章）。
+
+### 3.5 插件依赖解析
+
+gj.spring.pf4j 支持两种控制插件启动顺序的机制。大多数场景只需用 `plugin.order` 进行简单的优先级排序。
+
+#### 3.5.1 plugin.order — 简单优先级排序
+
+`plugin.order` 是一个整数值，用于控制批量启动顺序。值越小越先启动，默认值为 `100000`，未配置此属性的存量插件保持向后兼容。
+
+```properties
+# plugin-a/plugin.properties — 先启动
+plugin.order=100
+
+# plugin-b/plugin.properties — 后启动
+plugin.order=200
+```
+
+启动顺序：plugin-a → plugin-b。停止时自动逆序：plugin-b → plugin-a。
+
+**适用场景：** 大部分场景。简单、无需版本约束、无需显式声明依赖关系。
+
+#### 3.5.2 plugin.dependencies — 拓扑依赖图
+
+`plugin.dependencies` 是 PF4J 内置的依赖声明机制，支持可选版本约束。PF4J 将其解析为有向图并通过拓扑排序保证依赖插件先启动。
+
+```properties
+# plugin-b 依赖 plugin-a，要求版本 1.0 及以上
+plugin.dependencies=plugin-a@1.0
+
+# 可选依赖 — 若 plugin-c 不存在则跳过
+plugin.dependencies=plugin-c;optional
+```
+
+**适用场景：** 需要精确版本约束或可选依赖时使用。
+
+#### 3.5.3 如何选择
+
+| 场景 | 推荐 |
+|---|---|
+| 简单排序，无需版本约束 | `plugin.order` |
+| 需要精确版本要求（如 `plugin-a@2.0`） | `plugin.dependencies` |
+| 可选依赖（`;optional`） | `plugin.dependencies` |
+
+> **注意：** 不要在同一组插件上同时配置两种机制并产生冲突的排序值。当两者同时存在时，`plugin.order` 排序在拓扑解析之后执行，可能覆盖依赖顺序。
 
 ---
 
@@ -916,7 +961,53 @@ public class UserServiceImpl implements UserService {
 
 ## 10. 实时通信
 
-基于 [netty-socketio](https://github.com/mrniko/netty-socketio) 实现实时通信。
+基于 [netty-socketio](https://github.com/mrniko/netty-socketio) 实现实时通信。服务端 API 设计参考了 **ASP.NET Core SignalR Hub** 模式——继承 `GJHub`、`@GJHubMethod` 注解标记方法、`getClients().group().sendAsync()` 分组推送。底层线路协议为 **Socket.IO**。
+
+### 10.0 客户端集成
+
+客户端必须使用 **Socket.IO** 客户端库（`socket.io-client`），**不能**使用 SignalR 客户端。
+
+```html
+<script src="https://cdn.socket.io/4.x/socket.io.min.js"></script>
+```
+
+```js
+const socket = io('http://localhost:9600/socket.io/', {
+    query: { hub: 'userHub', userName: 'zhangsan' },
+    transports: ['websocket']
+});
+```
+
+**连接参数：**
+
+| 参数 | 必填 | 说明 |
+|---|---|---|
+| `hub` | 是 | Hub 名称（与 `GJHub` 构造器传入的字符串一致） |
+| `userName` | 是† | 用户标识；集群模式下同时用于 nginx 粘性会话路由 |
+
+† `dev`/`debug` profile 下可不填（默认值为 `"test"`）。
+
+**向服务端发送消息：**
+
+客户端到服务端的所有消息通过固定 Socket.IO 事件名 `invoke` 发送，JSON 体中携带目标 `method` 名和 `data`：
+
+```js
+socket.emit('invoke', {
+    method: 'sendMessage',       // 对应 @GJHubMethod("sendMessage")
+    data: { content: 'hello' }   // 方法参数
+});
+```
+
+**接收服务端消息：**
+
+监听服务端发送时使用的方法名——`hubManager.sendMessage(..., "newMessage", data)` 或 `getClients().all().sendAsync("newMessage", data)` 对应：
+
+```js
+socket.on('newMessage', (msg) => {
+    console.log(msg.data);       // 业务数据
+    console.log(msg.success);    // 数据消息始终为 true
+});
+```
 
 ### 10.1 创建 Hub
 
@@ -1048,7 +1139,7 @@ String connectionId = ctx.getConnectionId();
 Map<String, String> queryParams = ctx.getQueryParams();
 ```
 
-> 前端可通过连接 URL 传递自定义参数（如 `?hub=userHub&userId=123`），Hub 内通过 `ctx.getQueryParam("key")` 获取。注意不要在 URL 中明文传递敏感信息。
+> 前端可通过连接 URL 传递自定义参数（如 `?hub=userHub&userName=123`），Hub 内通过 `ctx.getQueryParam("key")` 获取。注意不要在 URL 中明文传递敏感信息。
 
 ### 10.5 服务端配置
 
@@ -1060,6 +1151,106 @@ socketio.maxConnectionsPerSecond=10
 ```
 
 所有配置项及默认值参见 `GJSocketIOConfig` 源码。
+
+### 10.6 集群模式（分布式部署）
+
+gj.spring.pf4j 支持通过 Redis 共享状态实现多节点水平扩展。启用集群模式后，所有连接、分组、用户映射数据同步至 Redis，跨节点消息通过 Redis Pub/Sub 投递。
+
+**默认状态：** 集群模式**关闭**。框架以单节点模式运行，所有状态存储在本地 JVM 内存中——零外部依赖。
+
+#### 前置条件
+
+- **Nginx** 粘性会话（见下方配置）
+- **Redis** 所有节点可访问（通过宿主应用的 `RedisConnectionFactory` 共享）
+
+宿主应用需引入 `spring-boot-starter-data-redis`：
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-redis</artifactId>
+</dependency>
+```
+
+框架通过 Spring Bean 自动检测复用宿主已有的 `RedisTemplate` 和 `RedisMessageListenerContainer`。若宿主未引入 Redis，集群 Bean 不会被创建——框架静默降级为单节点模式，零影响。
+
+#### 启用集群模式
+
+```yaml
+socketio:
+  cluster:
+    enabled: true
+  node-id: ${HOSTNAME:}       # 留空则自动检测（hostname:PID）
+  connection-ttl: 3600         # 秒，连接映射的 Redis key TTL
+```
+
+| 属性 | 默认值 | 说明 |
+|---|---|---|
+| `socketio.cluster.enabled` | `false` | 启用跨节点集群支持 |
+| `socketio.node-id` | 自动 | 节点标识。优先读取 `HOSTNAME` 环境变量，兜底使用 `host:PID` |
+| `socketio.connection-ttl` | `3600` | 连接归属 key 的 Redis TTL；同时也是过期脏数据的最终兜底清理 |
+
+#### Nginx 配置
+
+基于 `userName` URL 参数做一致性哈希粘性路由：
+
+```nginx
+upstream socketio_backend {
+    hash $arg_userName consistent;
+    server node1:9092;
+    server node2:9092;
+}
+
+server {
+    location /socket.io/ {
+        proxy_pass http://socketio_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
+
+`consistent` 使用一致性哈希环——节点增减时，仅少部分用户被重新路由。
+
+#### 架构
+
+```
+┌──────────────┐     ┌──────────────┐
+│   节点 A      │     │   节点 B      │
+│ GJHubManager │     │ GJHubManager │
+│   本地 Map    │     │   本地 Map    │
+└──────┬───────┘     └──────┬───────┘
+       │                    │
+       └────────┬───────────┘
+                │
+         ┌──────┴──────┐
+         │    Redis     │
+         │  共享状态 +   │
+         │   Pub/Sub    │
+         └─────────────┘
+```
+
+- **本地连接**记录在本地 `ConcurrentHashMap` 中（与单节点模式一致），同时异步同步至 Redis
+- **消息投递**本地优先：先查本地 clientRegistry，未命中再通过 Redis Pub/Sub 转发至目标节点
+- **节点心跳**：每 30 秒刷新 Redis key（TTL 45 秒）；存活节点的清理调度器检测到心跳缺失后自动清理故障节点残留数据
+- **降级保障**：Redis 不可达时框架继续以纯本地模式运行
+
+#### Redis 数据模型
+
+| Redis Key | 类型 | 内容 |
+|---|---|---|
+| `socketio:conn:{connectionId}` | String | 所属节点 ID，TTL = `connection-ttl` |
+| `socketio:conn:{connectionId}:groups` | Set | 该连接加入的所有组 |
+| `socketio:group:{groupName}` | Set | 组内所有连接 ID |
+| `socketio:user:{userId}` | Set | 用户的所有连接 ID |
+| `socketio:node:{nodeId}:connections` | Set | 该节点上的所有连接 ID |
+| `socketio:node:{nodeId}:heartbeat` | String | 心跳时间戳，TTL = 45s |
+
+#### 对插件代码的影响
+
+零影响。Hub 实现（`extends GJHub`）完全不感知集群——相同的 `getClients().group(...).sendAsync()` API 在单节点和集群模式下行为一致。底层的 `GJHubManager` 透明处理本地与远程路由。
 
 ---
 
@@ -1625,7 +1816,7 @@ gj BOM 中与 Spring Boot 重叠的依赖（spring-webmvc、spring-beans 等）�
 <dependency>
     <groupId>io.github.wangpengxpy</groupId>
     <artifactId>gj-pf4j</artifactId>
-    <version>1.1.0</version>
+    <version>1.2.0</version>
 </dependency>
 ```
 

@@ -81,7 +81,7 @@ mvn clean install
 mvn archetype:generate \
   -DarchetypeGroupId=io.github.wangpengxpy \
   -DarchetypeArtifactId=gj-archetype \
-  -DarchetypeVersion=1.0.5 \
+  -DarchetypeVersion=1.0.6 \
   -DgroupId=com.example \
   -DpluginName=user \
   -DpackagePrefix=gj.module
@@ -170,6 +170,7 @@ plugin.version=1.0.0-SNAPSHOT
 plugin.description=
 plugin.provider=
 plugin.dependencies=
+plugin.order=100000
 ```
 
 > **Constraint:** `plugin.id` must exactly match the plugin's main package name.
@@ -253,6 +254,50 @@ target/plugins/gj.module.user/
 ```
 
 The entire directory can be copied directly into the host application's `plugins/` directory for deployment (see Chapter 16).
+
+### 3.5 Plugin Dependency Resolution
+
+gj.spring.pf4j supports two mechanisms for controlling plugin startup order. Most scenarios only need `plugin.order` for simple priority-based ordering.
+
+#### 3.5.1 plugin.order — Simple Priority Ordering
+
+`plugin.order` is an integer value that controls the batch startup sequence. Plugins with lower values start first. The default value is `100000`, which ensures backward compatibility for plugins that do not configure this property.
+
+```properties
+# plugin-a/plugin.properties — starts first
+plugin.order=100
+
+# plugin-b/plugin.properties — starts second
+plugin.order=200
+```
+
+Startup order: plugin-a → plugin-b. Stop order is automatically reversed: plugin-b → plugin-a.
+
+**When to use:** Most scenarios. Simple, no version constraints, no dependency declarations needed.
+
+#### 3.5.2 plugin.dependencies — Topological Dependency Graph
+
+`plugin.dependencies` is PF4J's built-in mechanism for declaring explicit plugin dependencies with optional version constraints. PF4J resolves these into a directed graph and enforces topological ordering — a plugin always starts after its declared dependencies.
+
+```properties
+# plugin-b requires plugin-a at version 1.0 or higher
+plugin.dependencies=plugin-a@1.0
+
+# Optional dependency — skipped if plugin-c is not loaded
+plugin.dependencies=plugin-c;optional
+```
+
+**When to use:** When exact version pinning or optional dependencies are required.
+
+#### 3.5.3 Choosing Between Them
+
+| Scenario | Recommended |
+|---|---|
+| Simple ordering without version constraints | `plugin.order` |
+| Exact version requirements (e.g., `plugin-a@2.0`) | `plugin.dependencies` |
+| Optional dependencies (`;optional`) | `plugin.dependencies` |
+
+> **Important:** Do not configure both mechanisms with conflicting order values on the same plugin set. When both are present, `plugin.order` sorting happens after topological resolution and may override dependency order.
 
 ---
 
@@ -923,7 +968,53 @@ The framework loads configuration with the following priority:
 
 ## 10. Real-Time Communication
 
-Powered by [netty-socketio](https://github.com/mrniko/netty-socketio).
+Powered by [netty-socketio](https://github.com/mrniko/netty-socketio). The server-side API design is inspired by the **ASP.NET Core SignalR Hub** pattern — extend `GJHub`, annotate methods with `@GJHubMethod`, and use `getClients().group().sendAsync()` for targeted message delivery. The underlying wire protocol is **Socket.IO**.
+
+### 10.0 Client Integration
+
+Clients must use the **Socket.IO** client library (`socket.io-client`), **not** the SignalR client.
+
+```html
+<script src="https://cdn.socket.io/4.x/socket.io.min.js"></script>
+```
+
+```js
+const socket = io('http://localhost:9600/socket.io/', {
+    query: { hub: 'userHub', userName: 'zhangsan' },
+    transports: ['websocket']
+});
+```
+
+**Connection parameters:**
+
+| Parameter | Required | Description |
+|---|---|---|
+| `hub` | Yes | Hub name (matches the string passed to `GJHub` constructor) |
+| `userName` | Yes† | User identifier; also used by nginx for sticky session routing in cluster mode |
+
+† Not required in `dev`/`debug` profile (defaults to `"test"`).
+
+**Sending messages to the server:**
+
+All client-to-server messages are sent via a single Socket.IO event named `invoke`, with a JSON payload containing the target `method` name and `data`:
+
+```js
+socket.emit('invoke', {
+    method: 'sendMessage',       // matches @GJHubMethod("sendMessage")
+    data: { content: 'hello' }   // method argument
+});
+```
+
+**Receiving messages from the server:**
+
+Listen on the method name used by the server — `hubManager.sendMessage(..., "newMessage", data)` or `getClients().all().sendAsync("newMessage", data)` maps to:
+
+```js
+socket.on('newMessage', (msg) => {
+    console.log(msg.data);       // the business payload
+    console.log(msg.success);    // always true for data messages
+});
+```
 
 ### 10.1 Creating a Hub
 
@@ -1055,7 +1146,7 @@ String connectionId = ctx.getConnectionId();
 Map<String, String> queryParams = ctx.getQueryParams();
 ```
 
-> Frontend can pass custom parameters via the connection URL (e.g., `?hub=userHub&userId=123`). Access them in the Hub via `ctx.getQueryParam("key")`. Avoid passing plaintext sensitive information in the URL.
+> Frontend can pass custom parameters via the connection URL (e.g., `?hub=userHub&userName=123`). Access them in the Hub via `ctx.getQueryParam("key")`. Avoid passing plaintext sensitive information in the URL.
 
 ### 10.5 Server-Side Configuration
 
@@ -1067,6 +1158,107 @@ socketio.maxConnectionsPerSecond=10
 ```
 
 See `GJSocketIOConfig` source for all available properties and their defaults.
+
+### 10.6 Cluster Mode (Distributed Deployment)
+
+gj.spring.pf4j supports multi-node horizontal scaling via Redis-backed shared state. When cluster mode is enabled, all connection, group, and user mappings are synchronized to Redis, and cross-node messages are delivered through Redis Pub/Sub.
+
+**Default:** Cluster mode is **disabled**. The framework operates in single-node mode with all state in local JVM memory — zero external dependencies.
+
+#### Prerequisites
+
+- **Nginx** with sticky sessions (see configuration below)
+- **Redis** accessible by all nodes (shared via the host application's `RedisConnectionFactory`)
+
+The host application must include `spring-boot-starter-data-redis`:
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-redis</artifactId>
+</dependency>
+```
+
+The framework reuses the host's `RedisTemplate` and `RedisMessageListenerContainer` via Spring bean auto-detection. If the host has no Redis beans, cluster beans are not created — the framework silently degrades to single-node mode.
+
+#### Enabling Cluster Mode
+
+```yaml
+socketio:
+  cluster:
+    enabled: true
+  node-id: ${HOSTNAME:}       # leave empty for auto-detection (hostname:PID)
+  connection-ttl: 3600         # seconds, Redis key TTL for connection mappings
+```
+
+| Property | Default | Description |
+|---|---|---|
+| `socketio.cluster.enabled` | `false` | Enable cross-node cluster support |
+| `socketio.node-id` | (auto) | Node identifier. Auto-detected from `HOSTNAME` env var, falls back to `host:PID` |
+| `socketio.connection-ttl` | `3600` | Redis TTL for connection ownership keys; also serves as ultimate fallback cleanup for stale entries |
+
+#### Nginx Configuration
+
+Sticky sessions based on `userName` URL parameter using consistent hashing:
+
+```nginx
+upstream socketio_backend {
+    hash $arg_userName consistent;
+    server node1:9092;
+    server node2:9092;
+}
+
+server {
+    location /socket.io/ {
+        proxy_pass http://socketio_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
+
+`consistent` uses a consistent hash ring — when nodes are added or removed, only a small fraction of users are re-routed.
+
+#### Architecture
+
+```
+┌──────────────┐     ┌──────────────┐
+│   Node A     │     │   Node B     │
+│ GJHubManager │     │ GJHubManager │
+│   local Maps │     │   local Maps │
+└──────┬───────┘     └──────┬───────┘
+       │                    │
+       └────────┬───────────┘
+                │
+         ┌──────┴──────┐
+         │    Redis     │
+         │  shared      │
+         │  state +     │
+         │  Pub/Sub     │
+         └─────────────┘
+```
+
+- **Local connections** are tracked in local `ConcurrentHashMap` (as in single-node mode) and synchronized to Redis
+- **Message delivery** is local-first: the framework checks the local client registry before falling back to Redis Pub/Sub for remote delivery
+- **Node heartbeat**: each node refreshes a Redis key every 30s (TTL 45s); a surviving node's cleanup scheduler detects missing heartbeats and cleans up stale entries from failed nodes
+- **Graceful degradation**: if Redis is unreachable, the framework continues in local-only mode
+
+#### Redis Data Model
+
+| Redis Key | Type | Content |
+|---|---|---|
+| `socketio:conn:{connectionId}` | String | Owning node ID, TTL = `connection-ttl` |
+| `socketio:conn:{connectionId}:groups` | Set | Groups the connection belongs to |
+| `socketio:group:{groupName}` | Set | Connection IDs in the group |
+| `socketio:user:{userId}` | Set | Connection IDs for the user |
+| `socketio:node:{nodeId}:connections` | Set | All connection IDs on this node |
+| `socketio:node:{nodeId}:heartbeat` | String | Heartbeat timestamp, TTL = 45s |
+
+#### Impact on Plugin Code
+
+None. Hub implementations (`extends GJHub`) are cluster-unaware — the same `getClients().group(...).sendAsync()` API works identically in single-node and cluster mode. The underlying `GJHubManager` transparently handles local vs. remote routing.
 
 ---
 
@@ -1632,7 +1824,7 @@ You can also skip the BOM and depend on gj-pf4j directly, but you must ensure Sp
 <dependency>
     <groupId>io.github.wangpengxpy</groupId>
     <artifactId>gj-pf4j</artifactId>
-    <version>1.1.0</version>
+    <version>1.2.0</version>
 </dependency>
 ```
 

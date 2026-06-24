@@ -4,6 +4,8 @@
 
 package gj.pf4j;
 
+import gj.pf4j.descriptor.GJPluginDescriptor;
+import gj.pf4j.descriptor.GJPropertiesPluginDescriptorFinder;
 import gj.pf4j.events.GJPluginStartedEvent;
 import gj.pf4j.events.GJPluginStartingError;
 
@@ -18,7 +20,6 @@ import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.lang.NonNull;
 
-import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -59,8 +60,10 @@ public class GJPluginManager extends DefaultPluginManager implements Application
     }
 
     @Override
-    public PluginDescriptorFinder getPluginDescriptorFinder() {
-        return super.getPluginDescriptorFinder();
+    protected PluginDescriptorFinder createPluginDescriptorFinder() {
+        return new CompoundPluginDescriptorFinder()
+                .add(new GJPropertiesPluginDescriptorFinder())
+                .add(new ManifestPluginDescriptorFinder());
     }
 
     @Override
@@ -84,7 +87,6 @@ public class GJPluginManager extends DefaultPluginManager implements Application
         return mainApplicationContext;
     }
 
-    @PostConstruct
     public void init() {
         loadPlugins();
     }
@@ -93,7 +95,16 @@ public class GJPluginManager extends DefaultPluginManager implements Application
         startingErrors.clear();
         long ts = System.currentTimeMillis();
 
-        for (PluginWrapper pluginWrapper : resolvedPlugins) {
+        List<PluginWrapper> sortedPlugins = resolvedPlugins.stream()
+                .sorted(Comparator.comparingInt(pw -> {
+                    if (pw.getDescriptor() instanceof GJPluginDescriptor gd) {
+                        return gd.getOrder();
+                    }
+                    return 100000;
+                }))
+                .toList();
+
+        for (PluginWrapper pluginWrapper : sortedPlugins) {
             PluginState pluginState = pluginWrapper.getPluginState();
             if ((PluginState.DISABLED != pluginState) && (PluginState.STARTED != pluginState)) {
                 try {
@@ -113,9 +124,8 @@ public class GJPluginManager extends DefaultPluginManager implements Application
 
         long duration = System.currentTimeMillis() - ts;
 
-        List<String> startedPluginIds = getPlugins(PluginState.STARTED).stream()
+        List<String> startedPluginIds = startedPlugins.stream()
                 .map(PluginWrapper::getPluginId)
-                .sorted()
                 .toList();
 
         // Log INFO level information for successfully started plugins

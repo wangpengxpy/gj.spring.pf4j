@@ -13,6 +13,7 @@ class GJPluginContext {
     public String path;
     public String version;
     public String description;
+    public int order;
     public ClassLoader classLoader;
     public ApplicationContext applicationContext;
     public ApplicationContext mainApplicationContext;

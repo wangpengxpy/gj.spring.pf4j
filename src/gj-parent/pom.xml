@@ -64,6 +64,7 @@
         <slf4j.api.version>2.0.17</slf4j.api.version>
         <quartz.version>2.4.0</quartz.version>
         <spring.data.jpa.version>3.5.5</spring.data.jpa.version>
+        <spring.data.redis.version>3.5.5</spring.data.redis.version>
         <hibernate.core.version>6.6.0.Final</hibernate.core.version>
         <jakarta.persistence.api.version>3.1.0</jakarta.persistence.api.version>
     </properties>
@@ -208,6 +209,11 @@
                 <groupId>org.springframework.data</groupId>
                 <artifactId>spring-data-jpa</artifactId>
                 <version>${spring.data.jpa.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.data</groupId>
+                <artifactId>spring-data-redis</artifactId>
+                <version>${spring.data.redis.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.hibernate.orm</groupId>

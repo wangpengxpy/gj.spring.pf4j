@@ -54,9 +54,8 @@ class MybatisIntegrationTest {
         }
 
         @Bean
-        GJPluginMybatisSqlSessionManager sessionManager(DataSource ds,
-                                                         MybatisPlusInterceptor mybatisPlusInterceptor) {
-            return new GJPluginMybatisSqlSessionManager(ds, mybatisPlusInterceptor);
+        GJPluginMybatisSqlSessionManager sessionManager(DataSource ds) {
+            return new GJPluginMybatisSqlSessionManager(ds);
         }
     }
 }

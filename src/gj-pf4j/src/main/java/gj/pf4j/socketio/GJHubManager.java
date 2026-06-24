@@ -14,9 +14,14 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import gj.pf4j.socketio.cluster.IConnectionEventHandler;
+import gj.pf4j.socketio.cluster.IMessageRouter;
+import gj.pf4j.socketio.cluster.ITargetResolver;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Component;
@@ -55,6 +60,12 @@ public class GJHubManager {
     // Connection info cache: connection ID -> connection info
     private final Map<String, GJSocketConnectionInfo> connectionInfoCache = new ConcurrentHashMap<>();
 
+    // ================ Cluster Strategy Injection ================
+
+    private final IMessageRouter messageRouter;
+    private final ITargetResolver targetResolver;
+    private final IConnectionEventHandler eventHandler;
+
     // ================ Performance Statistics ================
 
     private final AtomicLong totalMessagesSent = new AtomicLong(0);
@@ -83,11 +94,17 @@ public class GJHubManager {
     @Autowired
     public GJHubManager(SocketIOServer server, Environment env,
                         GJSocketIOConfig socketIOConfig,
-                        GJHubSocketConnectionRateLimiter connectionRateLimiter) {
+                        GJHubSocketConnectionRateLimiter connectionRateLimiter,
+                        @Lazy IMessageRouter messageRouter,
+                        @Lazy ITargetResolver targetResolver,
+                        @Lazy IConnectionEventHandler eventHandler) {
         this.server = server;
         this.env = env;
         this.socketIOConfig = socketIOConfig;
         this.connectionRateLimiter = connectionRateLimiter;
+        this.messageRouter = messageRouter;
+        this.targetResolver = targetResolver;
+        this.eventHandler = eventHandler;
 
         // Initialize thread pool
         this.asyncExecutor = createThreadPool();
@@ -293,7 +310,7 @@ public class GJHubManager {
                 return;
             }
             hubName = hubName.toLowerCase();
-            String userId = client.getHandshakeData().getSingleUrlParam("userId");
+            String userId = client.getHandshakeData().getSingleUrlParam("userName");
             if (env.acceptsProfiles(Profiles.of("dev | debug"))) {
                 userId = "test";
             } else if (userId == null || userId.isEmpty()) {
@@ -340,6 +357,9 @@ public class GJHubManager {
                                     connectionId, finalHubName, cost, finalUserId);
                         }
                     });
+
+            // 8. Cluster: notify connection established
+            eventHandler.onConnected(connectionId, hubName, userId);
 
         } catch (Exception e) {
             long cost = System.currentTimeMillis() - startTime;
@@ -562,6 +582,18 @@ public class GJHubManager {
         return clientRegistry.get(hubName);
     }
 
+    Map<String, Map<String, SocketIOClient>> getClientRegistry() {
+        return clientRegistry;
+    }
+
+    Map<String, Set<String>> getGroupConnections() {
+        return groupConnections;
+    }
+
+    Map<String, Set<String>> getUserConnections() {
+        return userConnections;
+    }
+
     Set<String> getGroupNames() {
         return Collections.unmodifiableSet(groupConnections.keySet());
     }
@@ -594,6 +626,8 @@ public class GJHubManager {
                 // 4. Update group connection mapping
                 groupConnections.computeIfAbsent(groupName, k -> ConcurrentHashMap.newKeySet())
                         .add(connectionId);
+                // 5. Cluster: notify group join
+                eventHandler.onGroupChanged(connectionId, groupName, true);
                 log.debug("Connection {} added to group {} in hub {}",
                         connectionId, groupName, hubName);
                 return true;
@@ -644,6 +678,8 @@ public class GJHubManager {
                 if (groupMembers != null) {
                     groupMembers.remove(connectionId);
                 }
+                // 4. Cluster: notify group leave
+                eventHandler.onGroupChanged(connectionId, groupName, false);
                 log.debug("Connection {} removed from group {} in hub {}",
                         connectionId, groupName, hubName);
                 return true;
@@ -828,6 +864,8 @@ public class GJHubManager {
         if (hubClients != null) {
             result.retainAll(hubClients.keySet());
         }
+        // 8. Cluster mode: append remote targets
+        result.addAll(targetResolver.resolveTargets(hubName, targetGroups, targetUserIds));
         return result;
     }
 
@@ -840,20 +878,12 @@ public class GJHubManager {
         List<String> failedConnections = new ArrayList<>();
 
         for (String connectionId : connectionIds) {
-            SocketIOClient client = hubClients.get(connectionId);
-            if (client != null && client.isChannelOpen()) {
-                long start = System.nanoTime();
-                try {
-                    client.sendEvent(method, message);
-                    long elapsedNanos = System.nanoTime() - start;
-                    long elapsedMillis = elapsedNanos / 1_000_000;
-                    successCount++;
-                    log.info("Sent to connection {} in hub={} method={}, took {} ms",
-                            connectionId, hubName, method, elapsedMillis);
-                } catch (Exception e) {
-                    failedConnections.add(connectionId);
-                    log.error("Failed to send to connection {}: in hub={} method={}  {}", connectionId, hubName, method, e.getMessage());
-                }
+            long start = System.nanoTime();
+            if (messageRouter.sendToConnection(hubName, connectionId, method, message)) {
+                long elapsedMillis = (System.nanoTime() - start) / 1_000_000;
+                successCount++;
+                log.info("Sent to connection {} in hub={} method={}, took {} ms",
+                        connectionId, hubName, method, elapsedMillis);
             } else {
                 failedConnections.add(connectionId);
             }
@@ -870,6 +900,13 @@ public class GJHubManager {
     }
 
     private void cleanupClientConnection(String connectionId, String hubName, String userId) {
+        // 0. Snapshot groups before cleanup (for cluster disconnect hook)
+        Set<String> groupsSnapshot = new HashSet<>();
+        for (Map.Entry<String, Set<String>> entry : groupConnections.entrySet()) {
+            if (entry.getValue().contains(connectionId)) {
+                groupsSnapshot.add(entry.getKey());
+            }
+        }
         // 1. Remove from client registry
         Map<String, SocketIOClient> hubClients = clientRegistry.get(hubName);
         if (hubClients != null) {
@@ -894,6 +931,8 @@ public class GJHubManager {
         // 5. Remove from connection info cache
         connectionInfoCache.remove(connectionId);
         log.debug("Cleaned up connection: {}", connectionId);
+        // 6. Cluster: notify disconnection
+        eventHandler.onDisconnected(connectionId, hubName, userId, groupsSnapshot);
     }
 
     private void cleanupStaleConnection(String connectionId) {
@@ -959,6 +998,9 @@ public class GJHubManager {
     public void shutdown() {
         shuttingDown = true;
         log.info("HubManager shutting down...");
+
+        // 0. Cluster: stop heartbeat, unsubscribe, clean Redis node state
+        eventHandler.shutdown();
 
         // 1. Stop stats scheduler
         statsScheduler.shutdownNow();

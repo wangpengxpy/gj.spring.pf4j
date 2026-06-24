@@ -1,5 +1,6 @@
 package gj.pf4j;
 
+import gj.pf4j.descriptor.GJPluginDescriptor;
 import lombok.extern.slf4j.Slf4j;
 import org.pf4j.Plugin;
 import org.pf4j.PluginFactory;
@@ -33,6 +34,7 @@ public class GJPluginFactory implements PluginFactory {
                     .path(String.valueOf(wrapper.getPluginPath()))
                     .version(wrapper.getDescriptor().getVersion())
                     .description(wrapper.getDescriptor().getPluginDescription())
+                    .order(getOrder(wrapper))
                     .classLoader(wrapper.getPluginClassLoader())
                     .mainApplicationContext(pluginManager.getMainApplicationContext())
                     .mainApplicationStarted(pluginManager.isMainApplicationStarted())
@@ -41,6 +43,13 @@ public class GJPluginFactory implements PluginFactory {
         } catch (Exception e) {
             throw new RuntimeException("Failed to instantiate plugin：" + e.getMessage(), e);
         }
+    }
+
+    private static int getOrder(PluginWrapper wrapper) {
+        if (wrapper.getDescriptor() instanceof GJPluginDescriptor gd) {
+            return gd.getOrder();
+        }
+        return 100000;
     }
 
     private GJPlugin createInstance(Class<?> pluginClass, PluginWrapper pluginWrapper) {

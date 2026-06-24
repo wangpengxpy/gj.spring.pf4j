@@ -11,6 +11,7 @@ import com.corundumstudio.socketio.listener.ExceptionListener;
 import com.corundumstudio.socketio.protocol.JacksonJsonSupport;
 import gj.pf4j.utils.OSUtils;
 import io.netty.channel.ChannelHandlerContext;
+import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -47,12 +48,9 @@ public class GJSocketIOConfig {
     @Value("${socketio.pingInterval:30000}")
     private int pingInterval;
 
+    @Getter
     @Value("${socketio.maxConnections:50000}")
     private int maxConnections;
-
-    public int getMaxConnections() {
-        return maxConnections;
-    }
 
     @Value("${socketio.maxFramePayloadLength:64}")
     private int maxFramePayloadLength;
@@ -60,12 +58,21 @@ public class GJSocketIOConfig {
     @Value("${socketio.maxHttpContentLength:64}")
     private int maxHttpContentLength;
 
+    @Getter
     @Value("${socketio.maxConnectionsPerSecond:100}")
     private int maxConnectionsPerSecond;
 
-    public int getMaxConnectionsPerSecond() {
-        return maxConnectionsPerSecond;
-    }
+    @Getter
+    @Value("${socketio.cluster.enabled:false}")
+    private boolean clusterEnabled;
+
+    @Getter
+    @Value("${socketio.node-id:}")
+    private String nodeId;
+
+    @Getter
+    @Value("${socketio.connection-ttl:3600}")
+    private int connectionTtl;
 
     @Value("${server.address:0.0.0.0}")
     private String serverAddress;
