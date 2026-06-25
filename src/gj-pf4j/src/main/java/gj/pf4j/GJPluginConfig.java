@@ -5,6 +5,8 @@
 package gj.pf4j;
 
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
+import gj.pf4j.anonymous.DefaultPluginAnonymousPathRegistry;
+import gj.pf4j.anonymous.PluginAnonymousPathRegistry;
 import gj.pf4j.jpa.GJPluginJpaEntityManagerManager;
 import gj.pf4j.jpa.GJPluginJpaProperties;
 import gj.pf4j.modelmapper.GJPluginModelMapperRegistry;
@@ -66,13 +68,15 @@ public class GJPluginConfig {
 
     @Bean("pluginRequestMappingHandlerMapping")
     @ConditionalOnWebApplication(type = Type.SERVLET)
-    public GJPluginRequestMappingHandlerMapping pluginRequestMappingHandlerMapping() {
+    public GJPluginRequestMappingHandlerMapping pluginRequestMappingHandlerMapping(
+            PluginAnonymousPathRegistry anonymousPathRegistry) {
         GJPluginRequestMappingHandlerMapping handlerMapping = new GJPluginRequestMappingHandlerMapping();
         handlerMapping.setOrder(-1);
         AntPathMatcher pathMatcher = new AntPathMatcher();
         pathMatcher.setCaseSensitive(false);
         handlerMapping.setPathMatcher(pathMatcher);
         handlerMapping.setPatternParser(null);
+        handlerMapping.setAnonymousPathRegistry(anonymousPathRegistry);
         return handlerMapping;
     }
 
@@ -109,6 +113,11 @@ public class GJPluginConfig {
     @Bean
     public GJPluginModelMapperRegistry pluginModelMapperRegistry() {
         return new GJPluginModelMapperRegistry();
+    }
+
+    @Bean
+    public PluginAnonymousPathRegistry pluginAnonymousPathRegistry() {
+        return new DefaultPluginAnonymousPathRegistry();
     }
 
     @Bean

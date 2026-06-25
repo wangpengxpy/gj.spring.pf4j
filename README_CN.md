@@ -18,6 +18,9 @@
 3. [插件项目结构详解](#3-插件项目结构详解)
 4. [插件生命周期](#4-插件生命周期)
 5. [REST 端点](#5-rest-端点)
+    * [5.1 基本用法](#51-基本用法)
+    * [5.2 Spring MVC 与 WebFlux 双路由模式](#52-spring-mvc-与-webflux-双路由模式)
+    * [5.3 匿名访问](#53-匿名访问)
 6. [数据访问](#6-数据访问)
     * [6.1 MyBatis-Plus](#61-mybatis-plus-数据访问)
     * [6.2 JPA](#62-jpa-数据访问)
@@ -81,7 +84,7 @@ mvn clean install
 mvn archetype:generate \
   -DarchetypeGroupId=io.github.wangpengxpy \
   -DarchetypeArtifactId=gj-archetype \
-  -DarchetypeVersion=1.0.6 \
+  -DarchetypeVersion=1.0.7 \
   -DgroupId=com.example \
   -DpluginName=user \
   -DpackagePrefix=gj.module
@@ -469,6 +472,122 @@ public class UserRouterConfig {
 ```
 
 > 热卸载时调用 `unregister()` 移除。主应用的 MVC / WebFlux 详细配置步骤见 **[附录：主应用集成](#18-附录主应用集成)**。
+
+### 5.3 匿名访问
+
+插件可通过 `@AllowAnonymous` 注解将控制器类或方法标记为匿名访问——与 .NET Core 的 `[AllowAnonymous]` 行为一致。框架自动扫描该注解，将路径注册到 `PluginAnonymousPathRegistry` Bean 中，宿主应用在 Spring Security 配置中查询即可。
+
+#### 插件用法
+
+`@AllowAnonymous` 可标注在**类**上（整个 Controller 所有方法匿名），也可标注在单个**方法**上。方法级优先于类级。`reason` 字段选填，用于运维审计。
+
+```java
+package gj.module.sso.controllers;
+
+import gj.pf4j.anonymous.AllowAnonymous;
+import org.springframework.web.bind.annotation.*;
+
+// 类级：整个控制器匿名
+@AllowAnonymous(reason = "SSO 端点由第三方身份提供商回调，无法携带登录态")
+@RestController
+@RequestMapping("/api/v3/sso")
+public class SsoCallbackController {
+
+    @PostMapping("/login")
+    public Result handleLogin(@RequestBody SsoLoginRequest req) {
+        return ssoService.processLogin(req);
+    }
+
+    @PostMapping("/logout")
+    public Result handleLogout(@RequestBody SsoLogoutRequest req) {
+        return ssoService.processLogout(req);
+    }
+}
+
+// 方法级：仅指定接口匿名
+@RestController
+@RequestMapping("/api/v3/user")
+public class UserController {
+
+    // 匿名：SSO 回调由身份提供商调用
+    @AllowAnonymous
+    @PostMapping("/sso/callback")
+    public Result handleSsoCallback(@RequestBody SsoCallbackRequest req) {
+        return ssoService.handleCallback(req);
+    }
+
+    // 需鉴权
+    @GetMapping("/{id}")
+    public Result getUser(@PathVariable String id) {
+        return userService.getById(id);
+    }
+}
+```
+
+**匹配粒度：** 框架按 **HTTP method + URL pattern** 精确匹配。`POST /api/v3/user/sso/callback` 可设为匿名，同时 `GET /api/v3/user/{id}` 仍需鉴权——同一 Controller 内不同 method 和路径互不干扰。
+
+#### 宿主应用集成
+
+框架已将 `PluginAnonymousPathRegistry` 注册为主容器 Bean。宿主应用注入后，在自己的安全配置中调用 `registry.isAnonymous(requestPath, httpMethod)` 查询即可。
+
+**Spring MVC（Servlet）模式：**
+
+```java
+@Configuration
+@EnableWebSecurity
+@RequiredArgsConstructor
+public class WebSecurityConfig {
+
+    private final PluginAnonymousPathRegistry anonymousPathRegistry;
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http.authorizeHttpRequests(auth -> auth
+            // 插件匿名接口 — 动态匹配
+            .requestMatchers(req ->
+                anonymousPathRegistry.isAnonymous(
+                    req.getRequestURI(), req.getMethod())
+            ).permitAll()
+            // 需鉴权路径
+            .requestMatchers(regex("/api/.*")).authenticated()
+            .requestMatchers(regex("/iot/api/.*")).authenticated()
+            .requestMatchers("/**").permitAll()
+        );
+        return http.build();
+    }
+}
+```
+
+**Spring WebFlux（Reactive）模式：**
+
+```java
+@Configuration
+@EnableWebFluxSecurity
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+    private final PluginAnonymousPathRegistry anonymousPathRegistry;
+
+    @Bean
+    public SecurityWebFilterChain filterChain(ServerHttpSecurity http) {
+        http.authorizeExchange(exchanges -> exchanges
+            .pathMatchers("/api/**").access((authentication, context) -> {
+                ServerWebExchange exchange = context.getExchange();
+                if (anonymousPathRegistry.isAnonymous(
+                        exchange.getRequest().getURI().getPath(),
+                        exchange.getRequest().getMethod().name())) {
+                    return Mono.just(new AuthorizationDecision(true));
+                }
+                return exchange.getRequiredAuthentication();
+            })
+            .anyExchange().authenticated()
+        );
+        return http.build();
+    }
+}
+```
+
+运维可观测：注入 Registry 后调用 `listAll()`、`listByPlugin(pluginId)` 或 `getCount()` 可查询匿名接口清单，按需暴露为 REST 或 JMX 端点。
 
 ---
 
@@ -1772,7 +1891,7 @@ gj-pf4j 自身依赖 Spring 核心包（spring-webmvc、spring-beans、spring-jd
         <dependency>
             <groupId>io.github.wangpengxpy</groupId>
             <artifactId>gj-dependencies</artifactId>
-            <version>1.0.5</version>
+            <version>1.0.6</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -1816,7 +1935,7 @@ gj BOM 中与 Spring Boot 重叠的依赖（spring-webmvc、spring-beans 等）�
 <dependency>
     <groupId>io.github.wangpengxpy</groupId>
     <artifactId>gj-pf4j</artifactId>
-    <version>1.2.0</version>
+    <version>1.3.0</version>
 </dependency>
 ```
 

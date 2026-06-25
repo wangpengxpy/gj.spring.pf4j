@@ -4,6 +4,7 @@
 
 package gj.pf4j.webflux;
 
+import gj.pf4j.anonymous.PluginAnonymousPathRegistry;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication.Type;
 import org.springframework.boot.autoconfigure.web.reactive.WebFluxRegistrations;
@@ -17,13 +18,15 @@ import org.springframework.web.reactive.result.method.annotation.RequestMappingH
 public class GJPluginWebFluxConfig {
 
     @Bean("pluginWebFluxRequestMappingHandlerMapping")
-    public GJPluginWebFluxRequestMappingHandlerMapping webFluxRequestMappingHandlerMapping() {
+    public GJPluginWebFluxRequestMappingHandlerMapping webFluxRequestMappingHandlerMapping(
+            PluginAnonymousPathRegistry anonymousPathRegistry) {
         var requestedContentTypeResolver = new RequestedContentTypeResolverBuilder().build();
         GJPluginWebFluxRequestMappingHandlerMapping webFluxHandlerMapping =
                 new GJPluginWebFluxRequestMappingHandlerMapping();
         webFluxHandlerMapping.setContentTypeResolver(requestedContentTypeResolver);
         webFluxHandlerMapping.setOrder(-1);
         webFluxHandlerMapping.setUseCaseSensitiveMatch(false);
+        webFluxHandlerMapping.setAnonymousPathRegistry(anonymousPathRegistry);
         return webFluxHandlerMapping;
     }
 

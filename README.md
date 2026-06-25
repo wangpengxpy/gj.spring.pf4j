@@ -18,6 +18,9 @@ A lightweight, modular plugin framework powered by PF4J and Spring, with no heav
 3. [Plugin Project Structure](#3-plugin-project-structure)
 4. [Plugin Lifecycle](#4-plugin-lifecycle)
 5. [REST Endpoints](#5-rest-endpoints)
+    * [5.1 Basic Usage](#51-basic-usage)
+    * [5.2 Spring MVC vs. WebFlux Dual Routing](#52-spring-mvc-vs-webflux-dual-routing)
+    * [5.3 Anonymous Access](#53-anonymous-access)
 6. [Data Access](#6-data-access)
     * [6.1 MyBatis-Plus](#61-mybatis-plus-data-access)
     * [6.2 JPA](#62-jpa-data-access)
@@ -81,7 +84,7 @@ mvn clean install
 mvn archetype:generate \
   -DarchetypeGroupId=io.github.wangpengxpy \
   -DarchetypeArtifactId=gj-archetype \
-  -DarchetypeVersion=1.0.6 \
+  -DarchetypeVersion=1.0.7 \
   -DgroupId=com.example \
   -DpluginName=user \
   -DpackagePrefix=gj.module
@@ -470,6 +473,122 @@ public class UserRouterConfig {
 ```
 
 > Call `unregister()` for cleanup on hot-unload. See **[Appendix: Host Application Integration](#18-appendix-host-application-integration)** for detailed MVC / WebFlux configuration steps.
+
+### 5.3 Anonymous Access
+
+Plugins can mark controller classes or handler methods for anonymous (unauthenticated) access using the `@AllowAnonymous` annotation — similar to .NET Core's `[AllowAnonymous]`. The framework automatically scans the annotation, registers the paths into a `PluginAnonymousPathRegistry` bean, and the host application queries it from its Spring Security configuration.
+
+#### Plugin Usage
+
+`@AllowAnonymous` can be placed on a **class** (all methods in the controller become anonymous) or on individual **methods**. Method-level takes precedence over class-level. The optional `reason` field helps with operational auditing.
+
+```java
+package gj.module.sso.controllers;
+
+import gj.pf4j.anonymous.AllowAnonymous;
+import org.springframework.web.bind.annotation.*;
+
+// Class-level: every method in this controller is anonymous
+@AllowAnonymous(reason = "SSO endpoints invoked by third-party identity provider — no session available")
+@RestController
+@RequestMapping("/api/v3/sso")
+public class SsoCallbackController {
+
+    @PostMapping("/login")
+    public Result handleLogin(@RequestBody SsoLoginRequest req) {
+        return ssoService.processLogin(req);
+    }
+
+    @PostMapping("/logout")
+    public Result handleLogout(@RequestBody SsoLogoutRequest req) {
+        return ssoService.processLogout(req);
+    }
+}
+
+// Method-level: only selected endpoints are anonymous
+@RestController
+@RequestMapping("/api/v3/user")
+public class UserController {
+
+    // Anonymous: SSO callback invoked by identity provider
+    @AllowAnonymous
+    @PostMapping("/sso/callback")
+    public Result handleSsoCallback(@RequestBody SsoCallbackRequest req) {
+        return ssoService.handleCallback(req);
+    }
+
+    // Authenticated: requires login
+    @GetMapping("/{id}")
+    public Result getUser(@PathVariable String id) {
+        return userService.getById(id);
+    }
+}
+```
+
+**Granularity:** The framework matches by **HTTP method + URL pattern**. `POST /api/v3/user/sso/callback` can be anonymous while `GET /api/v3/user/{id}` requires authentication — even though they share the same controller, the different HTTP methods and paths are treated independently.
+
+#### Host Application Integration
+
+The framework registers a `PluginAnonymousPathRegistry` bean in the main application context. The host app injects it and calls `registry.isAnonymous(requestPath, httpMethod)` from its security configuration.
+
+**Spring MVC (Servlet):**
+
+```java
+@Configuration
+@EnableWebSecurity
+@RequiredArgsConstructor
+public class WebSecurityConfig {
+
+    private final PluginAnonymousPathRegistry anonymousPathRegistry;
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http.authorizeHttpRequests(auth -> auth
+            // Plugin anonymous endpoints — dynamic matching
+            .requestMatchers(req ->
+                anonymousPathRegistry.isAnonymous(
+                    req.getRequestURI(), req.getMethod())
+            ).permitAll()
+            // Authenticated paths
+            .requestMatchers(regex("/api/.*")).authenticated()
+            .requestMatchers(regex("/iot/api/.*")).authenticated()
+            .requestMatchers("/**").permitAll()
+        );
+        return http.build();
+    }
+}
+```
+
+**Spring WebFlux (Reactive):**
+
+```java
+@Configuration
+@EnableWebFluxSecurity
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+    private final PluginAnonymousPathRegistry anonymousPathRegistry;
+
+    @Bean
+    public SecurityWebFilterChain filterChain(ServerHttpSecurity http) {
+        http.authorizeExchange(exchanges -> exchanges
+            .pathMatchers("/api/**").access((authentication, context) -> {
+                ServerWebExchange exchange = context.getExchange();
+                if (anonymousPathRegistry.isAnonymous(
+                        exchange.getRequest().getURI().getPath(),
+                        exchange.getRequest().getMethod().name())) {
+                    return Mono.just(new AuthorizationDecision(true));
+                }
+                return exchange.getRequiredAuthentication();
+            })
+            .anyExchange().authenticated()
+        );
+        return http.build();
+    }
+}
+```
+
+For operational visibility, inject the registry and call `listAll()`, `listByPlugin(pluginId)`, or `getCount()` to expose the anonymous endpoint inventory through REST or JMX endpoints.
 
 ---
 
@@ -1780,7 +1899,7 @@ In `dependencyManagement`, import the gj BOM followed by the Spring Boot BOM —
         <dependency>
             <groupId>io.github.wangpengxpy</groupId>
             <artifactId>gj-dependencies</artifactId>
-            <version>1.0.5</version>
+            <version>1.0.6</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -1824,7 +1943,7 @@ You can also skip the BOM and depend on gj-pf4j directly, but you must ensure Sp
 <dependency>
     <groupId>io.github.wangpengxpy</groupId>
     <artifactId>gj-pf4j</artifactId>
-    <version>1.2.0</version>
+    <version>1.3.0</version>
 </dependency>
 ```
 

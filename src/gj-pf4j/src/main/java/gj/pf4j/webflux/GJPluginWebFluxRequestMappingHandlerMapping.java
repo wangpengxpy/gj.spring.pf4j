@@ -4,6 +4,9 @@
 
 package gj.pf4j.webflux;
 
+import gj.pf4j.anonymous.AllowAnonymous;
+import gj.pf4j.anonymous.AnonymousPathEntry;
+import gj.pf4j.anonymous.PluginAnonymousPathRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.context.ApplicationContext;
@@ -13,11 +16,13 @@ import org.springframework.util.ClassUtils;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.result.method.RequestMappingInfo;
 import org.springframework.web.reactive.result.method.annotation.RequestMappingHandlerMapping;
 
 import java.lang.reflect.Method;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -27,6 +32,12 @@ public class GJPluginWebFluxRequestMappingHandlerMapping extends RequestMappingH
 
     private final MultiValueMap<String, RequestMappingInfo> pluginRequestMappingInfo =
             new LinkedMultiValueMap<>();
+
+    private PluginAnonymousPathRegistry anonymousPathRegistry;
+
+    public void setAnonymousPathRegistry(PluginAnonymousPathRegistry anonymousPathRegistry) {
+        this.anonymousPathRegistry = anonymousPathRegistry;
+    }
 
     @Override
     protected void initHandlerMethods() {
@@ -54,8 +65,11 @@ public class GJPluginWebFluxRequestMappingHandlerMapping extends RequestMappingH
             }
 
             long duration = System.currentTimeMillis() - startTime;
-            log.info("Successfully registered {} WebFlux controllers for plugin: {} (took {} ms)",
-                    controllers.size(), pluginId, duration);
+            int anonymousCount = anonymousPathRegistry != null
+                    ? anonymousPathRegistry.listByPlugin(pluginId).size() : 0;
+            log.info("Successfully registered {} WebFlux controllers for plugin: {} (took {} ms), " +
+                    "including {} anonymous endpoints",
+                    controllers.size(), pluginId, duration, anonymousCount);
             return controllers;
         } catch (Exception e) {
             long duration = System.currentTimeMillis() - startTime;
@@ -71,6 +85,9 @@ public class GJPluginWebFluxRequestMappingHandlerMapping extends RequestMappingH
 
         if (handlerType != null) {
             final Class<?> userType = ClassUtils.getUserClass(handlerType);
+            // Check class-level @AllowAnonymous
+            AllowAnonymous classAnno = userType.getAnnotation(AllowAnonymous.class);
+
             Map<Method, RequestMappingInfo> methods = MethodIntrospector.selectMethods(userType,
                     (MethodIntrospector.MetadataLookup<RequestMappingInfo>)
                             method -> super.getMappingForMethod(method, handlerType));
@@ -79,7 +96,47 @@ public class GJPluginWebFluxRequestMappingHandlerMapping extends RequestMappingH
                 Method invocableMethod = AopUtils.selectInvocableMethod(method, userType);
                 registerHandlerMethod(handler, invocableMethod, mapping);
                 pluginRequestMappingInfo.add(pluginId, mapping);
+
+                if (anonymousPathRegistry != null) {
+                    AllowAnonymous methodAnno = method.getAnnotation(AllowAnonymous.class);
+                    if (methodAnno != null || classAnno != null) {
+                        String reason = methodAnno != null && !methodAnno.reason().isEmpty()
+                                ? methodAnno.reason()
+                                : (classAnno != null ? classAnno.reason() : "");
+                        registerAnonymousPaths(pluginId, handlerType.getName(),
+                                method.getName(), mapping, reason);
+                    }
+                }
             });
+        }
+    }
+
+    private void registerAnonymousPaths(String pluginId, String controllerClass,
+                                         String methodName, RequestMappingInfo mapping,
+                                         String reason) {
+        if (mapping.getPatternsCondition() == null) {
+            return;
+        }
+        var pathPatterns = mapping.getPatternsCondition().getPatterns();
+        if (pathPatterns == null || pathPatterns.isEmpty()) {
+            return;
+        }
+        List<String> patterns = pathPatterns.stream()
+                .map(pp -> pp.getPatternString())
+                .toList();
+        Set<RequestMethod> methods = mapping.getMethodsCondition().getMethods();
+        for (String pattern : patterns) {
+            if (methods.isEmpty()) {
+                anonymousPathRegistry.register(pluginId, new AnonymousPathEntry(
+                        pluginId, pattern, "*",
+                        controllerClass, methodName, reason, LocalDateTime.now()));
+            } else {
+                for (var httpMethod : methods) {
+                    anonymousPathRegistry.register(pluginId, new AnonymousPathEntry(
+                            pluginId, pattern, httpMethod.name(),
+                            controllerClass, methodName, reason, LocalDateTime.now()));
+                }
+            }
         }
     }
 
@@ -123,12 +180,17 @@ public class GJPluginWebFluxRequestMappingHandlerMapping extends RequestMappingH
     }
 
     public void unregisterHandlerMethods(String pluginId) {
+        if (anonymousPathRegistry != null) {
+            anonymousPathRegistry.unregisterByPlugin(pluginId);
+        }
         if (!StringUtils.hasText(pluginId)) {
             return;
         }
-        if (!pluginRequestMappingInfo.containsKey(pluginId)) {
+        List<RequestMappingInfo> mappings = pluginRequestMappingInfo.remove(pluginId);
+        if (mappings == null) {
             return;
         }
-        pluginRequestMappingInfo.remove(pluginId).forEach(this::unregisterMapping);
+        mappings.forEach(this::unregisterMapping);
+        log.debug("Unregistered {} WebFlux routes for plugin: {}", mappings.size(), pluginId);
     }
 }

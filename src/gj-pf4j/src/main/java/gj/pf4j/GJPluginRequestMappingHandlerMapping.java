@@ -4,6 +4,9 @@
 
 package gj.pf4j;
 
+import gj.pf4j.anonymous.AllowAnonymous;
+import gj.pf4j.anonymous.AnonymousPathEntry;
+import gj.pf4j.anonymous.PluginAnonymousPathRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aop.support.AopUtils;
@@ -13,11 +16,13 @@ import org.springframework.stereotype.Controller;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 import java.lang.reflect.Method;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -26,6 +31,12 @@ public class GJPluginRequestMappingHandlerMapping extends RequestMappingHandlerM
     private static final Logger log = LoggerFactory.getLogger(GJPluginRequestMappingHandlerMapping.class);
 
     private final MultiValueMap<String, RequestMappingInfo> pluginMappingInfo = new LinkedMultiValueMap<>();
+
+    private PluginAnonymousPathRegistry anonymousPathRegistry;
+
+    public void setAnonymousPathRegistry(PluginAnonymousPathRegistry anonymousPathRegistry) {
+        this.anonymousPathRegistry = anonymousPathRegistry;
+    }
 
     @Override
     public void detectHandlerMethods(Object controller) {
@@ -49,13 +60,15 @@ public class GJPluginRequestMappingHandlerMapping extends RequestMappingHandlerM
             log.info("Found {} controllers in plugin {}: {}",
                     controllers.size(), pluginId, controllerNames);
 
+            int anonymousCount = 0;
             for (Object controller : controllers) {
-                registerController(pluginId, controller);
+                anonymousCount += registerController(pluginId, controller);
             }
 
             long duration = System.currentTimeMillis() - startTime;
-            log.info("Successfully registered {} controllers for plugin: {} (took {} ms)",
-                    controllers.size(), pluginId, duration);
+            log.info("Successfully registered {} controllers for plugin: {} (took {} ms), " +
+                    "including {} anonymous endpoints",
+                    controllers.size(), pluginId, duration, anonymousCount);
             return controllers;
         } catch (Exception e) {
             long duration = System.currentTimeMillis() - startTime;
@@ -64,7 +77,7 @@ public class GJPluginRequestMappingHandlerMapping extends RequestMappingHandlerM
         }
     }
 
-    private void registerController(String pluginId, Object controller) {
+    private int registerController(String pluginId, Object controller) {
         String controllerClassName = controller.getClass().getName();
         long startTime = System.currentTimeMillis();
 
@@ -82,6 +95,12 @@ public class GJPluginRequestMappingHandlerMapping extends RequestMappingHandlerM
                     userType,
                     metadataLookup
             );
+            // Check class-level @AllowAnonymous
+            AllowAnonymous classAnno = userType.getAnnotation(AllowAnonymous.class);
+
+            // Track anonymous endpoint count for this controller
+            int[] anonymousCount = {0};
+
             // Register routes directly (the handler is a Bean instance from the plugin context)
             methods.forEach((method, mapping) -> {
                 // Core 1: Get the actual invocable specific route method of the controller
@@ -89,11 +108,27 @@ public class GJPluginRequestMappingHandlerMapping extends RequestMappingHandlerM
                 // Core 2: Call registerHandlerMethod directly and pass in the plugin's Bean instance
                 super.registerHandlerMethod(controller, invocableMethod, mapping);
                 pluginMappingInfo.add(pluginId, mapping);
+
+                // Core 3: Scan @AllowAnonymous and register to registry
+                if (anonymousPathRegistry != null) {
+                    AllowAnonymous methodAnno = method.getAnnotation(AllowAnonymous.class);
+                    if (methodAnno != null || classAnno != null) {
+                        String reason = methodAnno != null && !methodAnno.reason().isEmpty()
+                                ? methodAnno.reason()
+                                : (classAnno != null ? classAnno.reason() : "");
+                        int count = registerAnonymousPaths(pluginId, controllerClassName,
+                                method.getName(), mapping, reason);
+                        anonymousCount[0] += count;
+                    }
+                }
             });
 
             long duration = System.currentTimeMillis() - startTime;
-            log.debug("Registered controller: {} for plugin: {} (took {} ms)",
-                    controllerClassName, pluginId, duration);
+            log.debug("Registered controller: {} for plugin: {} (took {} ms), " +
+                    "including {} anonymous endpoints",
+                    controllerClassName, pluginId, duration, anonymousCount[0]);
+
+            return anonymousCount[0];
 
         } catch (Exception e) {
             long duration = System.currentTimeMillis() - startTime;
@@ -101,6 +136,33 @@ public class GJPluginRequestMappingHandlerMapping extends RequestMappingHandlerM
                     controllerClassName, pluginId, duration, e);
             throw e;
         }
+    }
+
+    private int registerAnonymousPaths(String pluginId, String controllerClass,
+                                        String methodName, RequestMappingInfo mapping,
+                                        String reason) {
+        Set<String> patterns = mapping.getPatternValues();
+        if (patterns == null || patterns.isEmpty()) {
+            return 0;
+        }
+        Set<RequestMethod> methods = mapping.getMethodsCondition().getMethods();
+        int count = 0;
+        for (String pattern : patterns) {
+            if (methods.isEmpty()) {
+                anonymousPathRegistry.register(pluginId, new AnonymousPathEntry(
+                        pluginId, pattern, "*",
+                        controllerClass, methodName, reason, LocalDateTime.now()));
+                count++;
+            } else {
+                for (RequestMethod httpMethod : methods) {
+                    anonymousPathRegistry.register(pluginId, new AnonymousPathEntry(
+                            pluginId, pattern, httpMethod.name(),
+                            controllerClass, methodName, reason, LocalDateTime.now()));
+                    count++;
+                }
+            }
+        }
+        return count;
     }
 
     private Set<Object> getControllerBeans(GJPluginContext pluginContext) {
@@ -124,11 +186,14 @@ public class GJPluginRequestMappingHandlerMapping extends RequestMappingHandlerM
     }
 
     void unregisterController(String pluginId) {
-        if (!pluginMappingInfo.containsKey(pluginId)) {
-            return;
+        if (anonymousPathRegistry != null) {
+            anonymousPathRegistry.unregisterByPlugin(pluginId);
         }
         List<RequestMappingInfo> mappings = pluginMappingInfo.remove(pluginId);
+        if (mappings == null) {
+            return;
+        }
         mappings.forEach(this::unregisterMapping);
-        log.debug("Unregistered {} old routes for plugin: {}", mappings.size(), pluginId);
+        log.debug("Unregistered {} routes for plugin: {}", mappings.size(), pluginId);
     }
 }
