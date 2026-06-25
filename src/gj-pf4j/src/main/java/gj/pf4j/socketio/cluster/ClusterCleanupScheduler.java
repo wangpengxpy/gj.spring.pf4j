@@ -5,6 +5,7 @@ import gj.pf4j.socketio.GJSocketIOThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +16,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 @Component
+@ConditionalOnBean(IGJRedisService.class)
 @ConditionalOnProperty(name = "socketio.cluster.enabled", havingValue = "true")
 class ClusterCleanupScheduler {
 

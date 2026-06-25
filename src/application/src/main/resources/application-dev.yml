@@ -55,6 +55,10 @@ spring-doc:
     tags-sorter: alpha
     groups-order: DESC
 socket-io:
+  cluster:
+    enabled: false
+    node-id: ${HOSTNAME:}       # 留空则自动检测（hostname:PID）
+    connection-ttl: 3600         # 秒，连接映射的 Redis key TTL
   port: 9600
   bossCount: 1
   upgradeTimeout: 10000 #从 HTTP polling升级到 WebSocket的最大等待时间（毫秒），默认10秒

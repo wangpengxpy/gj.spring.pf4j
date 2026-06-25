@@ -45,6 +45,19 @@ public class GJSocketIOClusterConfig {
     // ===== Cluster mode =====
 
     @Bean
+    @ConditionalOnProperty(name = "socketio.cluster.enabled", havingValue = "true")
+    @ConditionalOnMissingBean(IGJRedisService.class)
+    public Object clusterRequiresRedisGuard() {
+        throw new IllegalStateException(
+                "Socket.IO cluster mode requires Redis. " +
+                "Please add the following dependency:\n" +
+                "<dependency>\n" +
+                "    <groupId>org.springframework.boot</groupId>\n" +
+                "    <artifactId>spring-boot-starter-data-redis</artifactId>\n" +
+                "</dependency>");
+    }
+
+    @Bean
     @ConditionalOnBean({IGJRedisService.class, IGJRedisBusService.class})
     @ConditionalOnProperty(name = "socketio.cluster.enabled", havingValue = "true")
     public IMessageRouter clusterMessageRouter(

@@ -3,6 +3,7 @@ package gj.pf4j.redis;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.data.redis.connection.MessageListener;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -18,6 +19,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
+@ConditionalOnClass(name = "org.springframework.data.redis.connection.RedisConnectionFactory")
 @ConditionalOnBean({RedisConnectionFactory.class, RedisMessageListenerContainer.class})
 public class GJSpringRedisService implements IGJRedisService, IGJRedisBusService {
 
