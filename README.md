@@ -33,15 +33,16 @@ A lightweight, modular plugin framework powered by PF4J and Spring, with no heav
 12. [Import/Export](#12-importexport)
 13. [Scheduled Tasks](#13-scheduled-tasks)
 14. [In-Process Event Bus](#14-in-process-event-bus)
-15. [OpenAPI Documentation](#15-openapi-documentation)
-16. [Plugin Packaging & Deployment](#16-plugin-packaging--deployment)
-17. [Runtime Plugin Management API](#17-runtime-plugin-management-api)
-18. [Appendix: Host Application Integration](#18-appendix-host-application-integration)
+15. [JSON Serialization — ObjectMapper](#15-json-serialization--objectmapper)
+16. [OpenAPI Documentation](#16-openapi-documentation)
+17. [Plugin Packaging & Deployment](#17-plugin-packaging--deployment)
+18. [Runtime Plugin Management API](#18-runtime-plugin-management-api)
+19. [Appendix: Host Application Integration](#19-appendix-host-application-integration)
     * [Version Compatibility](#181-version-compatibility)
     * [Host Application Entry Point](#182-host-application-entry-point)
     * [Optional: @GJModelMapperScan (Shared Models)](#183-optional-gjmodelmapperscan-shared-models)
-19. [Claude Code Integration](#19-claude-code-integration)
-20. [FAQ](#20-faq)
+20. [Claude Code Integration](#20-claude-code-integration)
+21. [FAQ](#21-faq)
 
 ---
 
@@ -52,10 +53,10 @@ gj.spring.pf4j is a lightweight, modular plugin framework built on [PF4J](https:
 ### Core Capabilities
 
 - **[Plugin Lifecycle Management](#4-plugin-lifecycle)** — load, start, stop, restart, unload, and delete plugins at runtime
-- **[Runtime Plugin Management API](#17-runtime-plugin-management-api)** — `GJPluginService` provides lock-controlled runtime management
+- **[Runtime Plugin Management API](#18-runtime-plugin-management-api)** — `GJPluginService` provides lock-controlled runtime management
 - **[REST Endpoints](#5-rest-endpoints)** — `@RestController` beans are auto-detected and registered into the main application's route table, supporting both MVC and WebFlux
 - **[Dual Routing Mode](#52-spring-mvc-vs-webflux-dual-routing)** — supports both Spring MVC (Servlet) and Spring WebFlux (Reactive) routing; plugins require zero changes
-- **[OpenAPI Documentation](#15-openapi-documentation)** — powered by SpringDoc; each plugin auto-generates an independent `GroupedOpenApi`
+- **[OpenAPI Documentation](#16-openapi-documentation)** — powered by SpringDoc; each plugin auto-generates an independent `GroupedOpenApi`
 - **[MyBatis-Plus Data Access](#61-mybatis-plus-data-access)** — [MyBatis-Plus](https://baomidou.com/) (built-in); each plugin gets its own `SqlSessionFactory`, `SqlSessionTemplate`, and `TransactionManager`, all sharing the main application's `DataSource`
 - **[JPA Data Access](#62-jpa-data-access)** — JPA (Jakarta Persistence API) powered by Hibernate; each plugin gets its own `EntityManagerFactory` and `JpaTransactionManager`, sharing the host's `DataSource`. Works alongside MyBatis-Plus, activated by adding `hibernate-core` to the host application
 - **[SQL Keyword Quoting](#63-sql-keyword-quoting)** — MyBatis-Plus `InnerInterceptor` automatically wraps column names with database-specific quote characters to prevent reserved-keyword conflicts; both host app and plugins can register keyword definitions via `GJTableKeywordProvider`
@@ -84,7 +85,7 @@ mvn clean install
 mvn archetype:generate \
   -DarchetypeGroupId=io.github.wangpengxpy \
   -DarchetypeArtifactId=gj-archetype \
-  -DarchetypeVersion=1.0.8 \
+  -DarchetypeVersion=1.0.9 \
   -DgroupId=com.example \
   -DpluginName=user \
   -DpackagePrefix=gj.module
@@ -472,7 +473,7 @@ public class UserRouterConfig {
 }
 ```
 
-> Call `unregister()` for cleanup on hot-unload. See **[Appendix: Host Application Integration](#18-appendix-host-application-integration)** for detailed MVC / WebFlux configuration steps.
+> Call `unregister()` for cleanup on hot-unload. See **[Appendix: Host Application Integration](#19-appendix-host-application-integration)** for detailed MVC / WebFlux configuration steps.
 
 ### 5.3 Anonymous Access
 
@@ -692,6 +693,8 @@ public class UserServiceImpl implements UserService {
 - A `MapperScannerConfigurer` scoped to the plugin's DAO package only
 
 All plugins share the main application's `DataSource`. Resources are cleaned up automatically when a plugin stops.
+
+> **Performance:** `SqlSessionFactory` creation reuses a shared internal component across plugins, eliminating redundant initialization overhead that previously scaled linearly with the number of plugins.
 
 ### 6.2 JPA Data Access
 
@@ -1692,13 +1695,35 @@ Multiple listeners can match a single event; each listener executes independentl
 
 ---
 
-## 15. OpenAPI Documentation
 
-### 15.1 Automatic Grouping
+## 15. JSON Serialization — ObjectMapper
+
+Each plugin receives a **fully isolated `ObjectMapper`** instance. The framework copies the host application's `ObjectMapper` and registers it as the `objectMapper` bean in every plugin's Spring context. This guarantees:
+
+- **Serialization/deserialization runs in the plugin's ClassLoader** — no plugin classes leak into the host `ObjectMapper` caches
+- **Plugin unload is GC-safe** — when a plugin context is closed, its `ObjectMapper` instance loses all references. Jackson internal caches (`TypeFactory`, `SerializerCache`) are recycled together with the plugin classloader
+- **Zero configuration** — plugins simply inject use constructor injection (`@RequiredArgsConstructor`). No static singletons, no manual setup
+
+```java
+// Plugin-side usage — inject the isolated ObjectMapper
+@RestController
+@RequestMapping("/api/v1/user")
+@RequiredArgsConstructor
+public class UserController {
+    private final ObjectMapper objectMapper;
+    // ...
+}
+```
+
+---
+
+## 16. OpenAPI Documentation
+
+### 16.1 Automatic Grouping
 
 The framework automatically creates an independent `GroupedOpenApi` bean (SpringDoc) for each plugin that registers controllers. The group name follows the pattern `pluginGroupedOpenApi-{pluginId}`. In Swagger-UI, select the desired plugin from the top-right dropdown to view its API documentation.
 
-### 15.2 Controller Example (with Swagger Annotations)
+### 16.2 Controller Example (with Swagger Annotations)
 
 ```java
 @RestController
@@ -1722,13 +1747,13 @@ public class UserController {
 }
 ```
 
-### 15.3 Access URL
+### 16.3 Access URL
 
 Visit `http://localhost:{port}/swagger-ui/index.html` after startup.
 
 ---
 
-## 16. Plugin Packaging & Deployment
+## 17. Plugin Packaging & Deployment
 
 ### 16.1 Build the Plugin
 
@@ -1782,7 +1807,7 @@ In production (non-dev/debug profiles), the plugin directory is located at `plug
 
 ---
 
-## 17. Runtime Plugin Management API
+## 18. Runtime Plugin Management API
 
 ### 17.1 Injecting GJPluginService
 
@@ -1883,7 +1908,7 @@ public String deletePlugin(@PathVariable String pluginId) {
 
 ---
 
-## 18. Appendix: Host Application Integration
+## 19. Appendix: Host Application Integration
 
 ### 18.1 Version Compatibility
 
@@ -1899,7 +1924,7 @@ In `dependencyManagement`, import the gj BOM followed by the Spring Boot BOM —
         <dependency>
             <groupId>io.github.wangpengxpy</groupId>
             <artifactId>gj-dependencies</artifactId>
-            <version>1.0.7</version>
+            <version>1.0.9</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -1943,7 +1968,7 @@ You can also skip the BOM and depend on gj-pf4j directly, but you must ensure Sp
 <dependency>
     <groupId>io.github.wangpengxpy</groupId>
     <artifactId>gj-pf4j</artifactId>
-    <version>1.3.1</version>
+    <version>1.4.0</version>
 </dependency>
 ```
 
@@ -2102,7 +2127,7 @@ public class AppModelMapperConfig implements GJModelMapperConfig {
 
 ---
 
-## 19. Claude Code Integration
+## 20. Claude Code Integration
 
 The framework ships with built-in [Claude Code](https://claude.ai/code) skills for AI-driven plugin development:
 
@@ -2127,7 +2152,7 @@ cp -r /tmp/gj-pf4j/tools/claude-skills/* .claude/
 
 ---
 
-## 20. FAQ
+## 21. FAQ
 
 ### Q1: Plugin startup fails with `plugin.id` mismatch error?
 
@@ -2171,7 +2196,7 @@ springdoc:
       packagesToScan: com.example.controller
 ```
 
->`packagesToScan` must point to the host application's Controller package, not a plugin package. See [Section 15](#15-openapi-documentation).
+>`packagesToScan` must point to the host application's Controller package, not a plugin package. See [Section 15](#16-openapi-documentation).
 
 ### Q5: What is the minimum configuration for the host app?
 

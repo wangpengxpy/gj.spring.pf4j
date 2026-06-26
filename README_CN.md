@@ -33,15 +33,16 @@
 12. [导入导出](#12-导入导出)
 13. [定时任务](#13-定时任务)
 14. [进程内事件总线](#14-进程内事件总线)
-15. [OpenAPI 文档](#15-openapi-文档)
-16. [插件打包与部署](#16-插件打包与部署)
-17. [插件运行时管理 API](#17-插件运行时管理-api)
-18. [附录：主应用集成](#18-附录主应用集成)
+15. [JSON 序列化 — ObjectMapper](#15-json-序列化--objectmapper)
+16. [OpenAPI 文档](#16-openapi-文档)
+17. [插件打包与部署](#17-插件打包与部署)
+18. [插件运行时管理 API](#18-插件运行时管理-api)
+19. [附录：主应用集成](#19-附录主应用集成)
     * [版本兼容性说明](#181-版本兼容性说明)
     * [主应用入口配置](#182-主应用入口配置)
     * [按需配置：@GJModelMapperScan（共享模型）](#183-按需配置gjmodelmapperscan共享模型)
-19. [Claude Code 集成](#19-claude-code-集成)
-20. [FAQ](#20-faq)
+20. [Claude Code 集成](#20-claude-code-集成)
+21. [FAQ](#21-faq)
 
 ---
 
@@ -52,10 +53,10 @@ gj.spring.pf4j 是基于 [PF4J](https://pf4j.org/) 的轻量级 Spring 插件化
 ### 核心能力
 
 - **[插件生命周期管理](#4-插件生命周期)** — 插件加载、启动、停止、重启、卸载、删除
-- **[插件运行时管理 API](#17-插件运行时管理-api)** — GJPluginService 提供带锁控制的运行时管理接口
+- **[插件运行时管理 API](#18-插件运行时管理-api)** — GJPluginService 提供带锁控制的运行时管理接口
 - **[REST 端点](#5-rest-端点)** — 插件内 @RestController 自动发现并注册到主应用路由表，支持 MVC 和 WebFlux 双路由模式
 - **[双路由模式支持](#52-spring-mvc-与-webflux-双路由模式)** — 同时支持 Spring MVC（Servlet）和 Spring WebFlux（Reactive）路由
-- **[OpenAPI 文档](#15-openapi-文档)** — 基于 SpringDoc，每个插件自动生成独立 GroupedOpenApi
+- **[OpenAPI 文档](#16-openapi-文档)** — 基于 SpringDoc，每个插件自动生成独立 GroupedOpenApi
 - **[MyBatis-Plus 数据访问](#61-mybatis-plus-数据访问)** — 基于 [MyBatis-Plus](https://baomidou.com/)，每个插件独立 SqlSessionFactory / SqlSessionTemplate / TransactionManager，共享主应用 DataSource
 - **[JPA 数据访问](#62-jpa-数据访问)** — 基于 Hibernate 的 JPA（Jakarta Persistence API）；每个插件拥有独立的 `EntityManagerFactory` 和 `JpaTransactionManager`，共享主应用 `DataSource`。与 MyBatis-Plus 可共存，宿主引入 `hibernate-core` 即激活
 - **[SQL 关键字引号处理](#63-sql-关键字引号处理)** — MyBatis-Plus `InnerInterceptor` 自动识别数据库类型，对保留关键字列名自动包裹正确引号字符；主应用和插件均可通过 `GJTableKeywordProvider` 注册关键字定义
@@ -84,7 +85,7 @@ mvn clean install
 mvn archetype:generate \
   -DarchetypeGroupId=io.github.wangpengxpy \
   -DarchetypeArtifactId=gj-archetype \
-  -DarchetypeVersion=1.0.8 \
+  -DarchetypeVersion=1.0.9 \
   -DgroupId=com.example \
   -DpluginName=user \
   -DpackagePrefix=gj.module
@@ -471,7 +472,7 @@ public class UserRouterConfig {
 }
 ```
 
-> 热卸载时调用 `unregister()` 移除。主应用的 MVC / WebFlux 详细配置步骤见 **[附录：主应用集成](#18-附录主应用集成)**。
+> 热卸载时调用 `unregister()` 移除。主应用的 MVC / WebFlux 详细配置步骤见 **[附录：主应用集成](#19-附录主应用集成)**。
 
 ### 5.3 匿名访问
 
@@ -692,6 +693,8 @@ public class UserServiceImpl implements UserService {
 - 通过 `MapperScannerConfigurer` 只扫描当前插件的 DAO 包
 
 所有插件共享主应用注入的 `DataSource`。插件停止时自动清理缓存。
+
+> **性能说明：** `SqlSessionFactory` 创建时插件间复用共享的内部组件，消除了先前随插件数量线性增长的重复初始化开销。
 
 ### 6.2 JPA 数据访问
 
@@ -1684,13 +1687,35 @@ public class UserService {
 
 ---
 
-## 15. OpenAPI 文档
 
-### 15.1 自动分组
+## 15. JSON 序列化 — ObjectMapper
+
+每个插件获得**完全隔离的 `ObjectMapper`** 实例。框架复制主应用的 `ObjectMapper`，在每个插件的 Spring 上下文中注册为 `objectMapper` Bean。机制保证：
+
+- **序列化/反序列化在插件 ClassLoader 中执行** — 插件类不会泄漏到宿主 `ObjectMapper` 缓存
+- **插件卸载可 GC** — 插件上下文关闭时，其 `ObjectMapper` 实例失去所有引用，Jackson 内部缓存（`TypeFactory`、`SerializerCache`）随插件类加载器一同回收
+- **零配置** — 插件直接构造器注入（`@RequiredArgsConstructor`），无需静态单例，无需手动配置
+
+```java
+// 插件侧用法 — 注入隔离的 ObjectMapper
+@RestController
+@RequestMapping("/api/v1/user")
+@RequiredArgsConstructor
+public class UserController {
+    private final ObjectMapper objectMapper;
+    // ...
+}
+```
+
+---
+
+## 16. OpenAPI 文档
+
+### 16.1 自动分组
 
 框架为每个已注册 Controller 的插件自动创建独立的 `GroupedOpenApi` Bean（SpringDoc），分组名规则为 `pluginGroupedOpenApi-{pluginId}`。访问 Swagger-UI 时，通过右上角下拉菜单选择对应插件查看其 API 文档。
 
-### 15.2 Controller 示例（配合 Swagger）
+### 16.2 Controller 示例（配合 Swagger）
 
 ```java
 @RestController
@@ -1714,13 +1739,13 @@ public class UserController {
 }
 ```
 
-### 15.3 访问地址
+### 16.3 访问地址
 
 启动后访问：`http://localhost:{port}/swagger-ui/index.html`
 
 ---
 
-## 16. 插件打包与部署
+## 17. 插件打包与部署
 
 ### 16.1 构建插件
 
@@ -1774,7 +1799,7 @@ Class-Path: lib/some-third-party.jar lib/another-lib.jar
 
 ---
 
-## 17. 插件运行时管理 API
+## 18. 插件运行时管理 API
 
 ### 17.1 注入 GJPluginService
 
@@ -1875,7 +1900,7 @@ public String deletePlugin(@PathVariable String pluginId) {
 
 ---
 
-## 18. 附录：主应用集成
+## 19. 附录：主应用集成
 
 ### 18.1 版本兼容性说明
 
@@ -1891,7 +1916,7 @@ gj-pf4j 自身依赖 Spring 核心包（spring-webmvc、spring-beans、spring-jd
         <dependency>
             <groupId>io.github.wangpengxpy</groupId>
             <artifactId>gj-dependencies</artifactId>
-            <version>1.0.7</version>
+            <version>1.0.9</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -1935,7 +1960,7 @@ gj BOM 中与 Spring Boot 重叠的依赖（spring-webmvc、spring-beans 等）�
 <dependency>
     <groupId>io.github.wangpengxpy</groupId>
     <artifactId>gj-pf4j</artifactId>
-    <version>1.3.1</version>
+    <version>1.4.0</version>
 </dependency>
 ```
 
@@ -2094,7 +2119,7 @@ public class AppModelMapperConfig implements GJModelMapperConfig {
 
 ---
 
-## 19. Claude Code 集成
+## 20. Claude Code 集成
 
 框架内置 [Claude Code](https://claude.ai/code) skills，通过 AI 命令驱动插件开发：
 
@@ -2119,7 +2144,7 @@ cp -r /tmp/gj-pf4j/tools/claude-skills/* .claude/
 
 ---
 
-## 20. FAQ
+## 21. FAQ
 
 ### Q1: 插件启动报 `plugin.id` 与包名不一致错误？
 
@@ -2163,7 +2188,7 @@ springdoc:
       packagesToScan: com.example.controller
 ```
 
->`packagesToScan` 是主应用 Controller 所在包路径，不能填插件包路径。详见 [第 15 章](#15-openapi-文档)。
+>`packagesToScan` 是主应用 Controller 所在包路径，不能填插件包路径。详见 [第 15 章](#16-openapi-文档)。
 
 ### Q5: 主应用最低需要什么配置？
 
