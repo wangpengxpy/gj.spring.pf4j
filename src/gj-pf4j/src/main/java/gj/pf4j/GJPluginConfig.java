@@ -5,8 +5,10 @@
 package gj.pf4j;
 
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import gj.pf4j.anonymous.DefaultPluginAnonymousPathRegistry;
 import gj.pf4j.anonymous.PluginAnonymousPathRegistry;
+import gj.pf4j.eventbus.GJPluginLocalEventBus;
 import gj.pf4j.jpa.GJPluginJpaEntityManagerManager;
 import gj.pf4j.jpa.GJPluginJpaProperties;
 import gj.pf4j.modelmapper.GJPluginModelMapperRegistry;
@@ -16,6 +18,7 @@ import gj.pf4j.mybatis.interceptor.GJTableKeywordRegistry;
 import gj.pf4j.utils.GJPluginUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.system.ApplicationHome;
 import org.springframework.context.ApplicationContext;
@@ -43,9 +46,12 @@ public class GJPluginConfig {
     private static final String pluginDir = "plugins";
 
     private final Environment env;
+    private final ObjectMapper objectMapper;
 
-    public GJPluginConfig(Environment env) {
+    public GJPluginConfig(Environment env,
+                          @Autowired(required = false) ObjectMapper objectMapper) {
         this.env = env;
+        this.objectMapper = objectMapper;
     }
 
     @Bean
@@ -123,6 +129,17 @@ public class GJPluginConfig {
     @Bean
     public GJPluginService pluginService(GJPluginManager pluginManager) {
         return new GJPluginService(pluginManager);
+    }
+
+    /** Create EventBus bean. Host app can override by defining its own. */
+    @Bean
+    @ConditionalOnMissingBean(GJPluginLocalEventBus.class)
+    public GJPluginLocalEventBus pluginLocalEventBus() {
+        ObjectMapper mapper = (objectMapper != null)
+                ? objectMapper
+                : GJJackson.createDefaultObjectMapper();
+        GJJackson.setInstance(mapper);
+        return new GJPluginLocalEventBus(mapper);
     }
 
     // ── JPA Beans (activated by host adding hibernate-core dependency) ──────

@@ -6,6 +6,8 @@ package gj.pf4j.mybatis;
 
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.config.GlobalConfig;
+import com.baomidou.mybatisplus.core.incrementer.DefaultIdentifierGenerator;
+import com.baomidou.mybatisplus.core.incrementer.IdentifierGenerator;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 import org.apache.ibatis.session.SqlSessionFactory;
@@ -24,6 +26,7 @@ import org.springframework.lang.NonNull;
 
 import javax.annotation.PreDestroy;
 import javax.sql.DataSource;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class GJPluginMybatisSqlSessionManager {
@@ -34,12 +37,43 @@ public class GJPluginMybatisSqlSessionManager {
     private final DataSource dataSource;
     private final MybatisPlusInterceptor mybatisPlusInterceptor;
 
+    /**
+     * Shared across all plugins to avoid repeated DNS/network-interface probing
+     * that occurs when MyBatis-Plus internally creates a {@code DefaultIdentifierGenerator}
+     * per {@code SqlSessionFactory}. Each probe may block for seconds; with N plugins
+     * the cost is paid N times without this singleton.
+     */
+    private volatile IdentifierGenerator sharedIdentifierGenerator;
+
     public GJPluginMybatisSqlSessionManager(@NonNull DataSource dataSource,
                                             MybatisPlusInterceptor mybatisPlusInterceptor) {
         this.dataSource = dataSource;
         this.mybatisPlusInterceptor = mybatisPlusInterceptor;
         log.info("PluginMybatisSqlSessionManager initialized with shared DataSource: {}",
                 dataSource != null ? dataSource.getClass().getSimpleName() : "null");
+    }
+
+    /**
+     * Lazily create one shared {@link IdentifierGenerator} for all plugins.
+     * Uses UUID-hash-based workerId to avoid DNS/network-interface probing,
+     * so the first plugin triggers the initialization once and all subsequent
+     * plugins reuse the same instance.
+     */
+    private IdentifierGenerator resolveSharedIdentifierGenerator() {
+        IdentifierGenerator local = sharedIdentifierGenerator;
+        if (local != null) {
+            return local;
+        }
+        synchronized (this) {
+            if (sharedIdentifierGenerator != null) {
+                return sharedIdentifierGenerator;
+            }
+            int workerId = UUID.randomUUID().hashCode() & 31;
+            int dataCenterId = 1;
+            sharedIdentifierGenerator = new DefaultIdentifierGenerator(workerId, dataCenterId);
+            log.info("Created shared IdentifierGenerator (workerId={}, dataCenterId={})", workerId, dataCenterId);
+            return sharedIdentifierGenerator;
+        }
     }
 
     public void initializeMyBatisForPlugin(String pluginId,
@@ -155,7 +189,9 @@ public class GJPluginMybatisSqlSessionManager {
         factory.setDataSource(dataSource);
         factory.setConfiguration(configuration);
         factory.setPlugins(mybatisPlusInterceptor);
-        factory.setGlobalConfig(new GlobalConfig());
+        GlobalConfig globalConfig = new GlobalConfig();
+        globalConfig.setIdentifierGenerator(resolveSharedIdentifierGenerator());
+        factory.setGlobalConfig(globalConfig);
         factory.setTransactionFactory(new SpringManagedTransactionFactory());
         log.info("MyBatis factory configured with plugin: '{}'", pluginId);
         return factory;

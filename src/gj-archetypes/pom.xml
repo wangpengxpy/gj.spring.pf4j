@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.github.wangpengxpy</groupId>
     <artifactId>gj-archetype</artifactId>
-    <version>1.0.8</version>
+    <version>1.0.9</version>
     <packaging>maven-archetype</packaging>
     <name>gj-archetype</name>
     <description>A Maven archetype for scaffolding gj-pf4j plugin projects, providing a ready-to-use modular development template.</description>

@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.github.wangpengxpy</groupId>
     <artifactId>gj-dependencies</artifactId>
-    <version>1.0.7</version>
+    <version>1.0.8</version>
     <packaging>pom</packaging>
     <name>gj-dependencies</name>
     <description>gj.spring.pf4j Bill of Materials (BOM) — manages all dependency versions for the gj-pf4j plugin framework ecosystem.</description>

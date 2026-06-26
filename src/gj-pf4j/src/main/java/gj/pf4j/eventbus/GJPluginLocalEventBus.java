@@ -6,7 +6,6 @@ package gj.pf4j.eventbus;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import gj.pf4j.GJJackson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
@@ -33,7 +32,8 @@ public class GJPluginLocalEventBus {
 
     private static final Logger log = LoggerFactory.getLogger(GJPluginLocalEventBus.class);
 
-    private final ObjectMapper objectMapper = GJJackson.INSTANCE;
+    /** Host ObjectMapper for serialization (host ClassLoader, no GC risk). */
+    private final ObjectMapper objectMapper;
     private final AntPathMatcher pathMatcher = new AntPathMatcher(".");
     private final Executor asyncExecutor;
 
@@ -46,17 +46,21 @@ public class GJPluginLocalEventBus {
     /** pluginId → registered listener instances, for unregister reference matching */
     private final Map<String, List<GJPluginLocalEventListener<?>>> pluginListeners = new ConcurrentHashMap<>();
 
+    /** pluginId → plugin-scoped ObjectMapper for deserialization (plugin ClassLoader, GC-safe). */
+    private final Map<String, ObjectMapper> pluginObjectMappers = new ConcurrentHashMap<>();
+
     private final Object registryLock = new Object();
 
-    public GJPluginLocalEventBus() {
-        this(new ThreadPoolExecutor(
+    public GJPluginLocalEventBus(ObjectMapper objectMapper) {
+        this(objectMapper, new ThreadPoolExecutor(
                 0, 1000,
                 60L, TimeUnit.SECONDS,
                 new SynchronousQueue<>(),
                 new ThreadPoolExecutor.CallerRunsPolicy()));
     }
 
-    public GJPluginLocalEventBus(Executor asyncExecutor) {
+    public GJPluginLocalEventBus(ObjectMapper objectMapper, Executor asyncExecutor) {
+        this.objectMapper = objectMapper;
         this.asyncExecutor = asyncExecutor;
     }
 
@@ -74,9 +78,13 @@ public class GJPluginLocalEventBus {
             return;
         }
 
+        // Store plugin-scoped ObjectMapper for GC-safe deserialization
+        ObjectMapper pluginMapper = pluginCtx.getBean("objectMapper", ObjectMapper.class);
+        pluginObjectMappers.put(pluginId, pluginMapper);
+
         List<GJPluginLocalEventListener<?>> listeners = new ArrayList<>();
         for (GJPluginLocalEventListener<?> listener : beans.values()) {
-            registerListener(listener);
+            registerListener(listener, pluginId);
             listeners.add(listener);
         }
         pluginListeners.put(pluginId, listeners);
@@ -94,6 +102,7 @@ public class GJPluginLocalEventBus {
         for (GJPluginLocalEventListener<?> listener : listeners) {
             unregisterListener(listener);
         }
+        pluginObjectMappers.remove(pluginId);
         log.info("[Plugin: {}] Unregistered {} event listener(s)", pluginId, listeners.size());
     }
 
@@ -117,7 +126,7 @@ public class GJPluginLocalEventBus {
 
     // ==================== internal ====================
 
-    private void registerListener(GJPluginLocalEventListener<?> listener) {
+    private void registerListener(GJPluginLocalEventListener<?> listener, String pluginId) {
         Objects.requireNonNull(listener, "Listener cannot be null");
 
         Class<?> listenerClass = listener.getClass();
@@ -128,7 +137,7 @@ public class GJPluginLocalEventBus {
 
         synchronized (registryLock) {
             registry.computeIfAbsent(eventPattern, k -> Collections.synchronizedList(new ArrayList<>()))
-                    .add(new ListenerInfo(listener, eventType, listenerClass));
+                    .add(new ListenerInfo(listener, eventType, listenerClass, pluginId));
         }
     }
 
@@ -235,7 +244,15 @@ public class GJPluginLocalEventBus {
     private void invokeListener(ListenerInfo info, String jsonPayload) {
         long start = System.nanoTime();
         try {
-            Object eventObj = objectMapper.readValue(jsonPayload, info.eventType);
+            // Use plugin-scoped ObjectMapper for deserialization —
+            // Jackson internal caches stay in the plugin ClassLoader and are GC-safe.
+            ObjectMapper pluginMapper = pluginObjectMappers.get(info.pluginId);
+            if (pluginMapper == null) {
+                log.warn("Plugin [{}] has been unregistered; skipping pending event for listener [{}]",
+                         info.pluginId, info.listenerClass.getName());
+                return;
+            }
+            Object eventObj = pluginMapper.readValue(jsonPayload, info.eventType);
             Method handleMethod = getHandleMethod(info.listenerClass, info.eventType);
             handleMethod.invoke(info.listener, eventObj);
         } catch (InvocationTargetException e) {
@@ -255,11 +272,14 @@ public class GJPluginLocalEventBus {
         final GJPluginLocalEventListener<?> listener;
         final Class<?> eventType;
         final Class<?> listenerClass;
+        final String pluginId;
 
-        ListenerInfo(GJPluginLocalEventListener<?> listener, Class<?> eventType, Class<?> listenerClass) {
+        ListenerInfo(GJPluginLocalEventListener<?> listener, Class<?> eventType,
+                     Class<?> listenerClass, String pluginId) {
             this.listener = listener;
             this.eventType = eventType;
             this.listenerClass = listenerClass;
+            this.pluginId = pluginId;
         }
     }
 }

@@ -4,6 +4,7 @@
 
 package gj.pf4j;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import gj.pf4j.eventbus.GJPluginLocalEventBus;
 import gj.pf4j.i18n.GJPluginReloadableMessageSource;
 import gj.pf4j.jpa.GJPluginJpaEntityManagerManager;
@@ -89,6 +90,8 @@ class GJPluginLifecycle {
         log.info("[Plugin: {}] Start registering plugin resources, total {} operations", pluginId, registrationOperations.size());
         long startTime = System.currentTimeMillis();
         try {
+            // Step 0: Register isolated ObjectMapper copy for the plugin (prevents GC leak)
+            registerPluginObjectMapper(applicationContext);
             for (int i = 0; i < registrationOperations.size(); i++) {
                 RegistrationOperation op = registrationOperations.get(i);
                 log.debug("[Plugin: {}] Execute registration operation [{}/{}]", pluginId, i + 1, registrationOperations.size());
@@ -117,6 +120,32 @@ class GJPluginLifecycle {
         } catch (Exception e) {
             log.error("[Plugin: {}] Plugin resource unregistration failed (some resources may not be cleaned up)", pluginContext.getPluginId(), e);
         }
+    }
+
+    /**
+     * Register an isolated ObjectMapper copy for the plugin, blocking
+     * parent-context lookup. Each copy() creates a new instance — Jackson
+     * internal caches are recycled with the plugin context.
+     */
+    private void registerPluginObjectMapper(AnnotationConfigApplicationContext ctx) {
+        ObjectMapper hostMapper;
+        try {
+            hostMapper = GJJackson.resolveObjectMapper(
+                    pluginContext.getMainApplicationContext());
+        } catch (Exception e) {
+            log.error("[Plugin: {}] Failed to resolve ObjectMapper, using default",
+                    pluginContext.getPluginId(), e);
+            hostMapper = GJJackson.createDefaultObjectMapper();
+        }
+
+        ObjectMapper pluginMapper = hostMapper.copy();
+
+        // registerBean in plugin context — blocks Spring DI parent-context lookup
+        if (!ctx.containsBean("objectMapper")) {
+            ctx.registerBean("objectMapper", ObjectMapper.class, () -> pluginMapper);
+        }
+        log.debug("[Plugin: {}] Registered isolated ObjectMapper for plugin",
+                pluginContext.getPluginId());
     }
 
     private void unregisterHubs() {
