@@ -9,6 +9,10 @@
 
 > [English](README.md)
 
+<p align="center">
+  <img src="images/architecture.png" alt="gj.spring.pf4j 插件化架构设计" width="85%">
+</p>
+
 ---
 
 ## 目录
@@ -52,6 +56,10 @@ gj.spring.pf4j 是基于 [PF4J](https://pf4j.org/) 的轻量级 Spring 插件化
 
 ### 核心能力
 
+<p align="center">
+  <img src="images/capabilities.png" alt="插件核心能力" width="90%">
+</p>
+
 - **[插件生命周期管理](#4-插件生命周期)** — 插件加载、启动、停止、重启、卸载、删除
 - **[插件运行时管理 API](#18-插件运行时管理-api)** — GJPluginService 提供带锁控制的运行时管理接口
 - **[REST 端点](#5-rest-端点)** — 插件内 @RestController 自动发现并注册到主应用路由表，支持 MVC 和 WebFlux 双路由模式
@@ -71,6 +79,10 @@ gj.spring.pf4j 是基于 [PF4J](https://pf4j.org/) 的轻量级 Spring 插件化
 ---
 
 ## 2. 快速开始
+
+<p align="center">
+  <img src="images/quickstart.png" alt="快速上手指南" width="85%">
+</p>
 
 ### 2.1 安装 Archetype 到本地仓库
 

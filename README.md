@@ -9,6 +9,10 @@ A lightweight, modular plugin framework powered by PF4J and Spring, with no heav
 
 > [中文文档](README_CN.md)
 
+<p align="center">
+  <img src="images/architecture.png" alt="gj.spring.pf4j Plugin Architecture" width="85%">
+</p>
+
 ---
 
 ## Table of Contents
@@ -52,6 +56,10 @@ gj.spring.pf4j is a lightweight, modular plugin framework built on [PF4J](https:
 
 ### Core Capabilities
 
+<p align="center">
+  <img src="images/capabilities.png" alt="Plugin Core Capabilities" width="90%">
+</p>
+
 - **[Plugin Lifecycle Management](#4-plugin-lifecycle)** — load, start, stop, restart, unload, and delete plugins at runtime
 - **[Runtime Plugin Management API](#18-runtime-plugin-management-api)** — `GJPluginService` provides lock-controlled runtime management
 - **[REST Endpoints](#5-rest-endpoints)** — `@RestController` beans are auto-detected and registered into the main application's route table, supporting both MVC and WebFlux
@@ -71,6 +79,10 @@ gj.spring.pf4j is a lightweight, modular plugin framework built on [PF4J](https:
 ---
 
 ## 2. Quick Start
+
+<p align="center">
+  <img src="images/quickstart.png" alt="Quick Start Guide" width="85%">
+</p>
 
 ### 2.1 Install the Archetype Locally
 
