@@ -41,12 +41,13 @@
 16. [OpenAPI 文档](#16-openapi-文档)
 17. [插件打包与部署](#17-插件打包与部署)
 18. [插件运行时管理 API](#18-插件运行时管理-api)
-19. [附录：主应用集成](#19-附录主应用集成)
-    * [版本兼容性说明](#181-版本兼容性说明)
-    * [主应用入口配置](#182-主应用入口配置)
-    * [按需配置：@GJModelMapperScan（共享模型）](#183-按需配置gjmodelmapperscan共享模型)
-20. [Claude Code 集成](#20-claude-code-集成)
-21. [FAQ](#21-faq)
+19. [插件热加载](#19-插件热加载)
+20. [附录：主应用集成](#20-附录主应用集成)
+    * [版本兼容性说明](#201-版本兼容性说明)
+    * [主应用入口配置](#202-主应用入口配置)
+    * [按需配置：@GJModelMapperScan（共享模型）](#203-按需配置gjmodelmapperscan共享模型)
+21. [Claude Code 集成](#21-claude-code-集成)
+22. [FAQ](#22-faq)
 
 ---
 
@@ -60,7 +61,8 @@ gj.spring.pf4j 是基于 [PF4J](https://pf4j.org/) 的轻量级 Spring 插件化
   <img src="images/capabilities.png" alt="插件核心能力" width="90%">
 </p>
 
-- **[插件生命周期管理](#4-插件生命周期)** — 插件加载、启动、停止、重启、卸载、删除
+- **[插件生命周期管理](#4-插件生命周期)** — 插件安装、禁用、重启、卸载、删除
+- **[插件热加载](#19-插件热加载)** — 支持 API 驱动和文件监听两种热加载模式；生命周期事件自定义编排逻辑
 - **[插件运行时管理 API](#18-插件运行时管理-api)** — GJPluginService 提供带锁控制的运行时管理接口
 - **[REST 端点](#5-rest-端点)** — 插件内 @RestController 自动发现并注册到主应用路由表，支持 MVC 和 WebFlux 双路由模式
 - **[双路由模式支持](#52-spring-mvc-与-webflux-双路由模式)** — 同时支持 Spring MVC（Servlet）和 Spring WebFlux（Reactive）路由
@@ -97,7 +99,7 @@ mvn clean install
 mvn archetype:generate \
   -DarchetypeGroupId=io.github.wangpengxpy \
   -DarchetypeArtifactId=gj-archetype \
-  -DarchetypeVersion=1.0.9 \
+  -DarchetypeVersion=1.1.0 \
   -DgroupId=com.example \
   -DpluginName=user \
   -DpackagePrefix=gj.module
@@ -1813,7 +1815,7 @@ Class-Path: lib/some-third-party.jar lib/another-lib.jar
 
 ## 18. 插件运行时管理 API
 
-### 17.1 注入 GJPluginService
+### 18.1 注入 GJPluginService
 
 ```java
 @RestController
@@ -1830,7 +1832,7 @@ public class PluginAdminController {
 }
 ```
 
-### 17.2 加载并启动所有插件
+### 18.2 加载并启动所有插件
 
 ```java
 @PostMapping("/load-all")
@@ -1839,31 +1841,33 @@ public void loadAndStartAll() {
 }
 ```
 
-### 17.3 启动单个插件
+### 18.3 安装插件
+
+从 `plugins/{pluginId}/` 加载 JAR 并启动。成功返回 `PluginState.STARTED`。
 
 ```java
-@PostMapping("/{pluginId}/start")
-public String startPlugin(@PathVariable String pluginId) {
-    PluginState state = pluginService.startPlugin(pluginId);
+@PostMapping("/{pluginId}/install")
+public String installPlugin(@PathVariable String pluginId) {
+    PluginState state = pluginService.installPlugin(pluginId);
     return "Plugin " + pluginId + " state: " + state;
 }
 ```
 
-> 启动时会自动解析并先启动该插件的依赖插件。
+### 18.4 禁用插件
 
-### 17.4 停止单个插件
+停止插件并设为 `PluginState.DISABLED`。插件保留在注册表中，可后续重启。批量启动时禁用插件被跳过。
 
 ```java
-@PostMapping("/{pluginId}/stop")
-public String stopPlugin(@PathVariable String pluginId) {
-    PluginState state = pluginService.stopPlugin(pluginId);
-    return "Plugin " + pluginId + " state: " + state;
+@PostMapping("/{pluginId}/disable")
+public ResponseEntity<String> disablePlugin(@PathVariable String pluginId) {
+    pluginService.disablePlugin(pluginId);
+    return ResponseEntity.ok("Plugin " + pluginId + " disabled");
 }
 ```
 
-> 停止时会先停止所有依赖该插件的反向依赖插件。
+### 18.5 重启插件
 
-### 17.5 重启单个插件
+原地重启（同一 ClassLoader）。同时支持 `STARTED` 和 `DISABLED` 状态——禁用插件跳过停止直接启动。
 
 ```java
 @PostMapping("/{pluginId}/restart")
@@ -1873,25 +1877,26 @@ public String restartPlugin(@PathVariable String pluginId) {
 }
 ```
 
-### 17.6 热加载 / 热卸载单个插件
+### 18.6 卸载 / 删除插件
+
+- `unloadPlugin(id)` — 停止、关闭 ClassLoader、从注册表移除。磁盘文件保留。
+- `deletePlugin(id)` — 同卸载，另删除 `plugins/{id}/` 目录。
 
 ```java
-// 热卸载（从内存中移除，但不删除文件）
+// 卸载（保留文件）
 @DeleteMapping("/{pluginId}/unload")
 public String unloadPlugin(@PathVariable String pluginId) {
-    boolean success = pluginService.unloadPlugin(pluginId);
-    return success ? "Unloaded" : "Failed";
+    return pluginService.unloadPlugin(pluginId) ? "Unloaded" : "Failed";
 }
 
-// 热加载（重新从文件系统发现并加载）
-@PostMapping("/{pluginId}/reload")
-public String reloadPlugin(@PathVariable String pluginId) {
-    PluginState state = pluginService.reloadPlugin(pluginId);
-    return "Plugin " + pluginId + " state: " + state;
+// 删除（清除文件）
+@DeleteMapping("/{pluginId}")
+public String deletePlugin(@PathVariable String pluginId) {
+    return pluginService.deletePlugin(pluginId) ? "Deleted" : "Failed";
 }
 ```
 
-### 17.7 重载全部插件
+### 18.7 重载全部插件
 
 ```java
 @PostMapping("/reload-all")
@@ -1900,21 +1905,101 @@ public void reloadAll() {
 }
 ```
 
-### 17.8 删除插件
+> 热加载工作流、生命周期事件、文件监听模式和应用商店集成示例，参见 **[§19 插件热加载](#19-插件热加载)**。
+
+---
+
+## 19. 插件热加载
+
+### 19.1 概念与配置
+
+热加载在运行时将插件更新至新版本，无需重启主应用。支持两种模式：
+
+```
+gj.plugin.hot-reload=watch   （默认）
+gj.plugin.hot-reload=manual
+```
+
+| 属性 | 默认 | 说明 |
+|------|------|------|
+| `gj.plugin.hot-reload` | `watch` | 热加载模式。`watch` — 自动检测 JAR 变更；`manual` — 仅 API 驱动。 |
+| `gj.plugin.dir` | （自动） | 插件目录路径。显式指定时使用精确路径，不存在则启动失败。未指定时：dev/debug profile 为 `./plugins`，否则为 `<appHome>/plugins`。 |
+
+### 19.2 manual 模式 — API 驱动工作流
+
+```
+1. unloadPlugin(id)        // 从内存移除，保留磁盘文件
+2. 替换 plugins/{id}/*.jar
+3. installPlugin(id)       // 加载新 JAR + 启动
+```
+
+每步返回结果可被调用方校验。
+
+### 19.3 manual 模式 — 应用商店集成
+
+应用商店或编排器使用两步工作流加入自定义逻辑：
+
+```
+1. 下载 JAR 到暂存区
+2. 校验 SHA256 / 签名
+3. 备份 plugins/{id}/*.jar
+4. unloadPlugin(id)           ← 调用方控制卸载时机
+5. 替换 plugins/{id}/*.jar
+6. installPlugin(id)          ← 调用方控制安装时机
+7. 检查启动结果
+8. 失败 → 回滚：恢复旧 JAR + installPlugin(id)
+```
+
+### 19.4 manual 模式 — 多节点灰度发布
+
+```
+1. 在所有节点上放置新 JAR（不触发重载）
+2. 依次对每个节点调 unload(id) + install(id)
+3. 每节点完成后观察指标
+4. 任何节点失败 → 停止推广，已重载节点回滚
+```
+
+### 19.5 watch 模式 — 文件监听
+
+单守护线程通过 `WatchService` 监听 `plugins/` 目录。2s 防抖合并快速文件事件。防抖到期后：
+
+- **已有插件**（JAR 创建/修改）→ `unloadPlugin(id)` + `installPlugin(id)`
+- **新插件目录**（创建）→ 注册逐插件 WatchKey + 启动防抖
+- **JAR 删除** → 防抖后检查残留 JAR；无则卸载
+
+### 19.6 生命周期事件
+
+热加载过程发布 `GJPluginBeforeUnloadEvent` 和 `GJPluginAfterInstallEvent`。**宿主应用** 和**被热加载的插件自身**都可通过 `@EventListener` 订阅。其他插件不受影响——仅目标插件和宿主收到事件。
+
+`GJPluginBeforeUnloadEvent` 支持否决：监听器抛出 `PluginHotReloadVetoException` 即可阻止卸载。
+
+### 19.7 事件订阅示例
 
 ```java
-@DeleteMapping("/{pluginId}")
-public String deletePlugin(@PathVariable String pluginId) {
-    boolean deleted = pluginService.deletePlugin(pluginId);
-    return deleted ? "Deleted" : "Failed";
+// 插件自身 — 订阅卸载事件，关闭自定义端口
+@Component
+public class CleanupListener {
+    @EventListener
+    public void onBeforeUnload(GJPluginBeforeUnloadEvent e) {
+        customNettyServer.shutdown();
+    }
+}
+
+// 宿主 — 订阅安装完成事件，刷新缓存
+@Component
+public class HotReloadMonitor {
+    @EventListener
+    public void onAfterInstall(GJPluginAfterInstallEvent e) {
+        cacheManager.invalidateByPlugin(e.getPluginId());
+    }
 }
 ```
 
 ---
 
-## 19. 附录：主应用集成
+## 20. 附录：主应用集成
 
-### 18.1 版本兼容性说明
+### 20.1 版本兼容性说明
 
 gj-pf4j 自身依赖 Spring 核心包（spring-webmvc、spring-beans、spring-jdbc 等），但**不锁定版本号**。框架通过发布 `gj-dependencies` BOM 统一管理版本，开发者在项目中按优先级引入 BOM，Spring 全家桶版本会自动跟随开发者所选 Spring Boot 版本，避免冲突。
 
@@ -1972,11 +2057,11 @@ gj BOM 中与 Spring Boot 重叠的依赖（spring-webmvc、spring-beans 等）�
 <dependency>
     <groupId>io.github.wangpengxpy</groupId>
     <artifactId>gj-pf4j</artifactId>
-    <version>1.4.0</version>
+    <version>1.5.0</version>
 </dependency>
 ```
 
-### 18.2 主应用入口配置
+### 20.2 主应用入口配置
 
 **必须配置：**
 
@@ -1993,7 +2078,7 @@ public class GJApplication {
 - 框架已内置 `GJPluginConfig` 和 `GJPluginWebFluxConfig`，随 `@ComponentScan("gj")` 自动激活。
 - 框架会在主应用 `ContextRefreshedEvent` 触发后自动加载并启动 `plugins/` 目录下的所有插件。
 
-> 如需在主应用中配置共享 ModelMapper 映射（基础模型包），参见 [18.3](#183-按需配置gjmodelmapperscan共享模型)。
+> 如需在主应用中配置共享 ModelMapper 映射（基础模型包），参见 [20.3](#203-按需配置gjmodelmapperscan共享模型)。
 
 ### Spring MVC 模式（默认）
 
@@ -2070,7 +2155,7 @@ gj-pf4j 检测到 `GJPluginWebFluxRequestMappingHandlerMapping` Bean 后，自�
 | 插件 Controller 写法 | `@RestController` | `@RestController`（完全一样） |
 | 路由注册 | `GJPluginRequestMappingHandlerMapping` | `GJPluginWebFluxRequestMappingHandlerMapping` |
 
-### 18.3 按需配置：`@GJModelMapperScan`（共享模型）
+### 20.3 按需配置：`@GJModelMapperScan`（共享模型）
 
 当主应用有通用的基础模型包（如 `User`、`Menu`、`Role` 等实体及其 Mapper、DTO、ModelMapper 映射配置），可以单独引入 `gj-modelmapper` artifact 并用 `@GJModelMapperScan` 扫描，将这些映射注入全局 `ModelMapper` Bean。业务插件通过父容器继承自动共享：
 
@@ -2131,7 +2216,7 @@ public class AppModelMapperConfig implements GJModelMapperConfig {
 
 ---
 
-## 20. Claude Code 集成
+## 21. Claude Code 集成
 
 框架内置 [Claude Code](https://claude.ai/code) skills，通过 AI 命令驱动插件开发：
 
@@ -2156,7 +2241,7 @@ cp -r /tmp/gj-pf4j/tools/claude-skills/* .claude/
 
 ---
 
-## 21. FAQ
+## 22. FAQ
 
 ### Q1: 插件启动报 `plugin.id` 与包名不一致错误？
 
@@ -2216,7 +2301,7 @@ public class GJApplication {
 }
 ```
 
-不加 `@ComponentScan("gj")`，框架所有 Bean 都不会被发现，整个框架处于停用状态。详见 [18.2 节](#182-主应用入口配置)。
+不加 `@ComponentScan("gj")`，框架所有 Bean 都不会被发现，整个框架处于停用状态。详见 [20.2 节](#202-主应用入口配置)。
 
 ### Q6: 如何让主应用和插件共享 ModelMapper 映射？
 
@@ -2229,7 +2314,7 @@ public class GJApplication {
 )
 ```
 
-插件会自动将自己的映射追加到共享 `ModelMapper` 实例上。详见 [18.3 节](#183-按需配置gjmodelmapperscan共享模型)。
+插件会自动将自己的映射追加到共享 `ModelMapper` 实例上。详见 [20.3 节](#203-按需配置gjmodelmapperscan共享模型)。
 
 ### Q7: 自动迁移会删表或删字段吗？
 

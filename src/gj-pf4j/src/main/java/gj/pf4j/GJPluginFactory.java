@@ -38,6 +38,7 @@ public class GJPluginFactory implements PluginFactory {
                     .classLoader(wrapper.getPluginClassLoader())
                     .mainApplicationContext(pluginManager.getMainApplicationContext())
                     .mainApplicationStarted(pluginManager.isMainApplicationStarted())
+                    .everStarted(pluginManager.wasEverStarted(wrapper.getPluginId()))
                     .build();
             return new GJSpringPlugin(pluginContext, plugin);
         } catch (Exception e) {

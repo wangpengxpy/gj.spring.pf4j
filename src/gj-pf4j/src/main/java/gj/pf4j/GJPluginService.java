@@ -6,23 +6,15 @@ package gj.pf4j;
 
 import org.pf4j.*;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class GJPluginService {
 
     private final GJPluginManager pluginManager;
     private final Object globalLock = new Object();
-    private final Map<String, ReentrantLock> pluginLocks =
-            new ConcurrentHashMap<>();
 
     public GJPluginService(GJPluginManager pluginManager) {
         this.pluginManager = pluginManager;
-    }
-
-    private ReentrantLock getPluginLock(String pluginId) {
-        return pluginLocks.computeIfAbsent(pluginId, k -> new ReentrantLock());
     }
 
     public void loadAndStartAllPlugins() {
@@ -38,40 +30,28 @@ public class GJPluginService {
         }
     }
 
-    public PluginState startPlugin(String pluginId) {
-        ReentrantLock lock = getPluginLock(pluginId);
+    public PluginState installPlugin(String pluginId) {
+        ReentrantLock lock = pluginManager.getPluginLock(pluginId);
         lock.lock();
         try {
-            return pluginManager.startPlugin(pluginId);
+            return pluginManager.installPlugin(pluginId);
         } finally {
             lock.unlock();
         }
     }
 
-    public PluginState stopPlugin(String pluginId) {
-        ReentrantLock lock = getPluginLock(pluginId);
+    public void disablePlugin(String pluginId) {
+        ReentrantLock lock = pluginManager.getPluginLock(pluginId);
         lock.lock();
         try {
-            PluginState pluginState = pluginManager.stopPlugin(pluginId);
-            pluginLocks.remove(pluginId);
-            return pluginState;
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    public boolean deletePlugin(String pluginId) {
-        ReentrantLock lock = getPluginLock(pluginId);
-        lock.lock();
-        try {
-            return pluginManager.deletePlugin(pluginId);
+            pluginManager.disablePlugin(pluginId);
         } finally {
             lock.unlock();
         }
     }
 
     public PluginState restartPlugin(String pluginId) {
-        ReentrantLock lock = getPluginLock(pluginId);
+        ReentrantLock lock = pluginManager.getPluginLock(pluginId);
         lock.lock();
         try {
             return pluginManager.restartPlugin(pluginId);
@@ -81,12 +61,12 @@ public class GJPluginService {
     }
 
     public boolean unloadPlugin(String pluginId) {
-        ReentrantLock lock = getPluginLock(pluginId);
+        ReentrantLock lock = pluginManager.getPluginLock(pluginId);
         lock.lock();
         try {
-            boolean succeed = pluginManager.unloadPlugin(pluginId);
+            boolean succeed = pluginManager.doUnloadPlugin(pluginId);
             if (succeed) {
-                pluginLocks.remove(pluginId);
+                pluginManager.removePluginLock(pluginId);
             }
             return succeed;
         } finally {
@@ -94,11 +74,15 @@ public class GJPluginService {
         }
     }
 
-    public PluginState reloadPlugin(String pluginId) {
-        ReentrantLock lock = getPluginLock(pluginId);
+    public boolean deletePlugin(String pluginId) {
+        ReentrantLock lock = pluginManager.getPluginLock(pluginId);
         lock.lock();
         try {
-            return pluginManager.reloadPlugin(pluginId);
+            boolean succeed = pluginManager.deletePlugin(pluginId);
+            if (succeed) {
+                pluginManager.removePluginLock(pluginId);
+            }
+            return succeed;
         } finally {
             lock.unlock();
         }

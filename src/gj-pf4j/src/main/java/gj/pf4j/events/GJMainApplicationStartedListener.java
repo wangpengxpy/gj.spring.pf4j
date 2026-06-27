@@ -5,6 +5,7 @@
 package gj.pf4j.events;
 
 import gj.pf4j.GJPluginManager;
+import gj.pf4j.hotreload.GJPluginHotReloadManager;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
@@ -20,9 +21,14 @@ public class GJMainApplicationStartedListener implements ApplicationListener<Con
 
     private final ApplicationContext applicationContext;
 
-    public GJMainApplicationStartedListener(ApplicationContext applicationContext, GJPluginManager pluginManager) {
+    private final GJPluginHotReloadManager hotReloadManager;
+
+    public GJMainApplicationStartedListener(ApplicationContext applicationContext,
+                                             GJPluginManager pluginManager,
+                                             GJPluginHotReloadManager hotReloadManager) {
         this.applicationContext = applicationContext;
         this.pluginManager = pluginManager;
+        this.hotReloadManager = hotReloadManager;
     }
 
     @Override
@@ -36,5 +42,7 @@ public class GJMainApplicationStartedListener implements ApplicationListener<Con
             pluginManager.startPlugins();
         }
         pluginManager.setMainApplicationStarted(true);
+
+        hotReloadManager.startWatching();
     }
 }

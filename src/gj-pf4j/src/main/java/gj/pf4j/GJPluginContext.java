@@ -18,4 +18,5 @@ class GJPluginContext {
     public ApplicationContext applicationContext;
     public ApplicationContext mainApplicationContext;
     public boolean mainApplicationStarted;
+    public boolean everStarted;
 }

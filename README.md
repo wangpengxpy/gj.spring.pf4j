@@ -41,12 +41,13 @@ A lightweight, modular plugin framework powered by PF4J and Spring, with no heav
 16. [OpenAPI Documentation](#16-openapi-documentation)
 17. [Plugin Packaging & Deployment](#17-plugin-packaging--deployment)
 18. [Runtime Plugin Management API](#18-runtime-plugin-management-api)
-19. [Appendix: Host Application Integration](#19-appendix-host-application-integration)
-    * [Version Compatibility](#181-version-compatibility)
-    * [Host Application Entry Point](#182-host-application-entry-point)
-    * [Optional: @GJModelMapperScan (Shared Models)](#183-optional-gjmodelmapperscan-shared-models)
-20. [Claude Code Integration](#20-claude-code-integration)
-21. [FAQ](#21-faq)
+19. [Plugin Hot-Reload](#19-plugin-hot-reload)
+20. [Appendix: Host Application Integration](#20-appendix-host-application-integration)
+    * [Version Compatibility](#201-version-compatibility)
+    * [Host Application Entry Point](#202-host-application-entry-point)
+    * [Optional: @GJModelMapperScan (Shared Models)](#203-optional-gjmodelmapperscan-shared-models)
+21. [Claude Code Integration](#21-claude-code-integration)
+22. [FAQ](#22-faq)
 
 ---
 
@@ -60,8 +61,9 @@ gj.spring.pf4j is a lightweight, modular plugin framework built on [PF4J](https:
   <img src="images/capabilities.png" alt="Plugin Core Capabilities" width="90%">
 </p>
 
-- **[Plugin Lifecycle Management](#4-plugin-lifecycle)** — load, start, stop, restart, unload, and delete plugins at runtime
-- **[Runtime Plugin Management API](#18-runtime-plugin-management-api)** — `GJPluginService` provides lock-controlled runtime management
+- **[Plugin Lifecycle Management](#4-plugin-lifecycle)** — install, disable, restart, unload, and delete plugins at runtime
+- **[Plugin Hot-Reload](#19-plugin-hot-reload)** — hot-reload via API-driven workflow or file watcher; lifecycle events for custom orchestration logic
+- **[Runtime Plugin Management API](#18-runtime-plugin-management-api)** — `GJPluginService` provides lock-controlled runtime management APIs
 - **[REST Endpoints](#5-rest-endpoints)** — `@RestController` beans are auto-detected and registered into the main application's route table, supporting both MVC and WebFlux
 - **[Dual Routing Mode](#52-spring-mvc-vs-webflux-dual-routing)** — supports both Spring MVC (Servlet) and Spring WebFlux (Reactive) routing; plugins require zero changes
 - **[OpenAPI Documentation](#16-openapi-documentation)** — powered by SpringDoc; each plugin auto-generates an independent `GroupedOpenApi`
@@ -97,7 +99,7 @@ mvn clean install
 mvn archetype:generate \
   -DarchetypeGroupId=io.github.wangpengxpy \
   -DarchetypeArtifactId=gj-archetype \
-  -DarchetypeVersion=1.0.9 \
+  -DarchetypeVersion=1.1.0 \
   -DgroupId=com.example \
   -DpluginName=user \
   -DpackagePrefix=gj.module
@@ -1821,7 +1823,7 @@ In production (non-dev/debug profiles), the plugin directory is located at `plug
 
 ## 18. Runtime Plugin Management API
 
-### 17.1 Injecting GJPluginService
+### 18.1 Injecting GJPluginService
 
 ```java
 @RestController
@@ -1838,7 +1840,7 @@ public class PluginAdminController {
 }
 ```
 
-### 17.2 Load and Start All Plugins
+### 18.2 Load and Start All Plugins
 
 ```java
 @PostMapping("/load-all")
@@ -1847,31 +1849,33 @@ public void loadAndStartAll() {
 }
 ```
 
-### 17.3 Start a Single Plugin
+### 18.3 Install a Plugin
+
+Loads a JAR from `plugins/{pluginId}/` and starts it. Returns `PluginState.STARTED` on success.
 
 ```java
-@PostMapping("/{pluginId}/start")
-public String startPlugin(@PathVariable String pluginId) {
-    PluginState state = pluginService.startPlugin(pluginId);
+@PostMapping("/{pluginId}/install")
+public String installPlugin(@PathVariable String pluginId) {
+    PluginState state = pluginService.installPlugin(pluginId);
     return "Plugin " + pluginId + " state: " + state;
 }
 ```
 
-> Dependencies are automatically resolved — dependent plugins are started first.
+### 18.4 Disable a Plugin
 
-### 17.4 Stop a Single Plugin
+Stops the plugin and sets `PluginState.DISABLED`. The plugin stays in the registry and can be restarted later. Disabled plugins are skipped during bulk startup.
 
 ```java
-@PostMapping("/{pluginId}/stop")
-public String stopPlugin(@PathVariable String pluginId) {
-    PluginState state = pluginService.stopPlugin(pluginId);
-    return "Plugin " + pluginId + " state: " + state;
+@PostMapping("/{pluginId}/disable")
+public ResponseEntity<String> disablePlugin(@PathVariable String pluginId) {
+    pluginService.disablePlugin(pluginId);
+    return ResponseEntity.ok("Plugin " + pluginId + " disabled");
 }
 ```
 
-> Reverse dependencies are stopped first before stopping the target plugin.
+### 18.5 Restart a Plugin
 
-### 17.5 Restart a Single Plugin
+Restarts a plugin in-place (same ClassLoader). Supports both `STARTED` and `DISABLED` states — a disabled plugin is re-started without an intermediate stop.
 
 ```java
 @PostMapping("/{pluginId}/restart")
@@ -1881,25 +1885,26 @@ public String restartPlugin(@PathVariable String pluginId) {
 }
 ```
 
-### 17.6 Hot-Unload / Hot-Reload a Plugin
+### 18.6 Unload / Delete a Plugin
+
+- `unloadPlugin(id)` — stops, closes ClassLoader, removes from registry. Files on disk are preserved.
+- `deletePlugin(id)` — same as unload, plus deletes the `plugins/{id}/` directory.
 
 ```java
-// Hot-unload (remove from memory without deleting files)
+// Unload (keep files)
 @DeleteMapping("/{pluginId}/unload")
 public String unloadPlugin(@PathVariable String pluginId) {
-    boolean success = pluginService.unloadPlugin(pluginId);
-    return success ? "Unloaded" : "Failed";
+    return pluginService.unloadPlugin(pluginId) ? "Unloaded" : "Failed";
 }
 
-// Hot-reload (re-discover from filesystem and load)
-@PostMapping("/{pluginId}/reload")
-public String reloadPlugin(@PathVariable String pluginId) {
-    PluginState state = pluginService.reloadPlugin(pluginId);
-    return "Plugin " + pluginId + " state: " + state;
+// Delete (remove files)
+@DeleteMapping("/{pluginId}")
+public String deletePlugin(@PathVariable String pluginId) {
+    return pluginService.deletePlugin(pluginId) ? "Deleted" : "Failed";
 }
 ```
 
-### 17.7 Reload All Plugins
+### 18.7 Reload All Plugins
 
 ```java
 @PostMapping("/reload-all")
@@ -1908,21 +1913,101 @@ public void reloadAll() {
 }
 ```
 
-### 17.8 Delete a Plugin
+> For hot-reload workflows, lifecycle events, file watcher mode, and app-store integration patterns, see **[§19 Plugin Hot-Reload](#19-plugin-hot-reload)**.
+
+---
+
+## 19. Plugin Hot-Reload
+
+### 19.1 Concept & Configuration
+
+Hot-reload updates a plugin to a new version at runtime without restarting the host application. Two modes are available:
+
+```
+gj.plugin.hot-reload=watch   (default)
+gj.plugin.hot-reload=manual
+```
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `gj.plugin.hot-reload` | `watch` | Hot-reload mode. `watch` — auto-detect JAR changes; `manual` — API-driven only. |
+| `gj.plugin.dir` | (auto) | Plugin directory path. When set, uses the exact path and fails if it does not exist. When unset: `./plugins` in dev/debug profile, `<appHome>/plugins` otherwise. |
+
+### 19.2 manual Mode — API-Driven Workflow
+
+```
+1. unloadPlugin(id)        // Remove from memory, keep files on disk
+2. Replace plugins/{id}/*.jar
+3. installPlugin(id)       // Load new JAR + start
+```
+
+Each step returns a result that can be validated by the caller.
+
+### 19.3 manual Mode — App Store Integration
+
+An app store or orchestrator uses the two-step workflow with custom logic:
+
+```
+1. Download JAR to staging area
+2. Validate SHA256 / signature
+3. Backup plugins/{id}/*.jar
+4. unloadPlugin(id)           ← caller controls unload timing
+5. Replace plugins/{id}/*.jar
+6. installPlugin(id)          ← caller controls install timing
+7. Check startup result
+8. On failure → rollback: restore old JAR + installPlugin(id)
+```
+
+### 19.4 manual Mode — Multi-Node Grayscale
+
+```
+1. Place new JAR on all nodes (does not trigger reload)
+2. For each node sequentially: unload(id) + install(id)
+3. Observe metrics after each node
+4. Halt rollout on failure; roll back affected nodes
+```
+
+### 19.5 watch Mode — File Watcher
+
+A single daemon thread monitors `plugins/` via `WatchService`. A 2s debounce merges rapid file events (e.g., copy-in-progress). After debounce expiration:
+
+- **Existing plugin** (JAR create/modify) → `unloadPlugin(id)` + `installPlugin(id)`
+- **New plugin directory** (create) → registers a per-plugin WatchKey + starts debounce
+- **Deleted JAR** → debounce then check for remaining JARs; unload if none found
+
+### 19.6 Lifecycle Events
+
+`GJPluginBeforeUnloadEvent` and `GJPluginAfterInstallEvent` are published during hot-reload. Both the **host application** and the **plugin being reloaded** can subscribe via `@EventListener`. Other plugins are unaffected — only the target plugin and the host receive these events.
+
+`GJPluginBeforeUnloadEvent` supports veto: throw `PluginHotReloadVetoException` from any listener to abort the unload.
+
+### 19.7 Event Subscription Example
 
 ```java
-@DeleteMapping("/{pluginId}")
-public String deletePlugin(@PathVariable String pluginId) {
-    boolean deleted = pluginService.deletePlugin(pluginId);
-    return deleted ? "Deleted" : "Failed";
+// Plugin side — close custom port before unload
+@Component
+public class CleanupListener {
+    @EventListener
+    public void onBeforeUnload(GJPluginBeforeUnloadEvent e) {
+        customNettyServer.shutdown();
+    }
+}
+
+// Host side — refresh cache after install
+@Component
+public class HotReloadMonitor {
+    @EventListener
+    public void onAfterInstall(GJPluginAfterInstallEvent e) {
+        cacheManager.invalidateByPlugin(e.getPluginId());
+    }
 }
 ```
 
 ---
 
-## 19. Appendix: Host Application Integration
+## 20. Appendix: Host Application Integration
 
-### 18.1 Version Compatibility
+### 20.1 Version Compatibility
 
 gj-pf4j depends on Spring core libraries (spring-webmvc, spring-beans, spring-jdbc, etc.) but does **not lock version numbers**. The framework publishes a `gj-dependencies` BOM for unified version management. By importing both gj BOM and Spring Boot BOM with the correct priority order, Spring versions automatically follow the developer's chosen Spring Boot version, avoiding conflicts.
 
@@ -1980,11 +2065,11 @@ You can also skip the BOM and depend on gj-pf4j directly, but you must ensure Sp
 <dependency>
     <groupId>io.github.wangpengxpy</groupId>
     <artifactId>gj-pf4j</artifactId>
-    <version>1.4.0</version>
+    <version>1.5.0</version>
 </dependency>
 ```
 
-### 18.2 Host Application Entry Point
+### 20.2 Host Application Entry Point
 
 **Required:**
 
@@ -2001,7 +2086,7 @@ public class GJApplication {
 - The framework includes `GJPluginConfig` and `GJPluginWebFluxConfig`; both are auto-activated via `@ComponentScan("gj")`.
 - Plugins under the `plugins/` directory are automatically loaded and started after the main application's `ContextRefreshedEvent` fires.
 
-> For configuring shared ModelMapper mappings in the host app (base model packages), see [18.3](#183-optional-gjmodelmapperscan-shared-models).
+> For configuring shared ModelMapper mappings in the host app (base model packages), see [20.3](#203-optional-gjmodelmapperscan-shared-models).
 
 ### Spring MVC Mode (Default)
 
@@ -2078,7 +2163,7 @@ Once gj-pf4j detects a `GJPluginWebFluxRequestMappingHandlerMapping` bean, it au
 | Plugin Controller Code | `@RestController` | `@RestController` (identical) |
 | Route Registration | `GJPluginRequestMappingHandlerMapping` | `GJPluginWebFluxRequestMappingHandlerMapping` |
 
-### 18.3 Optional: `@GJModelMapperScan` (Shared Models)
+### 20.3 Optional: `@GJModelMapperScan` (Shared Models)
 
 When the host application has common base model packages (entities such as `User`, `Menu`, `Role`, plus their Mappers, DTOs, and ModelMapper mappings), add the `gj-modelmapper` artifact and use `@GJModelMapperScan` to register those mappings into a global `ModelMapper` bean. Business plugins inherit this shared instance via the parent context:
 
@@ -2139,7 +2224,7 @@ public class AppModelMapperConfig implements GJModelMapperConfig {
 
 ---
 
-## 20. Claude Code Integration
+## 21. Claude Code Integration
 
 The framework ships with built-in [Claude Code](https://claude.ai/code) skills for AI-driven plugin development:
 
@@ -2164,7 +2249,7 @@ cp -r /tmp/gj-pf4j/tools/claude-skills/* .claude/
 
 ---
 
-## 21. FAQ
+## 22. FAQ
 
 ### Q1: Plugin startup fails with `plugin.id` mismatch error?
 
@@ -2224,7 +2309,7 @@ public class GJApplication {
 }
 ```
 
-Without `@ComponentScan("gj")`, no framework beans are discovered and the entire framework stays inactive. See [Section 18.2](#182-host-application-entry-point).
+Without `@ComponentScan("gj")`, no framework beans are discovered and the entire framework stays inactive. See [Section 20.2](#202-host-application-entry-point).
 
 ### Q6: How to share ModelMapper mappings between host app and plugins?
 
@@ -2237,7 +2322,7 @@ Add the `gj-modelmapper` dependency and use `@GJModelMapperScan` on the host app
 )
 ```
 
-Plugins append their own mappings to the shared `ModelMapper` instance automatically. See [Section 18.3](#183-optional-gjmodelmapperscan-shared-models).
+Plugins append their own mappings to the shared `ModelMapper` instance automatically. See [Section 20.3](#203-optional-gjmodelmapperscan-shared-models).
 
 ### Q7: Does auto-migration ever drop tables or columns?
 

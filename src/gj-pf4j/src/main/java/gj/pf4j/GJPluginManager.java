@@ -6,8 +6,13 @@ package gj.pf4j;
 
 import gj.pf4j.descriptor.GJPluginDescriptor;
 import gj.pf4j.descriptor.GJPropertiesPluginDescriptorFinder;
+import gj.pf4j.events.GJPluginAfterInstallEvent;
+import gj.pf4j.events.GJPluginBeforeUnloadEvent;
+import gj.pf4j.events.GJPluginDisabledEvent;
 import gj.pf4j.events.GJPluginStartedEvent;
 import gj.pf4j.events.GJPluginStartingError;
+import gj.pf4j.events.GJPluginStoppedEvent;
+import gj.pf4j.hotreload.PluginHotReloadVetoException;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -25,6 +30,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Stream;
 
 public class GJPluginManager extends DefaultPluginManager implements ApplicationContextAware {
@@ -42,6 +49,20 @@ public class GJPluginManager extends DefaultPluginManager implements Application
     private PluginRepository pluginRepository;
     private ConfigurationRepository configurationRepository;
     private final Map<String, GJPluginStartingError> startingErrors = new HashMap<>();
+    final Map<String, ReentrantLock> pluginLocks = new ConcurrentHashMap<>();
+    final Set<String> everStartedPluginIds = ConcurrentHashMap.newKeySet();
+
+    ReentrantLock getPluginLock(String pluginId) {
+        return pluginLocks.computeIfAbsent(pluginId, k -> new ReentrantLock());
+    }
+
+    void removePluginLock(String pluginId) {
+        pluginLocks.remove(pluginId);
+    }
+
+    boolean wasEverStarted(String pluginId) {
+        return everStartedPluginIds.contains(pluginId);
+    }
 
     public GJPluginManager(Path pluginsRoot) {
         super(pluginsRoot);
@@ -85,10 +106,6 @@ public class GJPluginManager extends DefaultPluginManager implements Application
 
     public ApplicationContext getMainApplicationContext() {
         return mainApplicationContext;
-    }
-
-    public void init() {
-        loadPlugins();
     }
 
     private void doStartPlugins() {
@@ -191,7 +208,7 @@ public class GJPluginManager extends DefaultPluginManager implements Application
         }
     }
 
-    private PluginState doStartPlugin(String pluginId, boolean sendEvent) {
+    private PluginState doStartPlugin(String pluginId) {
         PluginWrapper pluginWrapper = getPlugin(pluginId);
         if (pluginWrapper == null) {
             log.info("Plugin already unloaded or not found: {}", pluginId);
@@ -209,14 +226,14 @@ public class GJPluginManager extends DefaultPluginManager implements Application
         }
 
         for (PluginDependency dependency : pluginWrapper.getDescriptor().getDependencies()) {
-            // start dependency only if it marked as required (non-optional) or if it optional and loaded
             if (!dependency.isOptional() || plugins.containsKey(dependency.getPluginId())) {
                 startPlugin(dependency.getPluginId());
             }
         }
         try {
             PluginState pluginState = super.startPlugin(pluginId);
-            if (sendEvent && previousState != pluginState) {
+            if (previousState != pluginState) {
+                everStartedPluginIds.add(pluginId);
                 GJSpringPlugin springPlugin = (GJSpringPlugin) pluginWrapper.getPlugin();
                 springPlugin.getApplicationContext().publishEvent(new GJPluginStartedEvent(pluginWrapper.getPluginId(), springPlugin));
             }
@@ -229,7 +246,7 @@ public class GJPluginManager extends DefaultPluginManager implements Application
         return pluginWrapper.getPluginState();
     }
 
-    private PluginState doStopPlugin(String pluginId, boolean sendEvent) {
+    private PluginState doStopPlugin(String pluginId) {
         PluginWrapper pluginWrapper = getPlugin(pluginId);
         if (pluginWrapper == null) {
             log.info("Plugin already unloaded or not found: '{}'", pluginId);
@@ -245,15 +262,21 @@ public class GJPluginManager extends DefaultPluginManager implements Application
         List<String> dependents = dependencyResolver.getDependents(pluginId);
         while (!dependents.isEmpty()) {
             String dependent = dependents.remove(0);
-            super.stopPlugin(dependent);
+            ReentrantLock lock = getPluginLock(dependent);
+            lock.lock();
+            try {
+                doStopPlugin(dependent);
+            } finally {
+                lock.unlock();
+            }
             dependents.addAll(0, dependencyResolver.getDependents(dependent));
         }
 
         try {
             PluginState pluginState = super.stopPlugin(pluginId);
-            if (sendEvent && previousState != pluginState) {
+            if (previousState != pluginState) {
                 GJSpringPlugin springPlugin = (GJSpringPlugin) pluginWrapper.getPlugin();
-                springPlugin.getApplicationContext().publishEvent(new GJPluginStartedEvent(pluginWrapper.getPluginId(), springPlugin));
+                springPlugin.getApplicationContext().publishEvent(new GJPluginStoppedEvent(pluginWrapper.getPluginId(), springPlugin));
             }
             return pluginState;
         } catch (Exception e) {
@@ -271,7 +294,7 @@ public class GJPluginManager extends DefaultPluginManager implements Application
 
     @Override
     public PluginState startPlugin(String pluginId) {
-        return doStartPlugin(pluginId, true);
+        return doStartPlugin(pluginId);
     }
 
     @Override
@@ -281,7 +304,7 @@ public class GJPluginManager extends DefaultPluginManager implements Application
 
     @Override
     public PluginState stopPlugin(String pluginId) {
-        return doStopPlugin(pluginId, true);
+        return doStopPlugin(pluginId);
     }
 
     public void restartPlugins() {
@@ -290,10 +313,96 @@ public class GJPluginManager extends DefaultPluginManager implements Application
     }
 
     public PluginState restartPlugin(String pluginId) {
-        PluginState pluginState = doStopPlugin(pluginId, false);
-        if (pluginState != PluginState.STARTED) doStartPlugin(pluginId, false);
-        pluginState = doStartPlugin(pluginId, false);
-        return pluginState;
+        PluginWrapper pluginWrapper = getPlugin(pluginId);
+        if (pluginWrapper == null) {
+            return PluginState.UNLOADED;
+        }
+        PluginState state = pluginWrapper.getPluginState();
+        if (state == PluginState.DISABLED) {
+            // DISABLED context already closed in disablePlugin, skip stop
+            return doStartPlugin(pluginId);
+        }
+        doStopPlugin(pluginId);
+        return doStartPlugin(pluginId);
+    }
+
+    public boolean disablePlugin(String pluginId) {
+        ReentrantLock lock = getPluginLock(pluginId);
+        lock.lock();
+        try {
+            PluginWrapper pluginWrapper = getPlugin(pluginId);
+            if (pluginWrapper == null) {
+                log.warn("Cannot disable unloaded plugin: {}", pluginId);
+                return false;
+            }
+            GJSpringPlugin springPlugin = (GJSpringPlugin) pluginWrapper.getPlugin();
+            springPlugin.stop();
+            pluginWrapper.setPluginState(PluginState.DISABLED);
+            springPlugin.getApplicationContext().publishEvent(
+                    new GJPluginDisabledEvent(pluginId, pluginId));
+            log.info("[Lifecycle] Plugin {} disabled", pluginId);
+            return true;
+        } catch (Exception e) {
+            log.error("[Lifecycle] Failed to disable plugin {}: {}", pluginId, e.getMessage(), e);
+            throw e;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public boolean doUnloadPlugin(String pluginId) {
+        PluginWrapper pluginWrapper = getPlugin(pluginId);
+        if (pluginWrapper == null) {
+            log.info("Plugin already unloaded or not found: '{}'", pluginId);
+            return false;
+        }
+        GJSpringPlugin springPlugin = (GJSpringPlugin) pluginWrapper.getPlugin();
+        log.info("[HotReload] Publishing BeforeUnloadEvent for plugin {}", pluginId);
+        try {
+            springPlugin.getApplicationContext().publishEvent(
+                    new GJPluginBeforeUnloadEvent(pluginId, springPlugin));
+        } catch (PluginHotReloadVetoException e) {
+            log.warn("[HotReload] Unload vetoed for plugin {}: {}", pluginId, e.getMessage());
+            return false;
+        }
+        log.info("[HotReload] Plugin {} unloaded, ClassLoader closed, removed from registry", pluginId);
+        return super.unloadPlugin(pluginId);
+    }
+
+    public PluginState installPlugin(String pluginId) {
+        ReentrantLock lock = getPluginLock(pluginId);
+        lock.lock();
+        try {
+            Path pluginDir = pluginsRoot.resolve(pluginId);
+            if (!Files.isDirectory(pluginDir)) {
+                throw new IllegalStateException("Plugin directory not found: " + pluginDir);
+            }
+            Path jarPath;
+            try (Stream<Path> paths = Files.list(pluginDir)) {
+                jarPath = paths
+                        .filter(Files::isRegularFile)
+                        .filter(path -> {
+                            String fileName = path.getFileName().toString();
+                            return fileName.startsWith(pluginId + "-") && fileName.endsWith(".jar");
+                        })
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalStateException(
+                                "No JAR file found in plugin directory: " + pluginDir));
+            }
+            log.info("[HotReload] Installing plugin {}, JAR: {}", pluginId, jarPath);
+            loadPlugin(jarPath);
+            PluginState state = doStartPlugin(pluginId);
+            GJSpringPlugin springPlugin = (GJSpringPlugin) getPlugin(pluginId).getPlugin();
+            springPlugin.getApplicationContext().publishEvent(
+                    new GJPluginAfterInstallEvent(pluginId, springPlugin));
+            log.info("[HotReload] Plugin {} installed, state: {}", pluginId, state);
+            return state;
+        } catch (IOException e) {
+            log.error("[HotReload] Failed to install plugin {}: {}", pluginId, e.getMessage(), e);
+            throw new RuntimeException("Failed to install plugin: " + pluginId, e);
+        } finally {
+            lock.unlock();
+        }
     }
 
     public void reloadPlugins(boolean restartStartedOnly) {
@@ -310,7 +419,7 @@ public class GJPluginManager extends DefaultPluginManager implements Application
             startedPluginIds.forEach(pluginId -> {
                 // restart started plugin
                 if (getPlugin(pluginId) != null) {
-                    doStartPlugin(pluginId, false);
+                    doStartPlugin(pluginId);
                 }
             });
         } else {
@@ -346,10 +455,10 @@ public class GJPluginManager extends DefaultPluginManager implements Application
         }
         PluginState previousState = pluginWrapper.getPluginState();
         if (previousState == PluginState.RESOLVED || previousState == PluginState.STOPPED) {
-            return doStartPlugin(pluginId, true);
+            return doStartPlugin(pluginId);
         } else if (previousState == PluginState.STARTED) {
-            doStopPlugin(pluginId, false);
-            return doStartPlugin(pluginId, true);
+            doStopPlugin(pluginId);
+            return doStartPlugin(pluginId);
         }
         log.error("Plugin reload '{}' unexpected error for state '{}'", pluginId, previousState);
         return null;

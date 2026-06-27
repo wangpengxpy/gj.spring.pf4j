@@ -46,7 +46,7 @@ public final class GJSpringPlugin extends Plugin {
 
         applicationContext.publishEvent(new GJPluginStartingEvent(applicationContext, this));
 
-        if (pluginContext.isMainApplicationStarted()) {
+        if (pluginContext.isEverStarted()) {
             applicationContext.publishEvent(new GJPluginRestartedEvent(applicationContext));
         }
 

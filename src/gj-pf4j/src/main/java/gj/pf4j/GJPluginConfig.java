@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import gj.pf4j.anonymous.DefaultPluginAnonymousPathRegistry;
 import gj.pf4j.anonymous.PluginAnonymousPathRegistry;
 import gj.pf4j.eventbus.GJPluginLocalEventBus;
+import gj.pf4j.hotreload.GJPluginHotReloadManager;
 import gj.pf4j.jpa.GJPluginJpaEntityManagerManager;
 import gj.pf4j.jpa.GJPluginJpaProperties;
 import gj.pf4j.modelmapper.GJPluginModelMapperRegistry;
@@ -24,6 +25,7 @@ import org.springframework.boot.system.ApplicationHome;
 import org.springframework.context.ApplicationContext;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication.Type;
 import org.springframework.context.annotation.Bean;
@@ -35,6 +37,7 @@ import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.util.AntPathMatcher;
 
 import javax.sql.DataSource;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -42,8 +45,6 @@ import java.nio.file.Paths;
 public class GJPluginConfig {
 
     private static final Logger log = LoggerFactory.getLogger(GJPluginConfig.class);
-
-    private static final String pluginDir = "plugins";
 
     private final Environment env;
     private final ObjectMapper objectMapper;
@@ -55,15 +56,23 @@ public class GJPluginConfig {
     }
 
     @Bean
-    public GJPluginManager pluginManager(ApplicationContext applicationContext) {
+    public GJPluginManager pluginManager(ApplicationContext applicationContext,
+                                          GJPluginProperties properties) {
         Path pluginsDir;
-        if (env.acceptsProfiles(Profiles.of("dev | debug"))) {
+        String customDir = properties.getPluginDir();
+        if (customDir != null && !customDir.isBlank()) {
+            pluginsDir = Paths.get(customDir).toAbsolutePath().normalize();
+            if (!Files.isDirectory(pluginsDir)) {
+                throw new IllegalStateException(
+                        "Configured plugin dir does not exist: " + pluginsDir);
+            }
+        } else if (env.acceptsProfiles(Profiles.of("dev | debug"))) {
             String currentDir = System.getProperty("user.dir");
             log.info("current working directory: {}", currentDir);
-            pluginsDir = Paths.get(currentDir, pluginDir);
+            pluginsDir = Paths.get(currentDir, GJPluginProperties.DEFAULT_PLUGIN_DIR);
         } else {
             ApplicationHome applicationHome = new ApplicationHome(getClass());
-            pluginsDir = applicationHome.getDir().toPath();
+            pluginsDir = applicationHome.getDir().toPath().resolve(GJPluginProperties.DEFAULT_PLUGIN_DIR);
         }
         GJPluginUtils.validatePluginDirectory(pluginsDir);
         log.info("plugin directory path: {}", pluginsDir.toAbsolutePath());
@@ -127,8 +136,26 @@ public class GJPluginConfig {
     }
 
     @Bean
+    @ConditionalOnMissingBean(GJPluginProperties.class)
+    public GJPluginProperties pluginProperties() {
+        return new GJPluginProperties();
+    }
+
+    @Bean
     public GJPluginService pluginService(GJPluginManager pluginManager) {
         return new GJPluginService(pluginManager);
+    }
+
+    @Bean
+    public GJPluginHotReloadManager pluginHotReloadManager(GJPluginService pluginService,
+                                                            GJPluginManager pluginManager,
+                                                            GJPluginProperties properties) {
+        try {
+            Path pluginsDir = pluginManager.getPluginsRoots().get(0);
+            return new GJPluginHotReloadManager(pluginService, pluginsDir, properties);
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("Failed to create GJPluginHotReloadManager", e);
+        }
     }
 
     /** Create EventBus bean. Host app can override by defining its own. */
