@@ -14,10 +14,8 @@ import org.springframework.context.ApplicationContext;
 
 /**
  * Internal Jackson ObjectMapper utility for the plugin framework.
- * Package-private: only accessible within gj.pf4j package.
- * Plugins cannot import this class — misuse is prevented at compile time.
  */
-final class GJJackson {
+public final class GJJackson {
 
     private static final Logger log = LoggerFactory.getLogger(GJJackson.class);
 
@@ -42,7 +40,7 @@ final class GJJackson {
      *   <li>Create default ObjectMapper (8 features, .NET-aligned)</li>
      * </ol>
      */
-    static ObjectMapper resolveObjectMapper(ApplicationContext mainCtx) {
+    public static ObjectMapper resolveObjectMapper(ApplicationContext mainCtx) {
         // Level 1: Direct ObjectMapper bean lookup
         try {
             ObjectMapper mapper = mainCtx.getBeanProvider(ObjectMapper.class).getIfAvailable();
@@ -81,7 +79,7 @@ final class GJJackson {
      * Create default ObjectMapper with 8 features aligned to .NET defaults.
      * The 8 features ensure cross-platform JSON compatibility out of the box.
      */
-    static ObjectMapper createDefaultObjectMapper() {
+    public static ObjectMapper createDefaultObjectMapper() {
         return JsonMapper.builder()
                 .addModule(new JavaTimeModule())
                 .propertyNamingStrategy(PropertyNamingStrategies.LOWER_CAMEL_CASE)

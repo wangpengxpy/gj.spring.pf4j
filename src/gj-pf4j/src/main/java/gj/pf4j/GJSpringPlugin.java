@@ -7,6 +7,8 @@ package gj.pf4j;
 import gj.pf4j.events.GJPluginRestartedEvent;
 import gj.pf4j.events.GJPluginStartingEvent;
 import gj.pf4j.events.GJPluginStoppedEvent;
+import gj.pf4j.lifecycle.PluginLifecycleEngine;
+import gj.pf4j.lifecycle.PluginLifecyclePhase;
 import org.pf4j.Plugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +16,7 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesBindin
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.lang.NonNull;
 import org.springframework.util.StringUtils;
 
@@ -25,14 +28,18 @@ public final class GJSpringPlugin extends Plugin {
 
     private final GJPluginContext pluginContext;
 
-    private final GJPluginLifecycle lifecycle;
+    private final GenericApplicationContext mainAppCtx;
+
+    private final PluginLifecycleEngine engine;
 
     private ApplicationContext applicationContext;
 
-    public GJSpringPlugin(GJPluginContext pluginContext, GJPlugin plugin) {
+    public GJSpringPlugin(GJPluginContext pluginContext, GJPlugin plugin,
+                          GenericApplicationContext mainApplicationContext) {
         this.pluginContext = pluginContext;
         this.plugin = plugin;
-        lifecycle = new GJPluginLifecycle(pluginContext);
+        this.mainAppCtx = mainApplicationContext;
+        this.engine = PluginLifecycleEngine.create(pluginContext, mainApplicationContext);
     }
 
     @Override
@@ -44,10 +51,12 @@ public final class GJSpringPlugin extends Plugin {
         applicationContext = createApplicationContext();
         pluginContext.setApplicationContext(applicationContext);
 
-        applicationContext.publishEvent(new GJPluginStartingEvent(applicationContext, this));
+        applicationContext.publishEvent(
+                new GJPluginStartingEvent(applicationContext, pluginContext.getDescriptor()));
 
         if (pluginContext.isEverStarted()) {
-            applicationContext.publishEvent(new GJPluginRestartedEvent(applicationContext));
+            applicationContext.publishEvent(
+                    new GJPluginRestartedEvent(pluginContext.getDescriptor()));
         }
 
         log.info("Plugin '{}' is started in {}ms", pluginContext.getPluginId(), System.currentTimeMillis() - startTs);
@@ -57,9 +66,10 @@ public final class GJSpringPlugin extends Plugin {
     public void stop() {
         log.info("Stopping plugin '{}' ......", pluginContext.getPluginId());
 
-        lifecycle.unregisterPluginResources();
+        engine.executePhase(PluginLifecyclePhase.BEFORE_CONTEXT_CLOSE, (AnnotationConfigApplicationContext) applicationContext);
 
-        applicationContext.publishEvent(new GJPluginStoppedEvent(applicationContext, this));
+        applicationContext.publishEvent(
+                new GJPluginStoppedEvent(applicationContext, pluginContext.getDescriptor()));
 
         ((ConfigurableApplicationContext) applicationContext).close();
 
@@ -85,7 +95,7 @@ public final class GJSpringPlugin extends Plugin {
             context = annotationContext;
         }
         // Step 3: registerPluginResources
-        lifecycle.registerPluginResources(context);
+        engine.executePhase(PluginLifecyclePhase.BEFORE_CONTEXT_REFRESH, context);
         // Step 4: Refresh the context (load beans, etc.)
         log.info("Refreshing Spring context for plugin '{}'", pluginId);
         long postCreateStart = System.currentTimeMillis();
@@ -97,7 +107,7 @@ public final class GJSpringPlugin extends Plugin {
         long customStart = System.currentTimeMillis();
         plugin.afterApplicationContextReady(context);
         pluginContext.setApplicationContext(context);
-        lifecycle.registerPostStartResources(context);
+        engine.executePhase(PluginLifecyclePhase.AFTER_CONTEXT_REFRESH, context);
         log.info("Completed post-refresh logic for plugin '{}' in {} ms",
                 pluginId, System.currentTimeMillis() - customStart);
         // Total time
@@ -141,7 +151,7 @@ public final class GJSpringPlugin extends Plugin {
         // Set the property processor to enable @ConfigurationProperties in the plugin
         ConfigurationPropertiesBindingPostProcessor.register(applicationContext);
         // Set the parent context (inherit Beans from the main application)
-        applicationContext.setParent(pluginContext.getMainApplicationContext());
+        applicationContext.setParent(mainAppCtx);
         // Set the plugin classLoader
         applicationContext.setClassLoader(pluginContext.getClassLoader());
         // Scan the plugin package
@@ -158,7 +168,7 @@ public final class GJSpringPlugin extends Plugin {
     }
 
     @NonNull
-    public GJPluginContext getPluginContext() {
+    GJPluginContext getPluginContext() {
         return pluginContext;
     }
 }

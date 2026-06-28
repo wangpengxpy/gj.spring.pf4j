@@ -6,7 +6,7 @@ package gj.pf4j.webflux;
 
 import gj.pf4j.anonymous.AllowAnonymous;
 import gj.pf4j.anonymous.AnonymousPathEntry;
-import gj.pf4j.anonymous.PluginAnonymousPathRegistry;
+import gj.pf4j.anonymous.PluginAnonymousPathRegistrar;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.context.ApplicationContext;
@@ -33,10 +33,10 @@ public class GJPluginWebFluxRequestMappingHandlerMapping extends RequestMappingH
     private final MultiValueMap<String, RequestMappingInfo> pluginRequestMappingInfo =
             new LinkedMultiValueMap<>();
 
-    private PluginAnonymousPathRegistry anonymousPathRegistry;
+    private PluginAnonymousPathRegistrar anonymousPathRegistrar;
 
-    public void setAnonymousPathRegistry(PluginAnonymousPathRegistry anonymousPathRegistry) {
-        this.anonymousPathRegistry = anonymousPathRegistry;
+    public void setAnonymousPathRegistry(PluginAnonymousPathRegistrar anonymousPathRegistrar) {
+        this.anonymousPathRegistrar = anonymousPathRegistrar;
     }
 
     @Override
@@ -65,11 +65,8 @@ public class GJPluginWebFluxRequestMappingHandlerMapping extends RequestMappingH
             }
 
             long duration = System.currentTimeMillis() - startTime;
-            int anonymousCount = anonymousPathRegistry != null
-                    ? anonymousPathRegistry.listByPlugin(pluginId).size() : 0;
-            log.info("Successfully registered {} WebFlux controllers for plugin: {} (took {} ms), " +
-                    "including {} anonymous endpoints",
-                    controllers.size(), pluginId, duration, anonymousCount);
+            log.info("Successfully registered {} WebFlux controllers for plugin: {} (took {} ms)",
+                    controllers.size(), pluginId, duration);
             return controllers;
         } catch (Exception e) {
             long duration = System.currentTimeMillis() - startTime;
@@ -97,7 +94,7 @@ public class GJPluginWebFluxRequestMappingHandlerMapping extends RequestMappingH
                 registerHandlerMethod(handler, invocableMethod, mapping);
                 pluginRequestMappingInfo.add(pluginId, mapping);
 
-                if (anonymousPathRegistry != null) {
+                if (anonymousPathRegistrar != null) {
                     AllowAnonymous methodAnno = method.getAnnotation(AllowAnonymous.class);
                     if (methodAnno != null || classAnno != null) {
                         String reason = methodAnno != null && !methodAnno.reason().isEmpty()
@@ -127,12 +124,12 @@ public class GJPluginWebFluxRequestMappingHandlerMapping extends RequestMappingH
         Set<RequestMethod> methods = mapping.getMethodsCondition().getMethods();
         for (String pattern : patterns) {
             if (methods.isEmpty()) {
-                anonymousPathRegistry.register(pluginId, new AnonymousPathEntry(
+                anonymousPathRegistrar.register(pluginId, new AnonymousPathEntry(
                         pluginId, pattern, "*",
                         controllerClass, methodName, reason, LocalDateTime.now()));
             } else {
                 for (var httpMethod : methods) {
-                    anonymousPathRegistry.register(pluginId, new AnonymousPathEntry(
+                    anonymousPathRegistrar.register(pluginId, new AnonymousPathEntry(
                             pluginId, pattern, httpMethod.name(),
                             controllerClass, methodName, reason, LocalDateTime.now()));
                 }
@@ -180,8 +177,8 @@ public class GJPluginWebFluxRequestMappingHandlerMapping extends RequestMappingH
     }
 
     public void unregisterHandlerMethods(String pluginId) {
-        if (anonymousPathRegistry != null) {
-            anonymousPathRegistry.unregisterByPlugin(pluginId);
+        if (anonymousPathRegistrar != null) {
+            anonymousPathRegistrar.unregisterByPlugin(pluginId);
         }
         if (!StringUtils.hasText(pluginId)) {
             return;

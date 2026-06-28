@@ -32,7 +32,7 @@ class EntityToModelConverter {
         DatabaseColumn pkColumn = null;
 
         for (ColumnMeta cm : entity.columns()) {
-            String storeType = dialect.resolveStoreType(cm.type(), cm.columnTypeOverride());
+            String storeType = dialect.resolveStoreType(cm.type(), cm.jdbcType(), cm.columnTypeOverride());
             boolean nullable = determineNullable(cm);
 
             DatabaseColumn col = new DatabaseColumn(cm.columnName(), storeType, nullable);

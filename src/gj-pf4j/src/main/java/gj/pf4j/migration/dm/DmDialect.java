@@ -8,6 +8,7 @@ import gj.pf4j.migration.DatabaseColumn;
 import gj.pf4j.migration.DatabasePrimaryKey;
 import gj.pf4j.migration.DatabaseTable;
 import gj.pf4j.migration.DbType;
+import org.apache.ibatis.type.JdbcType;
 import gj.pf4j.migration.DdlStatement;
 import gj.pf4j.migration.Dialect;
 
@@ -28,6 +29,7 @@ public enum DmDialect implements Dialect {
 
     private static final Logger log = LoggerFactory.getLogger(DmDialect.class);
     private static final LinkedHashMap<Class<?>, String> MAPPING = new LinkedHashMap<>();
+    private static final EnumMap<JdbcType, String> JDBC_MAPPING = new EnumMap<>(JdbcType.class);
 
     static {
         MAPPING.put(String.class,          "VARCHAR(255 char)");
@@ -51,6 +53,31 @@ public enum DmDialect implements Dialect {
         MAPPING.put(BigDecimal.class,      "NUMBER(19,2)");
         MAPPING.put(UUID.class,            "VARCHAR(36)");
         MAPPING.put(byte[].class,          "BLOB");
+
+        JDBC_MAPPING.put(JdbcType.VARCHAR,       "VARCHAR(255 char)");
+        JDBC_MAPPING.put(JdbcType.CHAR,          "CHAR(1 char)");
+        JDBC_MAPPING.put(JdbcType.LONGVARCHAR,   "CLOB");
+        JDBC_MAPPING.put(JdbcType.CLOB,          "CLOB");
+        JDBC_MAPPING.put(JdbcType.NCLOB,         "CLOB");
+        JDBC_MAPPING.put(JdbcType.TINYINT,       "SMALLINT");
+        JDBC_MAPPING.put(JdbcType.SMALLINT,      "SMALLINT");
+        JDBC_MAPPING.put(JdbcType.INTEGER,       "INT");
+        JDBC_MAPPING.put(JdbcType.BIGINT,        "BIGINT");
+        JDBC_MAPPING.put(JdbcType.FLOAT,         "FLOAT");
+        JDBC_MAPPING.put(JdbcType.DOUBLE,        "DOUBLE PRECISION");
+        JDBC_MAPPING.put(JdbcType.REAL,          "FLOAT");
+        JDBC_MAPPING.put(JdbcType.DECIMAL,       "NUMBER(19,2)");
+        JDBC_MAPPING.put(JdbcType.NUMERIC,       "NUMBER(19,2)");
+        JDBC_MAPPING.put(JdbcType.BOOLEAN,       "BIT");
+        JDBC_MAPPING.put(JdbcType.BIT,           "BIT");
+        JDBC_MAPPING.put(JdbcType.DATE,          "DATE");
+        JDBC_MAPPING.put(JdbcType.TIME,          "TIME");
+        JDBC_MAPPING.put(JdbcType.TIMESTAMP,     "TIMESTAMP");
+        JDBC_MAPPING.put(JdbcType.TIMESTAMP_WITH_TIMEZONE, "TIMESTAMP WITH TIME ZONE");
+        JDBC_MAPPING.put(JdbcType.BLOB,          "BLOB");
+        JDBC_MAPPING.put(JdbcType.BINARY,        "BLOB");
+        JDBC_MAPPING.put(JdbcType.VARBINARY,     "BLOB");
+        JDBC_MAPPING.put(JdbcType.LONGVARBINARY, "BLOB");
     }
 
     @Override public DbType dbType() { return DbType.DM; }
@@ -58,9 +85,15 @@ public enum DmDialect implements Dialect {
     @Override public String quoteIdentifier(String name) { return "\"" + name + "\""; }
 
     @Override
-    public String resolveStoreType(Class<?> javaType, String annotationOverride) {
+    public String resolveStoreType(Class<?> javaType, JdbcType jdbcType, String annotationOverride) {
         if (annotationOverride != null && !annotationOverride.isEmpty()) {
             return annotationOverride;
+        }
+        if (jdbcType != null && jdbcType != JdbcType.UNDEFINED) {
+            String sqlType = JDBC_MAPPING.get(jdbcType);
+            if (sqlType != null) {
+                return sqlType;
+            }
         }
         return MAPPING.entrySet().stream()
                 .filter(e -> e.getKey().isAssignableFrom(javaType))

@@ -29,7 +29,8 @@ public class GJPluginModelMapperRegistry {
 
         try {
             Map<String, GJPluginModelMapperConfig> beans =
-                    pluginCtx.getBeansOfType(GJPluginModelMapperConfig.class);
+                    ((AnnotationConfigApplicationContext) pluginCtx).getBeanFactory()
+                            .getBeansOfType(GJPluginModelMapperConfig.class, false, false);
             if (beans.isEmpty()) {
                 log.debug("[Plugin: {}] No GJPluginModelMapperConfig beans found, skipping", pluginId);
                 return;

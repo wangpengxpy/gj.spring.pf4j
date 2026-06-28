@@ -12,7 +12,7 @@ import gj.pf4j.migration.DbType;
 import gj.pf4j.migration.DdlStatement;
 import gj.pf4j.migration.Dialect;
 import gj.pf4j.migration.SchemaExtractor;
-
+import org.apache.ibatis.type.JdbcType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,6 +28,7 @@ public enum OracleDialect implements Dialect {
 
     private static final Logger log = LoggerFactory.getLogger(OracleDialect.class);
     private static final LinkedHashMap<Class<?>, String> MAPPING = new LinkedHashMap<>();
+    private static final EnumMap<JdbcType, String> JDBC_MAPPING = new EnumMap<>(JdbcType.class);
 
     static {
         MAPPING.put(String.class,          "VARCHAR2(255)");
@@ -49,6 +50,31 @@ public enum OracleDialect implements Dialect {
         MAPPING.put(BigDecimal.class,      "NUMBER(19,2)");
         MAPPING.put(UUID.class,            "VARCHAR2(36)");
         MAPPING.put(byte[].class,          "BLOB");
+
+        JDBC_MAPPING.put(JdbcType.VARCHAR,       "VARCHAR2(255)");
+        JDBC_MAPPING.put(JdbcType.CHAR,          "CHAR(1)");
+        JDBC_MAPPING.put(JdbcType.LONGVARCHAR,   "CLOB");
+        JDBC_MAPPING.put(JdbcType.CLOB,          "CLOB");
+        JDBC_MAPPING.put(JdbcType.NCLOB,         "NCLOB");
+        JDBC_MAPPING.put(JdbcType.TINYINT,       "NUMBER(3)");
+        JDBC_MAPPING.put(JdbcType.SMALLINT,      "NUMBER(5)");
+        JDBC_MAPPING.put(JdbcType.INTEGER,       "NUMBER(10)");
+        JDBC_MAPPING.put(JdbcType.BIGINT,        "NUMBER(19)");
+        JDBC_MAPPING.put(JdbcType.FLOAT,         "BINARY_FLOAT");
+        JDBC_MAPPING.put(JdbcType.DOUBLE,        "BINARY_DOUBLE");
+        JDBC_MAPPING.put(JdbcType.REAL,          "BINARY_FLOAT");
+        JDBC_MAPPING.put(JdbcType.DECIMAL,       "NUMBER(19,2)");
+        JDBC_MAPPING.put(JdbcType.NUMERIC,       "NUMBER(19,2)");
+        JDBC_MAPPING.put(JdbcType.BOOLEAN,       "NUMBER(1)");
+        JDBC_MAPPING.put(JdbcType.BIT,           "NUMBER(1)");
+        JDBC_MAPPING.put(JdbcType.DATE,          "DATE");
+        JDBC_MAPPING.put(JdbcType.TIME,          "TIMESTAMP");
+        JDBC_MAPPING.put(JdbcType.TIMESTAMP,     "TIMESTAMP");
+        JDBC_MAPPING.put(JdbcType.TIMESTAMP_WITH_TIMEZONE, "TIMESTAMP WITH TIME ZONE");
+        JDBC_MAPPING.put(JdbcType.BLOB,          "BLOB");
+        JDBC_MAPPING.put(JdbcType.BINARY,        "BLOB");
+        JDBC_MAPPING.put(JdbcType.VARBINARY,     "BLOB");
+        JDBC_MAPPING.put(JdbcType.LONGVARBINARY, "BLOB");
     }
 
     @Override public DbType dbType() { return DbType.Oracle; }
@@ -57,9 +83,15 @@ public enum OracleDialect implements Dialect {
     @Override public String quoteIdentifier(String name) { return "\"" + name.toUpperCase() + "\""; }
 
     @Override
-    public String resolveStoreType(Class<?> javaType, String annotationOverride) {
+    public String resolveStoreType(Class<?> javaType, JdbcType jdbcType, String annotationOverride) {
         if (annotationOverride != null && !annotationOverride.isEmpty()) {
             return annotationOverride;
+        }
+        if (jdbcType != null && jdbcType != JdbcType.UNDEFINED) {
+            String sqlType = JDBC_MAPPING.get(jdbcType);
+            if (sqlType != null) {
+                return sqlType;
+            }
         }
         return MAPPING.entrySet().stream()
                 .filter(e -> e.getKey().isAssignableFrom(javaType))

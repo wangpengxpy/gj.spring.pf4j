@@ -130,7 +130,9 @@ public class GJPluginManager extends DefaultPluginManager implements Application
                     startedPlugins.add(pluginWrapper);
                     firePluginStateEvent(new PluginStateEvent(this, pluginWrapper, pluginState));
                     GJSpringPlugin springPlugin = (GJSpringPlugin) pluginWrapper.getPlugin();
-                    springPlugin.getApplicationContext().publishEvent(new GJPluginStartedEvent(pluginWrapper.getPluginId(), springPlugin));
+                    springPlugin.getApplicationContext().publishEvent(
+                            new GJPluginStartedEvent(pluginWrapper.getPluginId(),
+                                    (GJPluginDescriptor) pluginWrapper.getDescriptor()));
                 } catch (Exception e) {
                     log.error(e.getMessage(), e);
                     startingErrors.put(pluginWrapper.getPluginId(), new GJPluginStartingError(
@@ -235,7 +237,9 @@ public class GJPluginManager extends DefaultPluginManager implements Application
             if (previousState != pluginState) {
                 everStartedPluginIds.add(pluginId);
                 GJSpringPlugin springPlugin = (GJSpringPlugin) pluginWrapper.getPlugin();
-                springPlugin.getApplicationContext().publishEvent(new GJPluginStartedEvent(pluginWrapper.getPluginId(), springPlugin));
+                springPlugin.getApplicationContext().publishEvent(
+                        new GJPluginStartedEvent(pluginWrapper.getPluginId(),
+                                (GJPluginDescriptor) pluginWrapper.getDescriptor()));
             }
             return pluginState;
         } catch (Exception e) {
@@ -276,7 +280,9 @@ public class GJPluginManager extends DefaultPluginManager implements Application
             PluginState pluginState = super.stopPlugin(pluginId);
             if (previousState != pluginState) {
                 GJSpringPlugin springPlugin = (GJSpringPlugin) pluginWrapper.getPlugin();
-                springPlugin.getApplicationContext().publishEvent(new GJPluginStoppedEvent(pluginWrapper.getPluginId(), springPlugin));
+                springPlugin.getApplicationContext().publishEvent(
+                        new GJPluginStoppedEvent(pluginWrapper.getPluginId(),
+                                (GJPluginDescriptor) pluginWrapper.getDescriptor()));
             }
             return pluginState;
         } catch (Exception e) {
@@ -339,7 +345,8 @@ public class GJPluginManager extends DefaultPluginManager implements Application
             springPlugin.stop();
             pluginWrapper.setPluginState(PluginState.DISABLED);
             springPlugin.getApplicationContext().publishEvent(
-                    new GJPluginDisabledEvent(pluginId, pluginId));
+                    new GJPluginDisabledEvent(pluginId,
+                            (GJPluginDescriptor) pluginWrapper.getDescriptor()));
             log.info("[Lifecycle] Plugin {} disabled", pluginId);
             return true;
         } catch (Exception e) {
@@ -360,7 +367,8 @@ public class GJPluginManager extends DefaultPluginManager implements Application
         log.info("[HotReload] Publishing BeforeUnloadEvent for plugin {}", pluginId);
         try {
             springPlugin.getApplicationContext().publishEvent(
-                    new GJPluginBeforeUnloadEvent(pluginId, springPlugin));
+                    new GJPluginBeforeUnloadEvent(
+                            (GJPluginDescriptor) pluginWrapper.getDescriptor()));
         } catch (PluginHotReloadVetoException e) {
             log.warn("[HotReload] Unload vetoed for plugin {}: {}", pluginId, e.getMessage());
             return false;
@@ -394,7 +402,8 @@ public class GJPluginManager extends DefaultPluginManager implements Application
             PluginState state = doStartPlugin(pluginId);
             GJSpringPlugin springPlugin = (GJSpringPlugin) getPlugin(pluginId).getPlugin();
             springPlugin.getApplicationContext().publishEvent(
-                    new GJPluginAfterInstallEvent(pluginId, springPlugin));
+                    new GJPluginAfterInstallEvent(
+                            (GJPluginDescriptor) getPlugin(pluginId).getDescriptor()));
             log.info("[HotReload] Plugin {} installed, state: {}", pluginId, state);
             return state;
         } catch (IOException e) {

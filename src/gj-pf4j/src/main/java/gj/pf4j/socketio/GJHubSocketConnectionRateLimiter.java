@@ -4,11 +4,14 @@
 
 package gj.pf4j.socketio;
 
+import com.corundumstudio.socketio.SocketIOServer;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.atomic.AtomicLong;
 
 @Component
+@ConditionalOnBean(SocketIOServer.class)
 public class GJHubSocketConnectionRateLimiter {
     private final long maxConnectionsPerSecond;
     private final AtomicLong counter = new AtomicLong(0);

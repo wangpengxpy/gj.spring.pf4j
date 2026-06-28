@@ -8,7 +8,7 @@ import org.springframework.context.ApplicationContext;
 @Setter
 @Getter
 @Builder
-class GJPluginContext {
+public class GJPluginContext {
     public String pluginId;
     public String path;
     public String version;
@@ -16,7 +16,6 @@ class GJPluginContext {
     public int order;
     public ClassLoader classLoader;
     public ApplicationContext applicationContext;
-    public ApplicationContext mainApplicationContext;
-    public boolean mainApplicationStarted;
+    public gj.pf4j.descriptor.GJPluginDescriptor descriptor;
     public boolean everStarted;
 }

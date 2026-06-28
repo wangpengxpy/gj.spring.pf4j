@@ -137,6 +137,7 @@ class JpaEntityTableMetaParser {
                     field.getName(),
                     fieldType,
                     columnTypeOverride,
+                    null,  // jdbcType — JPA does not use MyBatis jdbcType
                     isPrimaryKey,
                     insertStrategy
             ));
@@ -162,7 +163,7 @@ class JpaEntityTableMetaParser {
                 ColumnMeta old = columns.get(idIndex);
                 columns.set(idIndex, new ColumnMeta(
                         old.columnName(), old.fieldName(), old.type(),
-                        old.columnTypeOverride(), true, old.insertStrategy()
+                        old.columnTypeOverride(), old.jdbcType(), true, old.insertStrategy()
                 ));
                 primaryKeyColumn = old.columnName();
                 primaryKeyType = old.type().getSimpleName();

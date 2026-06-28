@@ -10,6 +10,7 @@ import gj.pf4j.migration.DatabaseTable;
 import gj.pf4j.migration.DbType;
 import gj.pf4j.migration.DdlStatement;
 import gj.pf4j.migration.Dialect;
+import org.apache.ibatis.type.JdbcType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +27,7 @@ public enum SqliteDialect implements Dialect {
 
     private static final Logger log = LoggerFactory.getLogger(SqliteDialect.class);
     private static final LinkedHashMap<Class<?>, String> MAPPING = new LinkedHashMap<>();
+    private static final EnumMap<JdbcType, String> JDBC_MAPPING = new EnumMap<>(JdbcType.class);
 
     static {
         MAPPING.put(String.class,        "TEXT");
@@ -47,6 +49,32 @@ public enum SqliteDialect implements Dialect {
         MAPPING.put(BigDecimal.class,    "REAL");
         MAPPING.put(UUID.class,          "TEXT");
         MAPPING.put(byte[].class,        "BLOB");
+
+        JDBC_MAPPING.put(JdbcType.VARCHAR,       "TEXT");
+        JDBC_MAPPING.put(JdbcType.CHAR,          "TEXT");
+        JDBC_MAPPING.put(JdbcType.LONGVARCHAR,   "TEXT");
+        JDBC_MAPPING.put(JdbcType.CLOB,          "TEXT");
+        JDBC_MAPPING.put(JdbcType.NCLOB,         "TEXT");
+        JDBC_MAPPING.put(JdbcType.TINYINT,       "INTEGER");
+        JDBC_MAPPING.put(JdbcType.SMALLINT,      "INTEGER");
+        JDBC_MAPPING.put(JdbcType.INTEGER,       "INTEGER");
+        JDBC_MAPPING.put(JdbcType.BIGINT,        "INTEGER");
+        JDBC_MAPPING.put(JdbcType.FLOAT,         "REAL");
+        JDBC_MAPPING.put(JdbcType.DOUBLE,        "REAL");
+        JDBC_MAPPING.put(JdbcType.REAL,          "REAL");
+        JDBC_MAPPING.put(JdbcType.DECIMAL,       "REAL");
+        JDBC_MAPPING.put(JdbcType.NUMERIC,       "REAL");
+        JDBC_MAPPING.put(JdbcType.BOOLEAN,       "INTEGER");
+        JDBC_MAPPING.put(JdbcType.BIT,           "INTEGER");
+        JDBC_MAPPING.put(JdbcType.DATE,          "TEXT");
+        JDBC_MAPPING.put(JdbcType.TIME,          "TEXT");
+        JDBC_MAPPING.put(JdbcType.TIMESTAMP,     "TEXT");
+        JDBC_MAPPING.put(JdbcType.TIMESTAMP_WITH_TIMEZONE, "TEXT");
+        JDBC_MAPPING.put(JdbcType.BLOB,          "BLOB");
+        JDBC_MAPPING.put(JdbcType.BINARY,        "BLOB");
+        JDBC_MAPPING.put(JdbcType.VARBINARY,     "BLOB");
+        JDBC_MAPPING.put(JdbcType.LONGVARBINARY, "BLOB");
+        JDBC_MAPPING.put(JdbcType.OTHER,         "TEXT");
     }
 
     @Override public DbType dbType() { return DbType.SQLite; }
@@ -54,9 +82,15 @@ public enum SqliteDialect implements Dialect {
     @Override public String quoteIdentifier(String name) { return "\"" + name + "\""; }
 
     @Override
-    public String resolveStoreType(Class<?> javaType, String annotationOverride) {
+    public String resolveStoreType(Class<?> javaType, JdbcType jdbcType, String annotationOverride) {
         if (annotationOverride != null && !annotationOverride.isEmpty()) {
             return annotationOverride;
+        }
+        if (jdbcType != null && jdbcType != JdbcType.UNDEFINED) {
+            String sqlType = JDBC_MAPPING.get(jdbcType);
+            if (sqlType != null) {
+                return sqlType;
+            }
         }
         return MAPPING.entrySet().stream()
                 .filter(e -> e.getKey().isAssignableFrom(javaType))

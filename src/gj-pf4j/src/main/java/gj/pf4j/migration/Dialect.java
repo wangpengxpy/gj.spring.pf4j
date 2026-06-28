@@ -11,7 +11,7 @@ import gj.pf4j.migration.mysql.MySqlDialect;
 import gj.pf4j.migration.oracle.OracleDialect;
 import gj.pf4j.migration.postgresql.PostgreSqlDialect;
 import gj.pf4j.migration.sqlite.SqliteDialect;
-
+import org.apache.ibatis.type.JdbcType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,11 +33,14 @@ public interface Dialect {
     // ── Type Mapping ────────────────────────────────────────────
 
     /**
-     * Resolve type + annotation override to database column type.
-     * @param type                 field type
-     * @param annotationOverride   {@code @ColumnType} annotation value, may be null
+     * Resolve Java type + JdbcType + annotation override to database column type.
+     * Priority: annotationOverride &gt; jdbcType mapping &gt; Java type mapping.
+     *
+     * @param type               field type
+     * @param jdbcType           {@code @TableField.jdbcType()}, may be {@code null} for JPA entities
+     * @param annotationOverride {@code @ColumnType} annotation value, may be {@code null}
      */
-    String resolveStoreType(Class<?> type, String annotationOverride);
+    String resolveStoreType(Class<?> type, JdbcType jdbcType, String annotationOverride);
 
     // ── Rendering ────────────────────────────────────────────────
 

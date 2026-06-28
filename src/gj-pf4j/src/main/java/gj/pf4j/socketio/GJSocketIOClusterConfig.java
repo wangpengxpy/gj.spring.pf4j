@@ -4,6 +4,7 @@ import gj.pf4j.redis.IGJRedisBusService;
 import gj.pf4j.redis.IGJRedisService;
 import gj.pf4j.socketio.cluster.*;
 
+import com.corundumstudio.socketio.SocketIOServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,6 +15,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
+@ConditionalOnBean(SocketIOServer.class)
 public class GJSocketIOClusterConfig {
 
     private static final Logger log = LoggerFactory.getLogger(GJSocketIOClusterConfig.class);

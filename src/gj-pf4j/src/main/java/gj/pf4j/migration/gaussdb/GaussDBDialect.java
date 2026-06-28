@@ -13,7 +13,7 @@ import gj.pf4j.migration.DdlStatement;
 import gj.pf4j.migration.Dialect;
 import gj.pf4j.migration.SchemaExtractor;
 import gj.pf4j.migration.postgresql.PostgreSqlSchemaExtractor;
-
+import org.apache.ibatis.type.JdbcType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,6 +31,7 @@ public enum GaussDBDialect implements Dialect {
 
     private static final Logger log = LoggerFactory.getLogger(GaussDBDialect.class);
     private static final LinkedHashMap<Class<?>, String> MAPPING = new LinkedHashMap<>();
+    private static final EnumMap<JdbcType, String> JDBC_MAPPING = new EnumMap<>(JdbcType.class);
 
     static {
         MAPPING.put(String.class,          "VARCHAR(255)");
@@ -54,6 +55,32 @@ public enum GaussDBDialect implements Dialect {
         MAPPING.put(BigDecimal.class,      "NUMERIC(19,2)");
         MAPPING.put(UUID.class,            "UUID");
         MAPPING.put(byte[].class,          "BYTEA");
+
+        JDBC_MAPPING.put(JdbcType.VARCHAR,       "VARCHAR(255)");
+        JDBC_MAPPING.put(JdbcType.CHAR,          "CHAR(1)");
+        JDBC_MAPPING.put(JdbcType.LONGVARCHAR,   "TEXT");
+        JDBC_MAPPING.put(JdbcType.CLOB,          "TEXT");
+        JDBC_MAPPING.put(JdbcType.NCLOB,         "TEXT");
+        JDBC_MAPPING.put(JdbcType.TINYINT,       "SMALLINT");
+        JDBC_MAPPING.put(JdbcType.SMALLINT,      "SMALLINT");
+        JDBC_MAPPING.put(JdbcType.INTEGER,       "INTEGER");
+        JDBC_MAPPING.put(JdbcType.BIGINT,        "BIGINT");
+        JDBC_MAPPING.put(JdbcType.FLOAT,         "REAL");
+        JDBC_MAPPING.put(JdbcType.DOUBLE,        "DOUBLE PRECISION");
+        JDBC_MAPPING.put(JdbcType.REAL,          "REAL");
+        JDBC_MAPPING.put(JdbcType.DECIMAL,       "NUMERIC(19,2)");
+        JDBC_MAPPING.put(JdbcType.NUMERIC,       "NUMERIC(19,2)");
+        JDBC_MAPPING.put(JdbcType.BOOLEAN,       "BOOLEAN");
+        JDBC_MAPPING.put(JdbcType.BIT,           "BOOLEAN");
+        JDBC_MAPPING.put(JdbcType.DATE,          "DATE");
+        JDBC_MAPPING.put(JdbcType.TIME,          "TIME");
+        JDBC_MAPPING.put(JdbcType.TIMESTAMP,     "TIMESTAMP");
+        JDBC_MAPPING.put(JdbcType.TIMESTAMP_WITH_TIMEZONE, "TIMESTAMPTZ");
+        JDBC_MAPPING.put(JdbcType.BLOB,          "BYTEA");
+        JDBC_MAPPING.put(JdbcType.BINARY,        "BYTEA");
+        JDBC_MAPPING.put(JdbcType.VARBINARY,     "BYTEA");
+        JDBC_MAPPING.put(JdbcType.LONGVARBINARY, "BYTEA");
+        JDBC_MAPPING.put(JdbcType.OTHER,         "JSONB");
     }
 
     @Override public DbType dbType() { return DbType.GaussDB; }
@@ -62,9 +89,15 @@ public enum GaussDBDialect implements Dialect {
     @Override public String quoteIdentifier(String name) { return "\"" + name + "\""; }
 
     @Override
-    public String resolveStoreType(Class<?> javaType, String annotationOverride) {
+    public String resolveStoreType(Class<?> javaType, JdbcType jdbcType, String annotationOverride) {
         if (annotationOverride != null && !annotationOverride.isEmpty()) {
             return annotationOverride;
+        }
+        if (jdbcType != null && jdbcType != JdbcType.UNDEFINED) {
+            String sqlType = JDBC_MAPPING.get(jdbcType);
+            if (sqlType != null) {
+                return sqlType;
+            }
         }
         return MAPPING.entrySet().stream()
                 .filter(e -> e.getKey().isAssignableFrom(javaType))

@@ -7,13 +7,9 @@ package gj.pf4j.anonymous;
 import java.util.Collection;
 
 /**
- * Registry of plugin endpoints marked with {@link AllowAnonymous @AllowAnonymous}.
- * <p>
- * Populated automatically by the framework when plugins start —
- * plugin authors only need to add the annotation. Host applications
- * inject this bean into their Spring Security configuration and call
- * {@link #isAnonymous(String, String)} on each request to decide
- * whether to permit anonymous access.
+ * Read-only registry of plugin anonymous endpoints.
+ * Injected by the host application into its Spring Security configuration
+ * to query anonymous paths and for operational visibility.
  *
  * <p><strong>Host application integration (MVC):</strong>
  * <pre>{@code
@@ -39,17 +35,6 @@ import java.util.Collection;
  * }</pre>
  */
 public interface PluginAnonymousPathRegistry {
-
-    /**
-     * Register an anonymous path entry. Called by the framework
-     * during plugin controller registration.
-     */
-    void register(String pluginId, AnonymousPathEntry entry);
-
-    /**
-     * Unregister all anonymous paths belonging to the given plugin.
-     */
-    void unregisterByPlugin(String pluginId);
 
     /**
      * Check whether a request path + HTTP method combination

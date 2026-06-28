@@ -19,35 +19,113 @@ A lightweight, modular plugin framework powered by PF4J and Spring, with no heav
 
 1. [Overview](#1-overview)
 2. [Quick Start](#2-quick-start)
+    * [2.1 Install the Archetype Locally](#21-install-the-archetype-locally)
+    * [2.2 Generate a Plugin Project](#22-generate-a-plugin-project)
+    * [2.3 Generated Project Structure](#23-generated-project-structure)
 3. [Plugin Project Structure](#3-plugin-project-structure)
+    * [3.1 Directory Conventions](#31-directory-conventions)
+    * [3.2 plugin.properties](#32-pluginproperties)
+    * [3.3 {pluginId}.properties (Plugin Business Config)](#33-pluginidproperties-plugin-business-config)
+    * [3.4 pom-parent.xml Build Rules](#34-pom-parentxml-build-rules)
+    * [3.5 Plugin Dependency Resolution](#35-plugin-dependency-resolution)
 4. [Plugin Lifecycle](#4-plugin-lifecycle)
+    * [4.1 Plugin Entry Class](#41-plugin-entry-class)
+    * [4.2 Lifecycle Flow](#42-lifecycle-flow)
+    * [4.3 Key Constraints](#43-key-constraints)
 5. [REST Endpoints](#5-rest-endpoints)
     * [5.1 Basic Usage](#51-basic-usage)
     * [5.2 Spring MVC vs. WebFlux Dual Routing](#52-spring-mvc-vs-webflux-dual-routing)
     * [5.3 Anonymous Access](#53-anonymous-access)
+        * [5.3.1 Annotation-Based Controllers](#531-annotation-based-controllers)
+        * [5.3.2 WebFlux Functional Routes](#532-webflux-functional-routes)
 6. [Data Access](#6-data-access)
-    * [6.1 MyBatis-Plus](#61-mybatis-plus-data-access)
-    * [6.2 JPA](#62-jpa-data-access)
+    * [6.1 MyBatis-Plus Data Access](#61-mybatis-plus-data-access)
+    * [6.2 JPA Data Access](#62-jpa-data-access)
     * [6.3 SQL Keyword Quoting](#63-sql-keyword-quoting)
 7. [Database Auto-Migration](#7-database-auto-migration)
+    * [7.1 Supported Databases](#71-supported-databases)
+    * [7.2 Production Safety](#72-production-safety)
+    * [7.3 Plugin Auto-Migration](#73-plugin-auto-migration)
+    * [7.4 Share Model Migration](#74-share-model-migration)
 8. [Object Mapping](#8-object-mapping)
+    * [8.1 Mapping Configuration Class](#81-mapping-configuration-class)
+    * [8.2 Using ModelMapper](#82-using-modelmapper)
+    * [8.3 Mapping Registration Mechanism](#83-mapping-registration-mechanism)
 9. [Plugin Configuration Management](#9-plugin-configuration-management)
+    * [9.1 Configuration Class](#91-configuration-class)
+    * [9.2 Configuration File](#92-configuration-file)
+    * [9.3 Injection and Usage](#93-injection-and-usage)
+    * [9.4 Configuration Source Priority](#94-configuration-source-priority)
 10. [Real-Time Communication](#10-real-time-communication)
+    * [10.0 Client Integration](#100-client-integration)
+    * [10.1 Creating a Hub](#101-creating-a-hub)
+    * [10.2 Client Push API](#102-client-push-api)
+    * [10.3 Group Management API](#103-group-management-api)
+    * [10.4 Hub Context](#104-hub-context)
+    * [10.5 Server-Side Configuration](#105-server-side-configuration)
+    * [10.6 Cluster Mode (Distributed Deployment)](#106-cluster-mode-distributed-deployment)
 11. [Internationalization (i18n)](#11-internationalization-i18n)
+    * [11.1 Plugin i18n Files](#111-plugin-i18n-files)
+    * [11.2 Injection and Usage](#112-injection-and-usage)
+    * [11.3 Fallback Mechanism](#113-fallback-mechanism)
 12. [Import/Export](#12-importexport)
+    * [12.1 Export Example](#121-export-example)
+    * [12.2 Import Example](#122-import-example)
+    * [12.3 Header i18n](#123-header-i18n)
 13. [Scheduled Tasks](#13-scheduled-tasks)
+    * [13.1 Dependency Note](#131-dependency-note)
+    * [13.2 Creating a Scheduled Job](#132-creating-a-scheduled-job)
+    * [13.3 @PluginJob Parameters](#133-pluginjob-parameters)
+    * [13.4 Cron Expression Examples](#134-cron-expression-examples)
+    * [13.5 Manual Trigger (Injecting Scheduler)](#135-manual-trigger-injecting-scheduler)
 14. [In-Process Event Bus](#14-in-process-event-bus)
+    * [14.1 Defining Events](#141-defining-events)
+    * [14.2 Creating Listeners](#142-creating-listeners)
+    * [14.3 Publishing Events](#143-publishing-events)
+    * [14.4 Wildcard Matching](#144-wildcard-matching)
 15. [JSON Serialization — ObjectMapper](#15-json-serialization--objectmapper)
 16. [OpenAPI Documentation](#16-openapi-documentation)
+    * [16.1 Automatic Grouping](#161-automatic-grouping)
+    * [16.2 Controller Example (with Swagger Annotations)](#162-controller-example-with-swagger-annotations)
+    * [16.3 Access URL](#163-access-url)
 17. [Plugin Packaging & Deployment](#17-plugin-packaging--deployment)
+    * [16.1 Build the Plugin](#161-build-the-plugin)
+    * [16.2 Output Directory Structure](#162-output-directory-structure)
+    * [16.3 MANIFEST.MF](#163-manifestmf)
+    * [16.4 Deploy to the Host Application](#164-deploy-to-the-host-application)
+    * [16.5 Version Management](#165-version-management)
 18. [Runtime Plugin Management API](#18-runtime-plugin-management-api)
+    * [18.1 Injecting GJPluginService](#181-injecting-gjpluginservice)
+    * [18.2 Load and Start All Plugins](#182-load-and-start-all-plugins)
+    * [18.3 Install a Plugin](#183-install-a-plugin)
+    * [18.4 Disable a Plugin](#184-disable-a-plugin)
+    * [18.5 Restart a Plugin](#185-restart-a-plugin)
+    * [18.6 Unload / Delete a Plugin](#186-unload--delete-a-plugin)
+    * [18.7 Reload All Plugins](#187-reload-all-plugins)
 19. [Plugin Hot-Reload](#19-plugin-hot-reload)
+    * [19.1 Concept & Configuration](#191-concept--configuration)
+    * [19.2 manual Mode — API-Driven Workflow](#192-manual-mode--api-driven-workflow)
+    * [19.3 manual Mode — App Store Integration](#193-manual-mode--app-store-integration)
+    * [19.4 manual Mode — Multi-Node Grayscale](#194-manual-mode--multi-node-grayscale)
+    * [19.5 watch Mode — File Watcher](#195-watch-mode--file-watcher)
+    * [19.6 Lifecycle Events](#196-lifecycle-events)
+    * [19.7 Event Subscription Example](#197-event-subscription-example)
 20. [Appendix: Host Application Integration](#20-appendix-host-application-integration)
-    * [Version Compatibility](#201-version-compatibility)
-    * [Host Application Entry Point](#202-host-application-entry-point)
-    * [Optional: @GJModelMapperScan (Shared Models)](#203-optional-gjmodelmapperscan-shared-models)
+    * [20.1 Version Compatibility](#201-version-compatibility)
+    * [20.2 Host Application Entry Point](#202-host-application-entry-point)
+    * [20.3 Optional: @GJModelMapperScan (Shared Models)](#203-optional-gjmodelmapperscan-shared-models)
 21. [Claude Code Integration](#21-claude-code-integration)
 22. [FAQ](#22-faq)
+    * [Q1: Plugin startup fails with plugin.id mismatch error?](#q1-plugin-startup-fails-with-pluginid-mismatch-error)
+    * [Q2: Plugin failed to start / how to troubleshoot startup failure?](#q2-plugin-failed-to-start--how-to-troubleshoot-startup-failure)
+    * [Q3: SQL works in MySQL but fails on DM/PostgreSQL with "invalid identifier"?](#q3-sql-works-in-mysql-but-fails-on-dmpostgresql-with-invalid-identifier)
+    * [Q4: Host app has Controllers but they don't appear in Swagger-UI?](#q4-host-app-has-controllers-but-they-dont-appear-in-swagger-ui)
+    * [Q5: What is the minimum configuration for the host app?](#q5-what-is-the-minimum-configuration-for-the-host-app)
+    * [Q6: How to share ModelMapper mappings between host app and plugins?](#q6-how-to-share-modelmapper-mappings-between-host-app-and-plugins)
+    * [Q7: Does auto-migration ever drop tables or columns?](#q7-does-auto-migration-ever-drop-tables-or-columns)
+    * [Q8: JPA @Entity / JpaRepository beans not working — no error but not injected?](#q8-jpa-entity--jparepository-beans-not-working--no-error-but-not-injected)
+    * [Q9: I set spring.jpa.hibernate.ddl-auto=update but it's not working?](#q9-i-set-springjpahibernateddl-autoupdate-but-its-not-working)
+    * [Q10: Why aren't @OneToMany / @ManyToOne / @Embedded / @Inheritance generated by auto-migration?](#q10-why-arent-onetomany--manytoone--embedded--inheritance-generated-by-auto-migration)
 
 ---
 
@@ -99,7 +177,7 @@ mvn clean install
 mvn archetype:generate \
   -DarchetypeGroupId=io.github.wangpengxpy \
   -DarchetypeArtifactId=gj-archetype \
-  -DarchetypeVersion=1.1.0 \
+  -DarchetypeVersion=1.2.0 \
   -DgroupId=com.example \
   -DpluginName=user \
   -DpackagePrefix=gj.module
@@ -405,14 +483,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/v1/user")
 public class UserController {
 
     private final UserService userService;
-
-    public UserController(UserService userService) {
-        this.userService = userService;
-    }
 
     @GetMapping("/list")
     public List<UserResponse> getList() {
@@ -466,15 +541,11 @@ import java.util.List;
 import static org.springframework.web.reactive.function.server.RequestPredicates.GET;
 
 @Configuration
+@RequiredArgsConstructor
 public class UserRouterConfig {
 
     private final GJPluginWebFluxRouterFunctionRegistry registry;
     private final UserHandler handler;
-
-    public UserRouterConfig(GJPluginWebFluxRouterFunctionRegistry registry, UserHandler handler) {
-        this.registry = registry;
-        this.handler = handler;
-    }
 
     @PostConstruct
     public void registerRoutes() {
@@ -491,9 +562,9 @@ public class UserRouterConfig {
 
 ### 5.3 Anonymous Access
 
-Plugins can mark controller classes or handler methods for anonymous (unauthenticated) access using the `@AllowAnonymous` annotation — similar to .NET Core's `[AllowAnonymous]`. The framework automatically scans the annotation, registers the paths into a `PluginAnonymousPathRegistry` bean, and the host application queries it from its Spring Security configuration.
+Plugins can mark controller classes or handler methods for anonymous (unauthenticated) access using the `@AllowAnonymous` annotation. The framework automatically scans the annotation, registers the paths into a `PluginAnonymousPathRegistry` bean, and the host application queries it from its Spring Security configuration.
 
-#### Plugin Usage
+#### 5.3.1 Annotation-Based Controllers
 
 `@AllowAnonymous` can be placed on a **class** (all methods in the controller become anonymous) or on individual **methods**. Method-level takes precedence over class-level. The optional `reason` field helps with operational auditing.
 
@@ -603,6 +674,56 @@ public class SecurityConfig {
 }
 ```
 
+#### 5.3.2 WebFlux Functional Routes
+
+For WebFlux functional `RouterFunction<ServerResponse>` routes, use `GJRouterFunctions.route()` or `GJRouterFunctions.wrap()` instead of `@AllowAnonymous`. The anonymous declaration is built into the route definition DSL.
+
+**Common case (90%) — `route()`:**
+
+```java
+import static gj.pf4j.webflux.GJRouterFunctions.route;
+
+@Configuration
+public class MyRouterConfig {
+    @Bean
+    public RouterFunction<ServerResponse> myRoutes() {
+        return route()
+            .GET("/api/public/status", handler::status, "Public status check")  // anonymous
+            .GET("/api/health", handler::health, "Health check")               // anonymous
+            .POST("/api/secure/data", handler::data)                           // authenticated
+            .build();
+    }
+}
+```
+
+**Complex case (10%) — Spring native `RouterFunctions.route()` + `wrap()`:**
+
+Use when you need `nest`, `RequestPredicate`, or other Spring Builder capabilities:
+
+```java
+import static gj.pf4j.webflux.GJRouterFunctions.wrap;
+
+@Configuration
+public class AdvancedRouterConfig {
+    @Bean
+    public RouterFunction<ServerResponse> advancedRoutes() {
+        RouterFunction<ServerResponse> function = RouterFunctions.route()
+            .nest(RequestPredicates.path("/api/v2"), v2 -> v2
+                .GET("/data", RequestPredicates.accept(JSON), handler::getData)
+                .POST("/data", RequestPredicates.contentType(JSON), handler::postData)
+            )
+            .build();
+
+        return wrap(function)
+            .anonymous("/api/v2/data", "GET", "Query data")
+            .anonymous("/api/v2/data", "POST", "Create data")
+            .build();
+    }
+}
+```
+
+> Annotation-based controllers use `@AllowAnonymous` (§5.3.1); functional RouterFunction routes use `GJRouterFunctions.route()` or `GJRouterFunctions.wrap()`. Both mechanisms feed into the same `PluginAnonymousPathRegistry` — host applications query it the same way via `isAnonymous()`.
+
 For operational visibility, inject the registry and call `listAll()`, `listByPlugin(pluginId)`, or `getCount()` to expose the anonymous endpoint inventory through REST or JMX endpoints.
 
 ---
@@ -675,13 +796,10 @@ import java.util.List;
 @Slf4j
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     private final UserMapper userMapper;
-
-    public UserServiceImpl(UserMapper userMapper) {
-        this.userMapper = userMapper;
-    }
 
     @Override
     public List<UserResponse> getList() {
@@ -803,13 +921,10 @@ import java.util.List;
 @Slf4j
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
-
-    public UserServiceImpl(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
 
     @Override
     public List<UserEntity> getList() {
@@ -1005,15 +1120,11 @@ The framework builds and registers a `ModelMapper` bean automatically. Inject it
 
 ```java
 @Service
+@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     private final ModelMapper modelMapper;
     private final UserMapper userMapper;
-
-    public UserServiceImpl(ModelMapper modelMapper, UserMapper userMapper) {
-        this.modelMapper = modelMapper;
-        this.userMapper = userMapper;
-    }
 
     @Override
     public List<UserDTO> getList() {
@@ -1076,13 +1187,10 @@ Any Spring bean in the plugin can inject the configuration class:
 
 ```java
 @Service
+@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     private final UserConfig config;
-
-    public UserServiceImpl(UserConfig config) {
-        this.config = config;
-    }
 
     public void doSomething() {
         if (config.isEnabled()) {
@@ -1286,12 +1394,17 @@ Map<String, String> queryParams = ctx.getQueryParams();
 
 ### 10.5 Server-Side Configuration
 
-Configure the Socket.IO server in the host application's configuration file as needed, for example:
+Socket.IO is **disabled by default**. To enable it, set `socketio.enabled=true` in the host
+application configuration:
 
 ```properties
+socketio.enabled=true
 socketio.port=9600
 socketio.maxConnectionsPerSecond=10
 ```
+
+If Socket.IO is not required (e.g. REST-only applications), omit this property entirely —
+the Socket.IO server will not start, saving resources and avoiding port conflicts.
 
 See `GJSocketIOConfig` source for all available properties and their defaults.
 
@@ -1432,14 +1545,11 @@ user.delete.confirm=确认删除该用户？
 
 ```java
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/v1/user")
 public class UserController {
 
     private final MessageSource messageSource;
-
-    public UserController(MessageSource messageSource) {
-        this.messageSource = messageSource;
-    }
 
     @GetMapping("/title")
     public String getTitle(Locale locale) {
@@ -1465,15 +1575,11 @@ Built on [EasyExcel](https://easyexcel.opensource.alibaba.com/), provides `IImpo
 
 ```java
 @Service
+@RequiredArgsConstructor
 public class UserExportService {
 
     private final IExportManager exportManager;
     private final UserMapper userMapper;
-
-    public UserExportService(IExportManager exportManager, UserMapper userMapper) {
-        this.exportManager = exportManager;
-        this.userMapper = userMapper;
-    }
 
     /**
      * Single-sheet export
@@ -1507,13 +1613,10 @@ public class UserExportService {
 
 ```java
 @Service
+@RequiredArgsConstructor
 public class UserImportService {
 
     private final IImportManager importManager;
-
-    public UserImportService(IImportManager importManager) {
-        this.importManager = importManager;
-    }
 
     /**
      * Multi-sheet import
@@ -1608,13 +1711,10 @@ For scenarios requiring manual trigger in business logic, inject the Quartz `Sch
 
 ```java
 @Service
+@RequiredArgsConstructor
 public class ReportService {
 
     private final Scheduler scheduler;
-
-    public ReportService(Scheduler scheduler) {
-        this.scheduler = scheduler;
-    }
 
     public void triggerReport(String pluginId) throws SchedulerException {
         scheduler.triggerJob(new JobKey(pluginId + ":dailyReport", pluginId));
@@ -1676,13 +1776,10 @@ Inject `GJPluginLocalEventBus` into any Spring bean:
 
 ```java
 @Service
+@RequiredArgsConstructor
 public class UserService {
 
     private final GJPluginLocalEventBus eventBus;
-
-    public UserService(GJPluginLocalEventBus eventBus) {
-        this.eventBus = eventBus;
-    }
 
     public void createUser(String name) {
         // create user logic ...
@@ -1827,14 +1924,11 @@ In production (non-dev/debug profiles), the plugin directory is located at `plug
 
 ```java
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/admin/plugins")
 public class PluginAdminController {
 
     private final GJPluginService pluginService;
-
-    public PluginAdminController(GJPluginService pluginService) {
-        this.pluginService = pluginService;
-    }
 
     // ... management endpoints
 }
@@ -2021,7 +2115,7 @@ In `dependencyManagement`, import the gj BOM followed by the Spring Boot BOM —
         <dependency>
             <groupId>io.github.wangpengxpy</groupId>
             <artifactId>gj-dependencies</artifactId>
-            <version>1.0.9</version>
+            <version>1.0.10</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -2065,7 +2159,7 @@ You can also skip the BOM and depend on gj-pf4j directly, but you must ensure Sp
 <dependency>
     <groupId>io.github.wangpengxpy</groupId>
     <artifactId>gj-pf4j</artifactId>
-    <version>1.5.0</version>
+    <version>1.6.0</version>
 </dependency>
 ```
 

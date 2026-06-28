@@ -186,30 +186,24 @@ public abstract class GJHub implements GJSocketIOHub {
     CompletableFuture<Void> onClientDisconnectedAsync(SocketIOClient client) {
         String connectionId = client.getSessionId().toString();
         return CompletableFuture.runAsync(() -> {
+            long startTime = System.currentTimeMillis();
+            ConnectionContext context = connections.get(connectionId);
+            if (context == null) {
+                log.warn("No context found for disconnected client: {}", connectionId);
+                return;
+            }
             try {
-                long startTime = System.currentTimeMillis();
-                // 1. Get connection context
-                ConnectionContext context = connections.get(connectionId);
-                if (context == null) {
-                    log.warn("No context found for disconnected client: {}", connectionId);
-                    return;
-                }
-                // 2. Set current thread context
                 setCurrentContext(context);
-                // 3. Call subclass disconnection handler
                 CompletableFuture<Void> future = onDisconnectedAsync();
                 CompletableFuture<Void> safeFuture = future != null ? future : CompletableFuture.completedFuture(null);
                 safeFuture.get();
-                // 4. Clean up connection
-                cleanupConnection(connectionId, context.getUserId());
-                // 5. Update statistics
-                activeConnections.decrementAndGet();
-                long cost = System.currentTimeMillis() - startTime;
                 log.info("Client {} disconnected from {} in {}ms (User: {})",
-                        connectionId, hubName, cost, context.getUserId());
+                        connectionId, hubName, System.currentTimeMillis() - startTime, context.getUserId());
             } catch (Exception e) {
                 log.error("Failed to handle disconnection for client {}: {}", connectionId, e.getMessage(), e);
             } finally {
+                cleanupConnection(connectionId, context.getUserId());
+                activeConnections.decrementAndGet();
                 clearCurrentContext();
             }
         }, asyncExecutor);

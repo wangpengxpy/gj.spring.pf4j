@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.pf4j.Plugin;
 import org.pf4j.PluginFactory;
 import org.pf4j.PluginWrapper;
+import org.springframework.context.support.GenericApplicationContext;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
@@ -34,13 +35,13 @@ public class GJPluginFactory implements PluginFactory {
                     .path(String.valueOf(wrapper.getPluginPath()))
                     .version(wrapper.getDescriptor().getVersion())
                     .description(wrapper.getDescriptor().getPluginDescription())
+                    .descriptor((GJPluginDescriptor) wrapper.getDescriptor())
                     .order(getOrder(wrapper))
                     .classLoader(wrapper.getPluginClassLoader())
-                    .mainApplicationContext(pluginManager.getMainApplicationContext())
-                    .mainApplicationStarted(pluginManager.isMainApplicationStarted())
                     .everStarted(pluginManager.wasEverStarted(wrapper.getPluginId()))
                     .build();
-            return new GJSpringPlugin(pluginContext, plugin);
+            return new GJSpringPlugin(pluginContext, plugin,
+                    (GenericApplicationContext) pluginManager.getMainApplicationContext());
         } catch (Exception e) {
             throw new RuntimeException("Failed to instantiate plugin：" + e.getMessage(), e);
         }

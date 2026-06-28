@@ -154,10 +154,13 @@ public class GJPluginLocalEventBus {
 
         String jsonPayload = serializeEvent(event);
 
-        List<ListenerInfo> matchedListeners = registry.entrySet().stream()
-                .filter(entry -> pathMatcher.match(entry.getKey(), eventName))
-                .flatMap(entry -> entry.getValue().stream())
-                .toList();
+        List<ListenerInfo> matchedListeners;
+        synchronized (registryLock) {
+            matchedListeners = registry.entrySet().stream()
+                    .filter(entry -> pathMatcher.match(entry.getKey(), eventName))
+                    .flatMap(entry -> new ArrayList<>(entry.getValue()).stream())
+                    .toList();
+        }
 
         if (matchedListeners.isEmpty()) {
             log.debug("No listeners matched for event [{}]", eventName);

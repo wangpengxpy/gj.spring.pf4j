@@ -7,6 +7,7 @@ package gj.pf4j;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gj.pf4j.anonymous.DefaultPluginAnonymousPathRegistry;
+import gj.pf4j.anonymous.PluginAnonymousPathRegistrar;
 import gj.pf4j.anonymous.PluginAnonymousPathRegistry;
 import gj.pf4j.eventbus.GJPluginLocalEventBus;
 import gj.pf4j.hotreload.GJPluginHotReloadManager;
@@ -25,7 +26,6 @@ import org.springframework.boot.system.ApplicationHome;
 import org.springframework.context.ApplicationContext;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication.Type;
 import org.springframework.context.annotation.Bean;
@@ -84,18 +84,19 @@ public class GJPluginConfig {
     @Bean("pluginRequestMappingHandlerMapping")
     @ConditionalOnWebApplication(type = Type.SERVLET)
     public GJPluginRequestMappingHandlerMapping pluginRequestMappingHandlerMapping(
-            PluginAnonymousPathRegistry anonymousPathRegistry) {
+            PluginAnonymousPathRegistrar anonymousPathRegistrar) {
         GJPluginRequestMappingHandlerMapping handlerMapping = new GJPluginRequestMappingHandlerMapping();
         handlerMapping.setOrder(-1);
         AntPathMatcher pathMatcher = new AntPathMatcher();
         pathMatcher.setCaseSensitive(false);
         handlerMapping.setPathMatcher(pathMatcher);
         handlerMapping.setPatternParser(null);
-        handlerMapping.setAnonymousPathRegistry(anonymousPathRegistry);
+        handlerMapping.setAnonymousPathRegistry(anonymousPathRegistrar);
         return handlerMapping;
     }
 
     @Bean
+    @ConditionalOnClass(MybatisPlusInterceptor.class)
     @ConditionalOnBean(DataSource.class)
     @ConditionalOnMissingBean(MybatisPlusInterceptor.class)
     public MybatisPlusInterceptor mybatisPlusInterceptor(
@@ -112,6 +113,7 @@ public class GJPluginConfig {
     }
 
     @Bean
+    @ConditionalOnClass(MybatisPlusInterceptor.class)
     @ConditionalOnBean(DataSource.class)
     public GJSqlKeywordQuoteInterceptor sqlKeywordQuoteInterceptor(
             GJTableKeywordRegistry registry) {
@@ -119,6 +121,7 @@ public class GJPluginConfig {
     }
 
     @Bean
+    @ConditionalOnClass(MybatisPlusInterceptor.class)
     public GJPluginMybatisSqlSessionManager pluginMybatisSqlSessionManager(
             DataSource dataSource,
             MybatisPlusInterceptor mybatisPlusInterceptor) {
@@ -133,6 +136,12 @@ public class GJPluginConfig {
     @Bean
     public PluginAnonymousPathRegistry pluginAnonymousPathRegistry() {
         return new DefaultPluginAnonymousPathRegistry();
+    }
+
+    @Bean
+    public PluginAnonymousPathRegistrar pluginAnonymousPathRegistrar(
+            PluginAnonymousPathRegistry registry) {
+        return (PluginAnonymousPathRegistrar) registry;
     }
 
     @Bean
@@ -165,7 +174,6 @@ public class GJPluginConfig {
         ObjectMapper mapper = (objectMapper != null)
                 ? objectMapper
                 : GJJackson.createDefaultObjectMapper();
-        GJJackson.setInstance(mapper);
         return new GJPluginLocalEventBus(mapper);
     }
 

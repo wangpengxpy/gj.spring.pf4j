@@ -6,7 +6,7 @@ package gj.pf4j;
 
 import gj.pf4j.anonymous.AllowAnonymous;
 import gj.pf4j.anonymous.AnonymousPathEntry;
-import gj.pf4j.anonymous.PluginAnonymousPathRegistry;
+import gj.pf4j.anonymous.PluginAnonymousPathRegistrar;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aop.support.AopUtils;
@@ -32,10 +32,10 @@ public class GJPluginRequestMappingHandlerMapping extends RequestMappingHandlerM
 
     private final MultiValueMap<String, RequestMappingInfo> pluginMappingInfo = new LinkedMultiValueMap<>();
 
-    private PluginAnonymousPathRegistry anonymousPathRegistry;
+    private PluginAnonymousPathRegistrar anonymousPathRegistrar;
 
-    public void setAnonymousPathRegistry(PluginAnonymousPathRegistry anonymousPathRegistry) {
-        this.anonymousPathRegistry = anonymousPathRegistry;
+    public void setAnonymousPathRegistry(PluginAnonymousPathRegistrar anonymousPathRegistrar) {
+        this.anonymousPathRegistrar = anonymousPathRegistrar;
     }
 
     @Override
@@ -110,7 +110,7 @@ public class GJPluginRequestMappingHandlerMapping extends RequestMappingHandlerM
                 pluginMappingInfo.add(pluginId, mapping);
 
                 // Core 3: Scan @AllowAnonymous and register to registry
-                if (anonymousPathRegistry != null) {
+                if (anonymousPathRegistrar != null) {
                     AllowAnonymous methodAnno = method.getAnnotation(AllowAnonymous.class);
                     if (methodAnno != null || classAnno != null) {
                         String reason = methodAnno != null && !methodAnno.reason().isEmpty()
@@ -149,13 +149,13 @@ public class GJPluginRequestMappingHandlerMapping extends RequestMappingHandlerM
         int count = 0;
         for (String pattern : patterns) {
             if (methods.isEmpty()) {
-                anonymousPathRegistry.register(pluginId, new AnonymousPathEntry(
+                anonymousPathRegistrar.register(pluginId, new AnonymousPathEntry(
                         pluginId, pattern, "*",
                         controllerClass, methodName, reason, LocalDateTime.now()));
                 count++;
             } else {
                 for (RequestMethod httpMethod : methods) {
-                    anonymousPathRegistry.register(pluginId, new AnonymousPathEntry(
+                    anonymousPathRegistrar.register(pluginId, new AnonymousPathEntry(
                             pluginId, pattern, httpMethod.name(),
                             controllerClass, methodName, reason, LocalDateTime.now()));
                     count++;
@@ -185,9 +185,9 @@ public class GJPluginRequestMappingHandlerMapping extends RequestMappingHandlerM
         return beans;
     }
 
-    void unregisterController(String pluginId) {
-        if (anonymousPathRegistry != null) {
-            anonymousPathRegistry.unregisterByPlugin(pluginId);
+    public void unregisterController(String pluginId) {
+        if (anonymousPathRegistrar != null) {
+            anonymousPathRegistrar.unregisterByPlugin(pluginId);
         }
         List<RequestMappingInfo> mappings = pluginMappingInfo.remove(pluginId);
         if (mappings == null) {

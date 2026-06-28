@@ -9,6 +9,8 @@ import gj.pf4j.GJPluginService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import jakarta.annotation.PreDestroy;
+
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.Map;
@@ -79,6 +81,8 @@ public class GJPluginHotReloadManager {
                 key = watchService.poll(60, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
+                break;
+            } catch (ClosedWatchServiceException e) {
                 break;
             }
             if (key == null) continue;
@@ -195,7 +199,9 @@ public class GJPluginHotReloadManager {
         }
     }
 
+    @PreDestroy
     public void shutdown() {
+        log.info("[HotReload] WatchService shutting down...");
         running = false;
         scheduler.shutdown();
         watchKeys.values().forEach(WatchKey::cancel);
@@ -205,5 +211,6 @@ public class GJPluginHotReloadManager {
         } catch (IOException e) {
             log.warn("[HotReload] WatchService close error: {}", e.getMessage());
         }
+        log.info("[HotReload] WatchService shut down");
     }
 }

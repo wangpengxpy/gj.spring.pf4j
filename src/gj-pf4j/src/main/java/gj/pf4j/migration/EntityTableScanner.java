@@ -11,6 +11,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import gj.pf4j.migration.annotation.ColumnType;
+import org.apache.ibatis.type.JdbcType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -104,6 +105,10 @@ class EntityTableScanner {
             ColumnType columnTypeAnn = field.getAnnotation(ColumnType.class);
             String columnTypeOverride = columnTypeAnn != null ? columnTypeAnn.value() : null;
 
+            JdbcType jdbcType = tableFieldAnn != null && tableFieldAnn.jdbcType() != JdbcType.UNDEFINED
+                    ? tableFieldAnn.jdbcType()
+                    : null;
+
             FieldStrategy insertStrategy = tableFieldAnn != null
                     ? tableFieldAnn.insertStrategy()
                     : FieldStrategy.DEFAULT;
@@ -113,6 +118,7 @@ class EntityTableScanner {
                     field.getName(),
                     field.getType(),
                     columnTypeOverride,
+                    jdbcType,
                     isPrimaryKey,
                     insertStrategy
             ));
@@ -136,7 +142,7 @@ class EntityTableScanner {
                 ColumnMeta old = columns.get(idIndex);
                 columns.set(idIndex, new ColumnMeta(
                         old.columnName(), old.fieldName(), old.type(),
-                        old.columnTypeOverride(), true, old.insertStrategy()
+                        old.columnTypeOverride(), old.jdbcType(), true, old.insertStrategy()
                 ));
                 primaryKeyColumn = old.columnName();
                 primaryKeyType = old.type().getSimpleName();

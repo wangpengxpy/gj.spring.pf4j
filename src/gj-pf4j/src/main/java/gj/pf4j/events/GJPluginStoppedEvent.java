@@ -4,24 +4,28 @@
 
 package gj.pf4j.events;
 
-import gj.pf4j.GJSpringPlugin;
+import gj.pf4j.descriptor.GJPluginDescriptor;
 import org.springframework.context.ApplicationEvent;
 
 import java.io.Serial;
 
 public class GJPluginStoppedEvent extends ApplicationEvent {
 
-    private final GJSpringPlugin springPlugin;
+    private final GJPluginDescriptor descriptor;
 
     @Serial
     private static final long serialVersionUID = 1048404352252169025L;
 
-    public GJPluginStoppedEvent(Object source, GJSpringPlugin springPlugin) {
+    public GJPluginStoppedEvent(Object source, GJPluginDescriptor descriptor) {
         super(source);
-        this.springPlugin = springPlugin;
+        this.descriptor = descriptor;
     }
 
-    public GJSpringPlugin getSpringPlugin() {
-        return springPlugin;
+    public GJPluginDescriptor getPluginDescriptor() {
+        return descriptor;
+    }
+
+    public String getPluginId() {
+        return descriptor.getPluginId();
     }
 }

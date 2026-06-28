@@ -19,35 +19,113 @@
 
 1. [项目概述](#1-项目概述)
 2. [快速开始](#2-快速开始)
+    * [2.1 安装 Archetype 到本地仓库](#21-安装-archetype-到本地仓库)
+    * [2.2 生成插件项目](#22-生成插件项目)
+    * [2.3 生成后的项目结构](#23-生成后的项目结构)
 3. [插件项目结构详解](#3-插件项目结构详解)
+    * [3.1 标准目录约定](#31-标准目录约定)
+    * [3.2 plugin.properties](#32-pluginproperties)
+    * [3.3 {pluginId}.properties（插件业务配置）](#33-pluginidproperties插件业务配置)
+    * [3.4 pom-parent.xml 构建规则](#34-pom-parentxml-构建规则)
+    * [3.5 插件依赖解析](#35-插件依赖解析)
 4. [插件生命周期](#4-插件生命周期)
+    * [4.1 插件入口类](#41-插件入口类)
+    * [4.2 生命周期流程](#42-生命周期流程)
+    * [4.3 关键约束](#43-关键约束)
 5. [REST 端点](#5-rest-端点)
     * [5.1 基本用法](#51-基本用法)
     * [5.2 Spring MVC 与 WebFlux 双路由模式](#52-spring-mvc-与-webflux-双路由模式)
     * [5.3 匿名访问](#53-匿名访问)
+        * [5.3.1 注解式控制器](#531-注解式控制器)
+        * [5.3.2 WebFlux 函数式路由](#532-webflux-函数式路由)
 6. [数据访问](#6-数据访问)
-    * [6.1 MyBatis-Plus](#61-mybatis-plus-数据访问)
-    * [6.2 JPA](#62-jpa-数据访问)
+    * [6.1 MyBatis-Plus 数据访问](#61-mybatis-plus-数据访问)
+    * [6.2 JPA 数据访问](#62-jpa-数据访问)
     * [6.3 SQL 关键字引号处理](#63-sql-关键字引号处理)
 7. [数据库自动迁移](#7-数据库自动迁移)
+    * [7.1 支持的数据库](#71-支持的数据库)
+    * [7.2 生产安全性](#72-生产安全性)
+    * [7.3 插件自动迁移](#73-插件自动迁移)
+    * [7.4 共享模型迁移](#74-共享模型迁移)
 8. [对象映射](#8-对象映射)
+    * [8.1 映射配置类](#81-映射配置类)
+    * [8.2 使用 ModelMapper](#82-使用-modelmapper)
+    * [8.3 映射注册机制](#83-映射注册机制)
 9. [插件配置管理](#9-插件配置管理)
+    * [9.1 配置类](#91-配置类)
+    * [9.2 配置文件](#92-配置文件)
+    * [9.3 注入使用](#93-注入使用)
+    * [9.4 配置来源](#94-配置来源)
 10. [实时通信](#10-实时通信)
+    * [10.0 客户端集成](#100-客户端集成)
+    * [10.1 创建 Hub](#101-创建-hub)
+    * [10.2 客户端推送 API](#102-客户端推送-api)
+    * [10.3 分组管理 API](#103-分组管理-api)
+    * [10.4 Hub 上下文](#104-hub-上下文)
+    * [10.5 服务端配置](#105-服务端配置)
+    * [10.6 集群模式（分布式部署）](#106-集群模式分布式部署)
 11. [国际化 i18n](#11-国际化-i18n)
+    * [11.1 插件 i18n 文件](#111-插件-i18n-文件)
+    * [11.2 注入使用](#112-注入使用)
+    * [11.3 兜底机制](#113-兜底机制)
 12. [导入导出](#12-导入导出)
+    * [12.1 导出示例](#121-导出示例)
+    * [12.2 导入示例](#122-导入示例)
+    * [12.3 表头 i18n](#123-表头-i18n)
 13. [定时任务](#13-定时任务)
+    * [13.1 依赖说明](#131-依赖说明)
+    * [13.2 创建定时任务](#132-创建定时任务)
+    * [13.3 @PluginJob 参数说明](#133-pluginjob-参数说明)
+    * [13.4 Cron 表达式示例](#134-cron-表达式示例)
+    * [13.5 手动触发（注入 Scheduler）](#135-手动触发注入-scheduler)
 14. [进程内事件总线](#14-进程内事件总线)
+    * [14.1 定义事件](#141-定义事件)
+    * [14.2 创建监听器](#142-创建监听器)
+    * [14.3 发布事件](#143-发布事件)
+    * [14.4 通配符匹配](#144-通配符匹配)
 15. [JSON 序列化 — ObjectMapper](#15-json-序列化--objectmapper)
 16. [OpenAPI 文档](#16-openapi-文档)
+    * [16.1 自动分组](#161-自动分组)
+    * [16.2 Controller 示例（配合 Swagger）](#162-controller-示例配合-swagger)
+    * [16.3 访问地址](#163-访问地址)
 17. [插件打包与部署](#17-插件打包与部署)
+    * [16.1 构建插件](#161-构建插件)
+    * [16.2 输出目录结构](#162-输出目录结构)
+    * [16.3 MANIFEST.MF](#163-manifestmf)
+    * [16.4 部署到主应用](#164-部署到主应用)
+    * [16.5 版本管理](#165-版本管理)
 18. [插件运行时管理 API](#18-插件运行时管理-api)
+    * [18.1 注入 GJPluginService](#181-注入-gjpluginservice)
+    * [18.2 加载并启动全部插件](#182-加载并启动全部插件)
+    * [18.3 安装插件](#183-安装插件)
+    * [18.4 禁用插件](#184-禁用插件)
+    * [18.5 重启插件](#185-重启插件)
+    * [18.6 卸载 / 删除插件](#186-卸载--删除插件)
+    * [18.7 重载全部插件](#187-重载全部插件)
 19. [插件热加载](#19-插件热加载)
+    * [19.1 概念与配置](#191-概念与配置)
+    * [19.2 manual 模式 — API 驱动工作流](#192-manual-模式--api-驱动工作流)
+    * [19.3 manual 模式 — 应用商店集成](#193-manual-模式--应用商店集成)
+    * [19.4 manual 模式 — 多节点灰度发布](#194-manual-模式--多节点灰度发布)
+    * [19.5 watch 模式 — 文件监听](#195-watch-模式--文件监听)
+    * [19.6 生命周期事件](#196-生命周期事件)
+    * [19.7 事件订阅示例](#197-事件订阅示例)
 20. [附录：主应用集成](#20-附录主应用集成)
-    * [版本兼容性说明](#201-版本兼容性说明)
-    * [主应用入口配置](#202-主应用入口配置)
-    * [按需配置：@GJModelMapperScan（共享模型）](#203-按需配置gjmodelmapperscan共享模型)
+    * [20.1 版本兼容性说明](#201-版本兼容性说明)
+    * [20.2 主应用入口配置](#202-主应用入口配置)
+    * [20.3 按需配置：@GJModelMapperScan（共享模型）](#203-按需配置gjmodelmapperscan共享模型)
 21. [Claude Code 集成](#21-claude-code-集成)
 22. [FAQ](#22-faq)
+    * [Q1: 插件启动报 plugin.id 与包名不一致错误？](#q1-插件启动报-pluginid-与包名不一致错误)
+    * [Q2: 插件启动失败/启动异常，如何排查？](#q2-插件启动失败启动异常如何排查)
+    * [Q3: SQL 在 MySQL 正常，但切换到达梦/PostgreSQL 报"无效的标识符"？](#q3-sql-在-mysql-正常但切换到达梦postgresql-报无效的标识符)
+    * [Q4: 主应用有 Controller 但 Swagger-UI 下拉菜单里看不到？](#q4-主应用有-controller-但-swagger-ui-下拉菜单里看不到)
+    * [Q5: 主应用最低需要什么配置？](#q5-主应用最低需要什么配置)
+    * [Q6: 如何让主应用和插件共享 ModelMapper 映射？](#q6-如何让主应用和插件共享-modelmapper-映射)
+    * [Q7: 自动迁移会删表或删字段吗？](#q7-自动迁移会删表或删字段吗)
+    * [Q8: 插件 JPA 实体 / Repository 不生效，没报错但注入失败？](#q8-插件-jpa-实体--repository-不生效没报错但注入失败)
+    * [Q9: 配置了 spring.jpa.hibernate.ddl-auto=update 为什么不生效？](#q9-配置了-springjpahibernateddl-autoupdate-为什么不生效)
+    * [Q10: 用了 @OneToMany / @ManyToOne / @Embedded / @Inheritance 为什么没有自动生成关联表？](#q10-用了-onetomany--manytoone--embedded--inheritance-为什么没有自动生成关联表)
 
 ---
 
@@ -99,7 +177,7 @@ mvn clean install
 mvn archetype:generate \
   -DarchetypeGroupId=io.github.wangpengxpy \
   -DarchetypeArtifactId=gj-archetype \
-  -DarchetypeVersion=1.1.0 \
+  -DarchetypeVersion=1.2.0 \
   -DgroupId=com.example \
   -DpluginName=user \
   -DpackagePrefix=gj.module
@@ -404,14 +482,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/v1/user")
 public class UserController {
 
     private final UserService userService;
-
-    public UserController(UserService userService) {
-        this.userService = userService;
-    }
 
     @GetMapping("/list")
     public List<UserResponse> getList() {
@@ -465,15 +540,11 @@ import java.util.List;
 import static org.springframework.web.reactive.function.server.RequestPredicates.GET;
 
 @Configuration
+@RequiredArgsConstructor
 public class UserRouterConfig {
 
     private final GJPluginWebFluxRouterFunctionRegistry registry;
     private final UserHandler handler;
-
-    public UserRouterConfig(GJPluginWebFluxRouterFunctionRegistry registry, UserHandler handler) {
-        this.registry = registry;
-        this.handler = handler;
-    }
 
     @PostConstruct
     public void registerRoutes() {
@@ -490,9 +561,9 @@ public class UserRouterConfig {
 
 ### 5.3 匿名访问
 
-插件可通过 `@AllowAnonymous` 注解将控制器类或方法标记为匿名访问——与 .NET Core 的 `[AllowAnonymous]` 行为一致。框架自动扫描该注解，将路径注册到 `PluginAnonymousPathRegistry` Bean 中，宿主应用在 Spring Security 配置中查询即可。
+插件可通过 `@AllowAnonymous` 注解将控制器类或方法标记为匿名访问。框架自动扫描该注解，将路径注册到 `PluginAnonymousPathRegistry` Bean 中，宿主应用在 Spring Security 配置中查询即可。
 
-#### 插件用法
+#### 5.3.1 注解式控制器
 
 `@AllowAnonymous` 可标注在**类**上（整个 Controller 所有方法匿名），也可标注在单个**方法**上。方法级优先于类级。`reason` 字段选填，用于运维审计。
 
@@ -602,6 +673,56 @@ public class SecurityConfig {
 }
 ```
 
+#### 5.3.2 WebFlux 函数式路由
+
+对于 WebFlux 函数式 `RouterFunction<ServerResponse>` 路由，使用 `GJRouterFunctions.route()` 或 `GJRouterFunctions.wrap()` 替代 `@AllowAnonymous`。匿名声明内置于路由定义 DSL。
+
+**常见场景（90%）— `route()`：**
+
+```java
+import static gj.pf4j.webflux.GJRouterFunctions.route;
+
+@Configuration
+public class MyRouterConfig {
+    @Bean
+    public RouterFunction<ServerResponse> myRoutes() {
+        return route()
+            .GET("/api/public/status", handler::status, "公开查询接口")  // 匿名
+            .GET("/api/health", handler::health, "健康检查")            // 匿名
+            .POST("/api/secure/data", handler::data)                    // 需认证
+            .build();
+    }
+}
+```
+
+**复杂场景（10%）— Spring 原生 `RouterFunctions.route()` + `wrap()`：**
+
+需要使用 `nest`、`RequestPredicate` 等 Spring 原生 Builder 能力时：
+
+```java
+import static gj.pf4j.webflux.GJRouterFunctions.wrap;
+
+@Configuration
+public class AdvancedRouterConfig {
+    @Bean
+    public RouterFunction<ServerResponse> advancedRoutes() {
+        RouterFunction<ServerResponse> function = RouterFunctions.route()
+            .nest(RequestPredicates.path("/api/v2"), v2 -> v2
+                .GET("/data", RequestPredicates.accept(JSON), handler::getData)
+                .POST("/data", RequestPredicates.contentType(JSON), handler::postData)
+            )
+            .build();
+
+        return wrap(function)
+            .anonymous("/api/v2/data", "GET", "查询数据")
+            .anonymous("/api/v2/data", "POST", "创建数据")
+            .build();
+    }
+}
+```
+
+> 注解式控制器使用 `@AllowAnonymous`（§5.3.1）；函数式 RouterFunction 路由使用 `GJRouterFunctions.route()` 或 `GJRouterFunctions.wrap()`。两种机制写入同一个 `PluginAnonymousPathRegistry`——宿主应用通过 `isAnonymous()` 查询方式完全一致。
+
 运维可观测：注入 Registry 后调用 `listAll()`、`listByPlugin(pluginId)` 或 `getCount()` 可查询匿名接口清单，按需暴露为 REST 或 JMX 端点。
 
 ---
@@ -674,13 +795,10 @@ import java.util.List;
 @Slf4j
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     private final UserMapper userMapper;
-
-    public UserServiceImpl(UserMapper userMapper) {
-        this.userMapper = userMapper;
-    }
 
     @Override
     public List<UserResponse> getList() {
@@ -794,15 +912,12 @@ import java.util.List;
 @Slf4j
 @Service
 @Transactional
+    @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
 
-    public UserServiceImpl(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
 
-    @Override
     public List<UserEntity> getList() {
         return userRepository.findAll();
     }
@@ -997,18 +1112,14 @@ public class UserModelMapperConfig implements GJPluginModelMapperConfig {
 框架自动构建并注册 `ModelMapper` Bean，可以直接注入使用：
 
 ```java
+    @RequiredArgsConstructor
 @Service
 public class UserServiceImpl implements UserService {
 
     private final ModelMapper modelMapper;
     private final UserMapper userMapper;
 
-    public UserServiceImpl(ModelMapper modelMapper, UserMapper userMapper) {
-        this.modelMapper = modelMapper;
-        this.userMapper = userMapper;
-    }
 
-    @Override
     public List<UserDTO> getList() {
         return userMapper.selectList(Wrappers.lambdaQuery())
                 .stream()
@@ -1067,17 +1178,14 @@ gj.module.user.api-url=https://api.example.com
 
 插件内任何 Spring Bean 都可以注入配置类：
 
+    @RequiredArgsConstructor
 ```java
 @Service
 public class UserServiceImpl implements UserService {
 
     private final UserConfig config;
 
-    public UserServiceImpl(UserConfig config) {
-        this.config = config;
-    }
 
-    public void doSomething() {
         if (config.isEnabled()) {
             String apiUrl = config.getApiUrl();
             // ...
@@ -1279,12 +1387,16 @@ Map<String, String> queryParams = ctx.getQueryParams();
 
 ### 10.5 服务端配置
 
-在主应用配置文件中按需配置 Socket.IO 服务器参数，例如：
+Socket.IO **默认不启用**。如需启用，在主应用配置中显式设置 `socketio.enabled=true`：
 
 ```properties
+socketio.enabled=true
 socketio.port=9600
 socketio.maxConnectionsPerSecond=10
 ```
+
+如果应用不需要 Socket.IO（如纯 REST 场景），直接省略该配置即可——Socket.IO
+服务器不会启动，节省资源并避免端口冲突。
 
 所有配置项及默认值参见 `GJSocketIOConfig` 源码。
 
@@ -1422,6 +1534,7 @@ user.delete.confirm=Confirm to delete this user?
 
 ### 11.2 注入使用
 
+    @RequiredArgsConstructor
 ```java
 @RestController
 @RequestMapping("/api/v1/user")
@@ -1429,11 +1542,7 @@ public class UserController {
 
     private final MessageSource messageSource;
 
-    public UserController(MessageSource messageSource) {
-        this.messageSource = messageSource;
-    }
 
-    @GetMapping("/title")
     public String getTitle(Locale locale) {
         return messageSource.getMessage("user.list.title", null, locale);
     }
@@ -1453,6 +1562,7 @@ public class UserController {
 
 基于 [EasyExcel](https://easyexcel.opensource.alibaba.com/)，提供 `IImportManager` 和 `IExportManager` 接口，支持多 Sheet 读写及 i18n 表头自动翻译。
 
+    @RequiredArgsConstructor
 ### 12.1 导出示例
 
 ```java
@@ -1462,12 +1572,7 @@ public class UserExportService {
     private final IExportManager exportManager;
     private final UserMapper userMapper;
 
-    public UserExportService(IExportManager exportManager, UserMapper userMapper) {
-        this.exportManager = exportManager;
-        this.userMapper = userMapper;
-    }
 
-    /**
      * 单 Sheet 导出
      */
     public String exportUsers() throws IOException {
@@ -1494,6 +1599,7 @@ public class UserExportService {
     }
 }
 ```
+    @RequiredArgsConstructor
 
 ### 12.2 导入示例
 
@@ -1503,11 +1609,7 @@ public class UserImportService {
 
     private final IImportManager importManager;
 
-    public UserImportService(IImportManager importManager) {
-        this.importManager = importManager;
-    }
 
-    /**
      * 多 Sheet 导入
      */
     public void importUsers(InputStream inputStream) {
@@ -1594,6 +1696,7 @@ public class TokenCleanupJob implements IPluginJob {
 @PluginJob(name = "initData", runOnce = true)                            // 启动后执行一次
 ```
 
+    @RequiredArgsConstructor
 ### 13.5 手动触发（注入 Scheduler）
 
 对于需要在业务逻辑中手动触发的场景，可直接注入 Quartz `Scheduler`：
@@ -1604,11 +1707,7 @@ public class ReportService {
 
     private final Scheduler scheduler;
 
-    public ReportService(Scheduler scheduler) {
-        this.scheduler = scheduler;
-    }
 
-    public void triggerReport(String pluginId) throws SchedulerException {
         scheduler.triggerJob(new JobKey(pluginId + ":dailyReport", pluginId));
     }
 }
@@ -1661,6 +1760,7 @@ public class UserCreatedListener implements GJPluginLocalEventListener<UserCreat
     }
 }
 ```
+    @RequiredArgsConstructor
 
 ### 14.3 发布事件
 
@@ -1672,11 +1772,7 @@ public class UserService {
 
     private final GJPluginLocalEventBus eventBus;
 
-    public UserService(GJPluginLocalEventBus eventBus) {
-        this.eventBus = eventBus;
-    }
 
-    public void createUser(String name) {
         // 创建用户逻辑 ...
 
         // 同步发布 — 所有监听器在当前线程执行
@@ -1812,6 +1908,7 @@ Class-Path: lib/some-third-party.jar lib/another-lib.jar
 `GJJarPluginRepository` 自动扫描每个插件目录，解析 JAR 文件名中的版本号（格式 `{pluginId}-{version}.jar`），选择最新版本加载。目录中存在多个版本时只加载最高版本，并在日志中记录。
 
 ---
+    @RequiredArgsConstructor
 
 ## 18. 插件运行时管理 API
 
@@ -1824,11 +1921,7 @@ public class PluginAdminController {
 
     private final GJPluginService pluginService;
 
-    public PluginAdminController(GJPluginService pluginService) {
-        this.pluginService = pluginService;
-    }
 
-    // ... 管理接口
 }
 ```
 
@@ -2013,7 +2106,7 @@ gj-pf4j 自身依赖 Spring 核心包（spring-webmvc、spring-beans、spring-jd
         <dependency>
             <groupId>io.github.wangpengxpy</groupId>
             <artifactId>gj-dependencies</artifactId>
-            <version>1.0.9</version>
+            <version>1.0.10</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -2057,7 +2150,7 @@ gj BOM 中与 Spring Boot 重叠的依赖（spring-webmvc、spring-beans 等）�
 <dependency>
     <groupId>io.github.wangpengxpy</groupId>
     <artifactId>gj-pf4j</artifactId>
-    <version>1.5.0</version>
+    <version>1.6.0</version>
 </dependency>
 ```
 

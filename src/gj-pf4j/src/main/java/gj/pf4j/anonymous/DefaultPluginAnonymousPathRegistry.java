@@ -23,7 +23,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * bucket. Within each bucket, {@link AntPathMatcher} is used for pattern
  * matching so that {@code {variable}} and Ant-style wildcards work correctly.
  */
-public class DefaultPluginAnonymousPathRegistry implements PluginAnonymousPathRegistry {
+public class DefaultPluginAnonymousPathRegistry
+        implements PluginAnonymousPathRegistry, PluginAnonymousPathRegistrar {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultPluginAnonymousPathRegistry.class);
 
