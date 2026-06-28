@@ -4,7 +4,7 @@
 
 package gj.pf4j.hotreload;
 
-import gj.pf4j.GJPluginProperties;
+import gj.pf4j.GJProperties;
 import gj.pf4j.GJPluginService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +23,7 @@ public class GJPluginHotReloadManager {
 
     private final GJPluginService pluginService;
     private final Path pluginsDir;
-    private final GJPluginProperties.HotReload mode;
+    private final GJProperties.HotReload mode;
     private final WatchService watchService;
     private final Map<String, WatchKey> watchKeys = new ConcurrentHashMap<>();
     private final Map<String, ScheduledFuture<?>> debounceTimers = new ConcurrentHashMap<>();
@@ -35,7 +35,7 @@ public class GJPluginHotReloadManager {
     private volatile boolean running;
 
     public GJPluginHotReloadManager(GJPluginService pluginService, Path pluginsDir,
-                                     GJPluginProperties properties) throws IOException {
+                                     GJProperties properties) throws IOException {
         this.pluginService = pluginService;
         this.pluginsDir = pluginsDir;
         this.mode = properties.getHotReload();
@@ -43,7 +43,7 @@ public class GJPluginHotReloadManager {
     }
 
     public void startWatching() {
-        if (mode != GJPluginProperties.HotReload.WATCH) {
+        if (mode != GJProperties.HotReload.WATCH) {
             log.info("[HotReload] Mode is manual, WatchService not started");
             return;
         }

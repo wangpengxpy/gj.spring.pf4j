@@ -1,10 +1,10 @@
 package gj.pf4j.socketio.cluster;
 
 import gj.pf4j.redis.IGJRedisService;
+import gj.pf4j.socketio.GJSocketIOProperties;
 import gj.pf4j.socketio.GJSocketIOThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit;
 
 @Component
 @ConditionalOnBean(IGJRedisService.class)
-@ConditionalOnProperty(name = "socketio.cluster.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "gj.socketio.cluster.enabled", havingValue = "true")
 class ClusterCleanupScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(ClusterCleanupScheduler.class);
@@ -41,9 +41,9 @@ class ClusterCleanupScheduler {
     private final ScheduledExecutorService scheduler;
 
     ClusterCleanupScheduler(IGJRedisService redisService,
-                            @Value("${socketio.node-id:}") String nodeId) {
+                            GJSocketIOProperties props) {
         this.redisService = redisService;
-        this.selfNodeId = nodeId;
+        this.selfNodeId = props.getNodeId();
         this.scheduler = Executors.newSingleThreadScheduledExecutor(
                 new GJSocketIOThreadFactory.Builder()
                         .setNameFormat("cluster-cleanup-%d")

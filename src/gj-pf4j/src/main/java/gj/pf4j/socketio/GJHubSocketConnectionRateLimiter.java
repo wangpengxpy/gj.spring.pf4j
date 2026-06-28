@@ -17,8 +17,8 @@ public class GJHubSocketConnectionRateLimiter {
     private final AtomicLong counter = new AtomicLong(0);
     private volatile long lastResetTime = System.currentTimeMillis();
 
-    public GJHubSocketConnectionRateLimiter(GJSocketIOConfig socketIOConfig) {
-        this.maxConnectionsPerSecond = socketIOConfig.getMaxConnectionsPerSecond();
+    public GJHubSocketConnectionRateLimiter(GJSocketIOProperties props) {
+        this.maxConnectionsPerSecond = props.getMaxConnectionsPerSecond();
     }
 
     public boolean tryAcquire() {

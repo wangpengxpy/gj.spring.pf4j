@@ -13,11 +13,12 @@ public class GJPluginReloadableMessageSource extends ReloadableResourceBundleMes
 
     public GJPluginReloadableMessageSource(String pluginBasename,
                                            ClassLoader pluginClassLoader,
-                                           ReloadableResourceBundleMessageSource mainAppMessageSource) {
+                                           ReloadableResourceBundleMessageSource mainAppMessageSource,
+                                           GJI18nProperties i18nProperties) {
         this.setDefaultEncoding(StandardCharsets.UTF_8.name());
         this.setBasename("classpath:" + pluginBasename);
-        this.setUseCodeAsDefaultMessage(true);
-        this.setCacheSeconds(86400);
+        this.setUseCodeAsDefaultMessage(i18nProperties.isUseCodeAsDefaultMessage());
+        this.setCacheSeconds(i18nProperties.getCacheSeconds());
         this.setResourceLoader(new DefaultResourceLoader(pluginClassLoader));
         this.mainAppMessageSource = mainAppMessageSource;
 

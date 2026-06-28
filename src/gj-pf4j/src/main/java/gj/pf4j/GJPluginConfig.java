@@ -11,17 +11,20 @@ import gj.pf4j.anonymous.PluginAnonymousPathRegistrar;
 import gj.pf4j.anonymous.PluginAnonymousPathRegistry;
 import gj.pf4j.eventbus.GJPluginLocalEventBus;
 import gj.pf4j.hotreload.GJPluginHotReloadManager;
+import gj.pf4j.i18n.GJI18nProperties;
 import gj.pf4j.jpa.GJPluginJpaEntityManagerManager;
 import gj.pf4j.jpa.GJPluginJpaProperties;
 import gj.pf4j.modelmapper.GJPluginModelMapperRegistry;
 import gj.pf4j.mybatis.GJPluginMybatisSqlSessionManager;
 import gj.pf4j.mybatis.interceptor.GJSqlKeywordQuoteInterceptor;
 import gj.pf4j.mybatis.interceptor.GJTableKeywordRegistry;
+import gj.pf4j.socketio.GJSocketIOProperties;
 import gj.pf4j.utils.GJPluginUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.system.ApplicationHome;
 import org.springframework.context.ApplicationContext;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -42,6 +45,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 @Configuration
+@EnableConfigurationProperties({GJI18nProperties.class, GJSocketIOProperties.class})
 public class GJPluginConfig {
 
     private static final Logger log = LoggerFactory.getLogger(GJPluginConfig.class);
@@ -57,9 +61,9 @@ public class GJPluginConfig {
 
     @Bean
     public GJPluginManager pluginManager(ApplicationContext applicationContext,
-                                          GJPluginProperties properties) {
+                                          GJProperties properties) {
         Path pluginsDir;
-        String customDir = properties.getPluginDir();
+        String customDir = properties.getPluginsDir();
         if (customDir != null && !customDir.isBlank()) {
             pluginsDir = Paths.get(customDir).toAbsolutePath().normalize();
             if (!Files.isDirectory(pluginsDir)) {
@@ -69,10 +73,10 @@ public class GJPluginConfig {
         } else if (env.acceptsProfiles(Profiles.of("dev | debug"))) {
             String currentDir = System.getProperty("user.dir");
             log.info("current working directory: {}", currentDir);
-            pluginsDir = Paths.get(currentDir, GJPluginProperties.DEFAULT_PLUGIN_DIR);
+            pluginsDir = Paths.get(currentDir, GJProperties.DEFAULT_PLUGIN_DIR);
         } else {
             ApplicationHome applicationHome = new ApplicationHome(getClass());
-            pluginsDir = applicationHome.getDir().toPath().resolve(GJPluginProperties.DEFAULT_PLUGIN_DIR);
+            pluginsDir = applicationHome.getDir().toPath().resolve(GJProperties.DEFAULT_PLUGIN_DIR);
         }
         GJPluginUtils.validatePluginDirectory(pluginsDir);
         log.info("plugin directory path: {}", pluginsDir.toAbsolutePath());
@@ -145,9 +149,9 @@ public class GJPluginConfig {
     }
 
     @Bean
-    @ConditionalOnMissingBean(GJPluginProperties.class)
-    public GJPluginProperties pluginProperties() {
-        return new GJPluginProperties();
+    @ConditionalOnMissingBean(GJProperties.class)
+    public GJProperties gjProperties() {
+        return new GJProperties();
     }
 
     @Bean
@@ -158,7 +162,7 @@ public class GJPluginConfig {
     @Bean
     public GJPluginHotReloadManager pluginHotReloadManager(GJPluginService pluginService,
                                                             GJPluginManager pluginManager,
-                                                            GJPluginProperties properties) {
+                                                            GJProperties properties) {
         try {
             Path pluginsDir = pluginManager.getPluginsRoots().get(0);
             return new GJPluginHotReloadManager(pluginService, pluginsDir, properties);

@@ -80,7 +80,7 @@ public class GJHubManager {
     private final ExecutorService asyncExecutor;
     private final ScheduledExecutorService statsScheduler;
 
-    private final GJSocketIOConfig socketIOConfig;
+    private final GJSocketIOProperties socketIOProperties;
     private final GJHubSocketConnectionRateLimiter connectionRateLimiter;
 
     // ================ Shutdown Flag ================
@@ -95,14 +95,14 @@ public class GJHubManager {
 
     @Autowired
     public GJHubManager(SocketIOServer server, Environment env,
-                        GJSocketIOConfig socketIOConfig,
+                        GJSocketIOProperties socketIOProperties,
                         GJHubSocketConnectionRateLimiter connectionRateLimiter,
                         @Lazy IMessageRouter messageRouter,
                         @Lazy ITargetResolver targetResolver,
                         @Lazy IConnectionEventHandler eventHandler) {
         this.server = server;
         this.env = env;
-        this.socketIOConfig = socketIOConfig;
+        this.socketIOProperties = socketIOProperties;
         this.connectionRateLimiter = connectionRateLimiter;
         this.messageRouter = messageRouter;
         this.targetResolver = targetResolver;
@@ -286,7 +286,7 @@ public class GJHubManager {
 
     private void handleClientConnected(SocketIOClient client) {
         // 1. Max connection flow control
-        int maxConnections = socketIOConfig.getMaxConnections();
+        int maxConnections = socketIOProperties.getMaxConnections();
         int current = server.getAllClients().size();
         if (current >= maxConnections) {
             log.warn("Max connections ({}) exceeded. Current: {}. Rejecting.", maxConnections, current);
@@ -295,7 +295,7 @@ public class GJHubManager {
         }
         log.debug("Accepted connection. Total: {}", current);
         // 2. Connection rate limiting per second (default: 100 TPS)
-        int maxConnectionsPerSecond = socketIOConfig.getMaxConnectionsPerSecond();
+        int maxConnectionsPerSecond = socketIOProperties.getMaxConnectionsPerSecond();
         if (!connectionRateLimiter.tryAcquire()) {
             log.warn("New connection rejected: connection rate limit reached ({} / sec). Please check client behavior or adjust maxConnectionsPerSecond configuration.", maxConnectionsPerSecond);
             client.disconnect();

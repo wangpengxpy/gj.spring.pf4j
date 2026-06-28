@@ -5,6 +5,7 @@
 package gj.pf4j.lifecycle;
 
 import gj.pf4j.GJPluginContext;
+import gj.pf4j.i18n.GJI18nProperties;
 import gj.pf4j.i18n.GJPluginReloadableMessageSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +53,8 @@ class I18NRegistrar implements PluginResourceRegistrar {
             GJPluginReloadableMessageSource pluginMs = new GJPluginReloadableMessageSource(
                     "i18n/messages",
                     pluginContext.getClassLoader(),
-                    mainMs
+                    mainMs,
+                    this.mainAppCtx.getBean(GJI18nProperties.class)
             );
             beanFactory.registerSingleton(il8nPluginBeanName, pluginMs);
             log.debug("[il8n] Registered message source bean: '{}' for plugin: '{}'",

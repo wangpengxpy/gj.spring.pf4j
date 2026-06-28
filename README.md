@@ -51,71 +51,78 @@ A lightweight, modular plugin framework powered by PF4J and Spring, with no heav
     * [8.1 Mapping Configuration Class](#81-mapping-configuration-class)
     * [8.2 Using ModelMapper](#82-using-modelmapper)
     * [8.3 Mapping Registration Mechanism](#83-mapping-registration-mechanism)
-9. [Plugin Configuration Management](#9-plugin-configuration-management)
-    * [9.1 Configuration Class](#91-configuration-class)
-    * [9.2 Configuration File](#92-configuration-file)
-    * [9.3 Injection and Usage](#93-injection-and-usage)
-    * [9.4 Configuration Source Priority](#94-configuration-source-priority)
-10. [Real-Time Communication](#10-real-time-communication)
-    * [10.0 Client Integration](#100-client-integration)
-    * [10.1 Creating a Hub](#101-creating-a-hub)
-    * [10.2 Client Push API](#102-client-push-api)
-    * [10.3 Group Management API](#103-group-management-api)
-    * [10.4 Hub Context](#104-hub-context)
-    * [10.5 Server-Side Configuration](#105-server-side-configuration)
-    * [10.6 Cluster Mode (Distributed Deployment)](#106-cluster-mode-distributed-deployment)
-11. [Internationalization (i18n)](#11-internationalization-i18n)
-    * [11.1 Plugin i18n Files](#111-plugin-i18n-files)
-    * [11.2 Injection and Usage](#112-injection-and-usage)
-    * [11.3 Fallback Mechanism](#113-fallback-mechanism)
-12. [Import/Export](#12-importexport)
-    * [12.1 Export Example](#121-export-example)
-    * [12.2 Import Example](#122-import-example)
-    * [12.3 Header i18n](#123-header-i18n)
-13. [Scheduled Tasks](#13-scheduled-tasks)
-    * [13.1 Dependency Note](#131-dependency-note)
-    * [13.2 Creating a Scheduled Job](#132-creating-a-scheduled-job)
-    * [13.3 @PluginJob Parameters](#133-pluginjob-parameters)
-    * [13.4 Cron Expression Examples](#134-cron-expression-examples)
-    * [13.5 Manual Trigger (Injecting Scheduler)](#135-manual-trigger-injecting-scheduler)
-14. [In-Process Event Bus](#14-in-process-event-bus)
-    * [14.1 Defining Events](#141-defining-events)
-    * [14.2 Creating Listeners](#142-creating-listeners)
-    * [14.3 Publishing Events](#143-publishing-events)
-    * [14.4 Wildcard Matching](#144-wildcard-matching)
-15. [JSON Serialization — ObjectMapper](#15-json-serialization--objectmapper)
-16. [OpenAPI Documentation](#16-openapi-documentation)
-    * [16.1 Automatic Grouping](#161-automatic-grouping)
-    * [16.2 Controller Example (with Swagger Annotations)](#162-controller-example-with-swagger-annotations)
-    * [16.3 Access URL](#163-access-url)
-17. [Plugin Packaging & Deployment](#17-plugin-packaging--deployment)
-    * [16.1 Build the Plugin](#161-build-the-plugin)
-    * [16.2 Output Directory Structure](#162-output-directory-structure)
-    * [16.3 MANIFEST.MF](#163-manifestmf)
-    * [16.4 Deploy to the Host Application](#164-deploy-to-the-host-application)
-    * [16.5 Version Management](#165-version-management)
-18. [Runtime Plugin Management API](#18-runtime-plugin-management-api)
-    * [18.1 Injecting GJPluginService](#181-injecting-gjpluginservice)
-    * [18.2 Load and Start All Plugins](#182-load-and-start-all-plugins)
-    * [18.3 Install a Plugin](#183-install-a-plugin)
-    * [18.4 Disable a Plugin](#184-disable-a-plugin)
-    * [18.5 Restart a Plugin](#185-restart-a-plugin)
-    * [18.6 Unload / Delete a Plugin](#186-unload--delete-a-plugin)
-    * [18.7 Reload All Plugins](#187-reload-all-plugins)
-19. [Plugin Hot-Reload](#19-plugin-hot-reload)
-    * [19.1 Concept & Configuration](#191-concept--configuration)
-    * [19.2 manual Mode — API-Driven Workflow](#192-manual-mode--api-driven-workflow)
-    * [19.3 manual Mode — App Store Integration](#193-manual-mode--app-store-integration)
-    * [19.4 manual Mode — Multi-Node Grayscale](#194-manual-mode--multi-node-grayscale)
-    * [19.5 watch Mode — File Watcher](#195-watch-mode--file-watcher)
-    * [19.6 Lifecycle Events](#196-lifecycle-events)
-    * [19.7 Event Subscription Example](#197-event-subscription-example)
-20. [Appendix: Host Application Integration](#20-appendix-host-application-integration)
-    * [20.1 Version Compatibility](#201-version-compatibility)
-    * [20.2 Host Application Entry Point](#202-host-application-entry-point)
-    * [20.3 Optional: @GJModelMapperScan (Shared Models)](#203-optional-gjmodelmapperscan-shared-models)
-21. [Claude Code Integration](#21-claude-code-integration)
-22. [FAQ](#22-faq)
+9. [Framework Configuration](#9-framework-configuration)
+    * [9.1 Configuration Overview](#91-configuration-overview)
+    * [9.2 Plugin Directory](#92-plugin-directory)
+    * [9.3 Hot Reload](#93-hot-reload)
+    * [9.4 i18n](#94-i18n)
+    * [9.5 JPA](#95-jpa)
+    * [9.6 Socket.IO](#96-socketio)
+10. [Plugin Configuration Management](#10-plugin-configuration-management)
+    * [10.1 Configuration Class](#101-configuration-class)
+    * [10.2 Configuration File](#102-configuration-file)
+    * [10.3 Injection and Usage](#103-injection-and-usage)
+    * [10.4 Configuration Source Priority](#104-configuration-source-priority)
+11. [Real-Time Communication](#11-real-time-communication)
+    * [11.0 Client Integration](#110-client-integration)
+    * [11.1 Creating a Hub](#111-creating-a-hub)
+    * [11.2 Client Push API](#112-client-push-api)
+    * [11.3 Group Management API](#113-group-management-api)
+    * [11.4 Hub Context](#114-hub-context)
+    * [11.5 Server-Side Configuration](#115-server-side-configuration)
+    * [11.6 Cluster Mode (Distributed Deployment)](#116-cluster-mode-distributed-deployment)
+12. [Internationalization (i18n)](#12-internationalization-i18n)
+    * [12.1 Plugin i18n Files](#121-plugin-i18n-files)
+    * [12.2 Injection and Usage](#122-injection-and-usage)
+    * [12.3 Fallback Mechanism](#123-fallback-mechanism)
+13. [Import/Export](#13-importexport)
+    * [13.1 Export Example](#131-export-example)
+    * [13.2 Import Example](#132-import-example)
+    * [13.3 Header i18n](#133-header-i18n)
+14. [Scheduled Tasks](#14-scheduled-tasks)
+    * [14.1 Dependency Note](#141-dependency-note)
+    * [14.2 Creating a Scheduled Job](#142-creating-a-scheduled-job)
+    * [14.3 @PluginJob Parameters](#143-pluginjob-parameters)
+    * [14.4 Cron Expression Examples](#144-cron-expression-examples)
+    * [14.5 Manual Trigger (Injecting Scheduler)](#145-manual-trigger-injecting-scheduler)
+15. [In-Process Event Bus](#15-in-process-event-bus)
+    * [15.1 Defining Events](#151-defining-events)
+    * [15.2 Creating Listeners](#152-creating-listeners)
+    * [15.3 Publishing Events](#153-publishing-events)
+    * [15.4 Wildcard Matching](#154-wildcard-matching)
+16. [JSON Serialization — ObjectMapper](#16-json-serialization--objectmapper)
+17. [OpenAPI Documentation](#17-openapi-documentation)
+    * [17.1 Automatic Grouping](#171-automatic-grouping)
+    * [17.2 Controller Example (with Swagger Annotations)](#172-controller-example-with-swagger-annotations)
+    * [17.3 Access URL](#173-access-url)
+18. [Plugin Packaging & Deployment](#18-plugin-packaging--deployment)
+    * [18.1 Build the Plugin](#181-build-the-plugin)
+    * [18.2 Output Directory Structure](#182-output-directory-structure)
+    * [18.3 MANIFEST.MF](#183-manifestmf)
+    * [18.4 Deploy to the Host Application](#184-deploy-to-the-host-application)
+    * [18.5 Version Management](#185-version-management)
+19. [Runtime Plugin Management API](#19-runtime-plugin-management-api)
+    * [19.1 Injecting GJPluginService](#191-injecting-gjpluginservice)
+    * [19.2 Load and Start All Plugins](#192-load-and-start-all-plugins)
+    * [19.3 Install a Plugin](#193-install-a-plugin)
+    * [19.4 Disable a Plugin](#194-disable-a-plugin)
+    * [19.5 Restart a Plugin](#195-restart-a-plugin)
+    * [19.6 Unload / Delete a Plugin](#196-unload--delete-a-plugin)
+    * [19.7 Reload All Plugins](#197-reload-all-plugins)
+20. [Plugin Hot-Reload](#20-plugin-hot-reload)
+    * [20.1 Concept & Configuration](#201-concept--configuration)
+    * [20.2 manual Mode — API-Driven Workflow](#202-manual-mode--api-driven-workflow)
+    * [20.3 manual Mode — App Store Integration](#203-manual-mode--app-store-integration)
+    * [20.4 manual Mode — Multi-Node Grayscale](#204-manual-mode--multi-node-grayscale)
+    * [20.5 watch Mode — File Watcher](#205-watch-mode--file-watcher)
+    * [20.6 Lifecycle Events](#206-lifecycle-events)
+    * [20.7 Event Subscription Example](#207-event-subscription-example)
+21. [Appendix: Host Application Integration](#21-appendix-host-application-integration)
+    * [21.1 Version Compatibility](#211-version-compatibility)
+    * [21.2 Host Application Entry Point](#212-host-application-entry-point)
+    * [21.3 Optional: @GJModelMapperScan (Shared Models)](#213-optional-gjmodelmapperscan-shared-models)
+22. [Claude Code Integration](#22-claude-code-integration)
+23. [FAQ](#23-faq)
     * [Q1: Plugin startup fails with plugin.id mismatch error?](#q1-plugin-startup-fails-with-pluginid-mismatch-error)
     * [Q2: Plugin failed to start / how to troubleshoot startup failure?](#q2-plugin-failed-to-start--how-to-troubleshoot-startup-failure)
     * [Q3: SQL works in MySQL but fails on DM/PostgreSQL with "invalid identifier"?](#q3-sql-works-in-mysql-but-fails-on-dmpostgresql-with-invalid-identifier)
@@ -140,7 +147,7 @@ gj.spring.pf4j is a lightweight, modular plugin framework built on [PF4J](https:
 </p>
 
 - **[Plugin Lifecycle Management](#4-plugin-lifecycle)** — install, disable, restart, unload, and delete plugins at runtime
-- **[Plugin Hot-Reload](#19-plugin-hot-reload)** — hot-reload via API-driven workflow or file watcher; lifecycle events for custom orchestration logic
+- **[Plugin Hot-Reload](#20-plugin-hot-reload)** — hot-reload via API-driven workflow or file watcher; lifecycle events for custom orchestration logic
 - **[Runtime Plugin Management API](#18-runtime-plugin-management-api)** — `GJPluginService` provides lock-controlled runtime management APIs
 - **[REST Endpoints](#5-rest-endpoints)** — `@RestController` beans are auto-detected and registered into the main application's route table, supporting both MVC and WebFlux
 - **[Dual Routing Mode](#52-spring-mvc-vs-webflux-dual-routing)** — supports both Spring MVC (Servlet) and Spring WebFlux (Reactive) routing; plugins require zero changes
@@ -558,7 +565,7 @@ public class UserRouterConfig {
 }
 ```
 
-> Call `unregister()` for cleanup on hot-unload. See **[Appendix: Host Application Integration](#19-appendix-host-application-integration)** for detailed MVC / WebFlux configuration steps.
+> Call `unregister()` for cleanup on hot-unload. See **[Appendix: Host Application Integration](#21-appendix-host-application-integration)** for detailed MVC / WebFlux configuration steps.
 
 ### 5.3 Anonymous Access
 
@@ -1144,9 +1151,94 @@ public class UserServiceImpl implements UserService {
 
 ---
 
-## 9. Plugin Configuration Management
+## 9. Framework Configuration
 
-### 9.1 Configuration Class
+All framework-level configuration keys are centralized under the `gj.*` namespace. This chapter provides the complete reference. All examples use YAML, but properties format (`application.properties`) works the same way — use the full dotted key path (e.g., `gj.socketio.port=9600`).
+
+### 9.1 Configuration Overview
+
+| Key | Type | Default | Description | See |
+|-----|------|---------|-------------|-----|
+| `gj.plugins-dir` | String | (auto) | Plugin JAR root directory. `./plugins` in dev/debug profile, `<appHome>/plugins` otherwise | §9.2 |
+| `gj.hot-reload` | Enum | `watch` | Hot-reload mode: `watch` (auto-detect JAR changes) or `manual` (API-driven only) | §9.3 |
+| `gj.i18n.cache-seconds` | int | `86400` | i18n message cache TTL in seconds. Set lower during development | §9.4 |
+| `gj.i18n.use-code-as-default-message` | boolean | `true` | Return code as fallback when i18n key not found. Set `false` to throw exception | §9.4 |
+| `gj.jpa.ddl-auto` | String | `none` | Hibernate DDL strategy. Default `none` (framework auto-migration handles DDL). Set to `update`/`validate` for Hibernate native DDL | §9.5 |
+| `gj.jpa.show-sql` | boolean | `false` | Log SQL statements. Enable during development for debugging | §9.5 |
+| `gj.socketio.enabled` | boolean | `false` | Enable Socket.IO server. Must be explicitly set to `true` | §9.6 |
+| `gj.socketio.host` | String | `0.0.0.0` | Server bind address | §9.6 |
+| `gj.socketio.port` | int | `9600` | Server port | §9.6 |
+| `gj.socketio.boss-thread-count` | int | `1` | Netty boss thread count | §9.6 |
+| `gj.socketio.upgrade-timeout` | int | `10000` | HTTP→WebSocket upgrade timeout (ms) | §9.6 |
+| `gj.socketio.ping-timeout` | int | `60000` | Ping timeout (ms) | §9.6 |
+| `gj.socketio.ping-interval` | int | `30000` | Ping interval (ms) | §9.6 |
+| `gj.socketio.max-connections` | int | `50000` | Max concurrent connections | §9.6 |
+| `gj.socketio.max-frame-payload-length` | int | `64` | Max frame payload in KB | §9.6 |
+| `gj.socketio.max-http-content-length` | int | `64` | Max HTTP content length in KB | §9.6 |
+| `gj.socketio.max-connections-per-second` | int | `100` | Connection rate limit per second | §9.6 |
+| `gj.socketio.node-id` | String | `""` | Cluster node ID. Auto-detected from `HOSTNAME` env var when empty | §9.6 |
+| `gj.socketio.connection-ttl` | int | `3600` | Connection Redis key TTL in seconds | §9.6 |
+| `gj.socketio.ssl.enabled` | boolean | `true` | Enable SSL | §9.6 |
+| `gj.socketio.ssl.protocols` | String | `TLSv1.2` | SSL protocol versions | §9.6 |
+| `gj.socketio.cluster.enabled` | boolean | `false` | Enable cluster mode (requires Redis) | §9.6 |
+
+### 9.2 Plugin Directory
+
+```yaml
+gj:
+  plugins-dir: /opt/app/plugins   # Explicit path; auto-detected when unset
+```
+
+When unset, the framework auto-detects: `./plugins` in dev/debug profile, `<appHome>/plugins` otherwise.
+
+### 9.3 Hot Reload
+
+```yaml
+gj:
+  hot-reload: watch   # or manual
+```
+
+See [§20 Plugin Hot-Reload](#20-plugin-hot-reload) for detailed hot-reload workflows.
+
+### 9.4 i18n
+
+```yaml
+gj:
+  i18n:
+    cache-seconds: 60             # Set lower during development for instant translation reloads
+    use-code-as-default-message: true
+```
+
+### 9.5 JPA
+
+```yaml
+gj:
+  jpa:
+    ddl-auto: none               # Framework auto-migration handles DDL by default
+    show-sql: true               # Enable during development
+```
+
+`ddl-auto` defaults to `none` because the framework's own migration engine handles CREATE TABLE / ADD COLUMN. Set to `update` or `validate` if you need Hibernate's native DDL generation.
+
+### 9.6 Socket.IO
+
+```yaml
+gj:
+  socketio:
+    enabled: true               # Must explicitly enable — disabled by default
+    port: 9600
+    max-connections-per-second: 100
+```
+
+Socket.IO is disabled by default. Set `gj.socketio.enabled=true` to start the server. See [§11.6](#116-cluster-mode-distributed-deployment) for cluster mode configuration.
+
+> See [§9.1](#91-configuration-overview) for the complete list of available keys and their defaults.
+
+---
+
+## 10. Plugin Configuration Management
+
+### 10.1 Configuration Class
 
 Use `@ConfigurationProperties` to bind plugin-specific configuration:
 
@@ -1170,7 +1262,7 @@ public class UserConfig {
 }
 ```
 
-### 9.2 Configuration File
+### 10.2 Configuration File
 
 Provide values in `src/main/resources/{pluginId}.properties`:
 
@@ -1181,7 +1273,7 @@ gj.module.user.max-retry=5
 gj.module.user.api-url=https://api.example.com
 ```
 
-### 9.3 Injection and Usage
+### 10.3 Injection and Usage
 
 Any Spring bean in the plugin can inject the configuration class:
 
@@ -1201,7 +1293,7 @@ public class UserServiceImpl implements UserService {
 }
 ```
 
-### 9.4 Configuration Source Priority
+### 10.4 Configuration Source Priority
 
 The framework loads configuration with the following priority:
 1. Plugin container internal environment variables
@@ -1210,11 +1302,11 @@ The framework loads configuration with the following priority:
 
 ---
 
-## 10. Real-Time Communication
+## 11. Real-Time Communication
 
 Powered by [netty-socketio](https://github.com/mrniko/netty-socketio). The server-side API design is inspired by the **ASP.NET Core SignalR Hub** pattern — extend `GJHub`, annotate methods with `@GJHubMethod`, and use `getClients().group().sendAsync()` for targeted message delivery. The underlying wire protocol is **Socket.IO**.
 
-### 10.0 Client Integration
+### 11.0 Client Integration
 
 Clients must use the **Socket.IO** client library (`socket.io-client`), **not** the SignalR client.
 
@@ -1234,9 +1326,9 @@ const socket = io('http://localhost:9600/socket.io/', {
 | Parameter | Required | Description |
 |---|---|---|
 | `hub` | Yes | Hub name (matches the string passed to `GJHub` constructor) |
-| `userName` | Yes† | User identifier; also used by nginx for sticky session routing in cluster mode |
+| `userName` | Yes | User identifier; also used by nginx for sticky session routing in cluster mode |
 
-† Not required in `dev`/`debug` profile (defaults to `"test"`).
+Not required in `dev`/`debug` profile (defaults to `"test"`).
 
 **Sending messages to the server:**
 
@@ -1260,7 +1352,7 @@ socket.on('newMessage', (msg) => {
 });
 ```
 
-### 10.1 Creating a Hub
+### 11.1 Creating a Hub
 
 Extend `GJHub` and use `@GJHubMethod` to annotate message handler methods:
 
@@ -1323,7 +1415,7 @@ public class UserHub extends GJHub {
 }
 ```
 
-### 10.2 Client Push API
+### 11.2 Client Push API
 
 `getClients()` returns a `GJHubCallerClients` with the following targeting methods:
 
@@ -1353,7 +1445,7 @@ getClients().groupExceptUser("admin", "excludedUserId").sendAsync("eventName", d
 getClients().allExcept(List.of("connId1", "connId2")).sendAsync("eventName", data);
 ```
 
-### 10.3 Group Management API
+### 11.3 Group Management API
 
 `getGroups()` returns a `GJGroupManager`:
 
@@ -1380,7 +1472,7 @@ getGroups().getConnectionsInGroupAsync("groupName").thenAccept(connections -> {
 });
 ```
 
-### 10.4 Hub Context
+### 11.4 Hub Context
 
 Retrieve current connection information inside hub methods via `getContext()`:
 
@@ -1392,23 +1484,24 @@ Map<String, String> queryParams = ctx.getQueryParams();
 
 > Frontend can pass custom parameters via the connection URL (e.g., `?hub=userHub&userName=123`). Access them in the Hub via `ctx.getQueryParam("key")`. Avoid passing plaintext sensitive information in the URL.
 
-### 10.5 Server-Side Configuration
+### 11.5 Server-Side Configuration
 
 Socket.IO is **disabled by default**. To enable it, set `socketio.enabled=true` in the host
 application configuration:
 
-```properties
-socketio.enabled=true
-socketio.port=9600
-socketio.maxConnectionsPerSecond=10
+```yaml
+gj:
+  socketio:
+    enabled: true              # Socket.IO is disabled by default — must explicitly enable
+    port: 9600
 ```
 
 If Socket.IO is not required (e.g. REST-only applications), omit this property entirely —
 the Socket.IO server will not start, saving resources and avoiding port conflicts.
 
-See `GJSocketIOConfig` source for all available properties and their defaults.
+> See [§9.1 Configuration Overview](#91-configuration-overview) for the complete list of available keys and their defaults.
 
-### 10.6 Cluster Mode (Distributed Deployment)
+### 11.6 Cluster Mode (Distributed Deployment)
 
 gj.spring.pf4j supports multi-node horizontal scaling via Redis-backed shared state. When cluster mode is enabled, all connection, group, and user mappings are synchronized to Redis, and cross-node messages are delivered through Redis Pub/Sub.
 
@@ -1433,18 +1526,21 @@ The framework reuses the host's `RedisTemplate` and `RedisMessageListenerContain
 #### Enabling Cluster Mode
 
 ```yaml
-socketio:
-  cluster:
-    enabled: true
-  node-id: ${HOSTNAME:}       # leave empty for auto-detection (hostname:PID)
-  connection-ttl: 3600         # seconds, Redis key TTL for connection mappings
+gj:
+  socketio:
+    cluster:
+      enabled: true
+    node-id: ${HOSTNAME:}       # leave empty for auto-detection (hostname:PID)
+    connection-ttl: 3600         # seconds, Redis key TTL for connection mappings
 ```
 
-| Property | Default | Description |
+| Key | Default | Description |
 |---|---|---|
-| `socketio.cluster.enabled` | `false` | Enable cross-node cluster support |
-| `socketio.node-id` | (auto) | Node identifier. Auto-detected from `HOSTNAME` env var, falls back to `host:PID` |
-| `socketio.connection-ttl` | `3600` | Redis TTL for connection ownership keys; also serves as ultimate fallback cleanup for stale entries |
+| `gj.socketio.cluster.enabled` | `false` | Enable cross-node cluster support |
+| `gj.socketio.node-id` | (auto) | Node identifier. Auto-detected from `HOSTNAME` env var, falls back to `host:PID` |
+| `gj.socketio.connection-ttl` | `3600` | Redis TTL for connection ownership keys; also serves as ultimate fallback cleanup for stale entries |
+
+> See [§9.1 Configuration Overview](#91-configuration-overview) for all Socket.IO cluster keys.
 
 #### Nginx Configuration
 
@@ -1511,9 +1607,9 @@ None. Hub implementations (`extends GJHub`) are cluster-unaware — the same `ge
 
 ---
 
-## 11. Internationalization (i18n)
+## 12. Internationalization (i18n)
 
-### 11.1 Plugin i18n Files
+### 12.1 Plugin i18n Files
 
 Place `i18n/messages*.properties` in the plugin classpath:
 
@@ -1541,7 +1637,7 @@ user.create.success=创建成功
 user.delete.confirm=确认删除该用户？
 ```
 
-### 11.2 Injection and Usage
+### 12.2 Injection and Usage
 
 ```java
 @RestController
@@ -1558,20 +1654,22 @@ public class UserController {
 }
 ```
 
-### 11.3 Fallback Mechanism
+### 12.3 Fallback Mechanism
 
 - The framework creates a `GJPluginReloadableMessageSource` for each plugin (bean name: `plugin_i18n_{pluginId}`)
 - Key lookup: plugin's own messages first, then falls back to the main application's `messageSource`
-- If no match is found, returns the key itself (`useCodeAsDefaultMessage = true`)
-- 24-hour cache, UTF-8 encoding
+- If no match is found, returns the key itself (configurable via `gj.i18n.use-code-as-default-message`, default `true`)
+- Message cache TTL is configurable via `gj.i18n.cache-seconds` (default 86400 = 24h, set lower during development)
+
+> See [§9.4 i18n](#94-i18n) for details.
 
 ---
 
-## 12. Import/Export
+## 13. Import/Export
 
 Built on [EasyExcel](https://easyexcel.opensource.alibaba.com/), provides `IImportManager` and `IExportManager` interfaces with multi-sheet read/write and automatic i18n header translation.
 
-### 12.1 Export Example
+### 13.1 Export Example
 
 ```java
 @Service
@@ -1609,7 +1707,7 @@ public class UserExportService {
 }
 ```
 
-### 12.2 Import Example
+### 13.2 Import Example
 
 ```java
 @Service
@@ -1637,7 +1735,7 @@ public class UserImportService {
 }
 ```
 
-### 12.3 Header i18n
+### 13.3 Header i18n
 
 EasyExcel `@ExcelProperty` annotation values are automatically translated via i18n during both import and export. The framework overrides `SimpleWriteHandler` and `ReadEventListener` to ensure generated and parsed Excel headers match the current locale.
 
@@ -1654,15 +1752,15 @@ public class UserExcelVO {
 
 ---
 
-## 13. Scheduled Tasks
+## 14. Scheduled Tasks
 
 Powered by [Quartz](https://www.quartz-scheduler.org/). Plugins simply implement the `IPluginJob` interface and annotate it with `@PluginJob` — the framework automatically scans and registers them with the Quartz scheduler after the plugin starts.
 
-### 13.1 Dependency Note
+### 14.1 Dependency Note
 
 The framework includes built-in Quartz support (`org.quartz-scheduler:quartz`) and auto-creates a `Scheduler` bean via `GJQuartzConfig` (`@ConditionalOnMissingBean`). The host application does not need to add any Quartz dependency. If the host app already has a custom `Scheduler` bean, the framework reuses it automatically.
 
-### 13.2 Creating a Scheduled Job
+### 14.2 Creating a Scheduled Job
 
 Create a bean implementing `IPluginJob` in your plugin and annotate it with `@PluginJob`:
 
@@ -1687,7 +1785,7 @@ public class TokenCleanupJob implements IPluginJob {
 }
 ```
 
-### 13.3 @PluginJob Parameters
+### 14.3 @PluginJob Parameters
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -1697,7 +1795,7 @@ public class TokenCleanupJob implements IPluginJob {
 | `runOnce` | boolean | false | Execute only once |
 | `disallowConcurrentExecution` | boolean | true | Disallow concurrent execution of the same job |
 
-### 13.4 Cron Expression Examples
+### 14.4 Cron Expression Examples
 
 ```java
 @PluginJob(name = "dailyReport", cronExpression = "0 0 8 * * ?")       // Every day at 8:00
@@ -1705,7 +1803,7 @@ public class TokenCleanupJob implements IPluginJob {
 @PluginJob(name = "initData", runOnce = true)                            // Run once on startup
 ```
 
-### 13.5 Manual Trigger (Injecting Scheduler)
+### 14.5 Manual Trigger (Injecting Scheduler)
 
 For scenarios requiring manual trigger in business logic, inject the Quartz `Scheduler` directly:
 
@@ -1724,11 +1822,11 @@ public class ReportService {
 
 ---
 
-## 14. In-Process Event Bus
+## 15. In-Process Event Bus
 
 The framework provides a lightweight in-process event bus for decoupled inter-plugin communication. Listeners implement `GJPluginLocalEventListener<T>` to handle typed events, while event classes use `@EventName` for Ant-style wildcard pattern matching.
 
-### 14.1 Defining Events
+### 15.1 Defining Events
 
 Annotate event classes with `@EventName`; name components are dot-separated:
 
@@ -1746,7 +1844,7 @@ public class UserCreatedEvent {
 }
 ```
 
-### 14.2 Creating Listeners
+### 15.2 Creating Listeners
 
 Implement `GJPluginLocalEventListener<T>` and annotate with `@Component` to register as a Spring bean:
 
@@ -1770,7 +1868,7 @@ public class UserCreatedListener implements GJPluginLocalEventListener<UserCreat
 }
 ```
 
-### 14.3 Publishing Events
+### 15.3 Publishing Events
 
 Inject `GJPluginLocalEventBus` into any Spring bean:
 
@@ -1793,7 +1891,7 @@ public class UserService {
 }
 ```
 
-### 14.4 Wildcard Matching
+### 15.4 Wildcard Matching
 
 `@EventName` supports Ant-style wildcards with `.` as the path separator:
 
@@ -1807,7 +1905,7 @@ Multiple listeners can match a single event; each listener executes independentl
 ---
 
 
-## 15. JSON Serialization — ObjectMapper
+## 16. JSON Serialization — ObjectMapper
 
 Each plugin receives a **fully isolated `ObjectMapper`** instance. The framework copies the host application's `ObjectMapper` and registers it as the `objectMapper` bean in every plugin's Spring context. This guarantees:
 
@@ -1828,13 +1926,13 @@ public class UserController {
 
 ---
 
-## 16. OpenAPI Documentation
+## 17. OpenAPI Documentation
 
-### 16.1 Automatic Grouping
+### 17.1 Automatic Grouping
 
 The framework automatically creates an independent `GroupedOpenApi` bean (SpringDoc) for each plugin that registers controllers. The group name follows the pattern `pluginGroupedOpenApi-{pluginId}`. In Swagger-UI, select the desired plugin from the top-right dropdown to view its API documentation.
 
-### 16.2 Controller Example (with Swagger Annotations)
+### 17.2 Controller Example (with Swagger Annotations)
 
 ```java
 @RestController
@@ -1858,22 +1956,22 @@ public class UserController {
 }
 ```
 
-### 16.3 Access URL
+### 17.3 Access URL
 
 Visit `http://localhost:{port}/swagger-ui/index.html` after startup.
 
 ---
 
-## 17. Plugin Packaging & Deployment
+## 18. Plugin Packaging & Deployment
 
-### 16.1 Build the Plugin
+### 17.1 Build the Plugin
 
 ```bash
 cd user-plugin
 mvn clean package
 ```
 
-### 16.2 Output Directory Structure
+### 17.2 Output Directory Structure
 
 After a successful build, `target/plugins/{artifactId}/` contains:
 
@@ -1886,7 +1984,7 @@ target/plugins/gj.module.user/
     └── ...
 ```
 
-### 16.3 MANIFEST.MF
+### 17.3 MANIFEST.MF
 
 ```manifest
 Plugin-Id: gj.module.user
@@ -1894,7 +1992,7 @@ Plugin-Version: 1.0.0-SNAPSHOT
 Class-Path: lib/some-third-party.jar lib/another-lib.jar
 ```
 
-### 16.4 Deploy to the Host Application
+### 17.4 Deploy to the Host Application
 
 Copy the entire `target/plugins/gj.module.user/` directory into the host application's `plugins/` directory:
 
@@ -1912,15 +2010,15 @@ Host application root/       ← current working directory in dev/debug mode
 
 In production (non-dev/debug profiles), the plugin directory is located at `plugins/` under the Spring Boot JAR's `ApplicationHome` directory.
 
-### 16.5 Version Management
+### 17.5 Version Management
 
 `GJJarPluginRepository` scans each plugin directory, parses version numbers from JAR filenames (format: `{pluginId}-{version}.jar`), and loads the latest version. When multiple versions exist in a directory, only the highest version is loaded, with a log entry recording the selection.
 
 ---
 
-## 18. Runtime Plugin Management API
+## 19. Runtime Plugin Management API
 
-### 18.1 Injecting GJPluginService
+### 19.1 Injecting GJPluginService
 
 ```java
 @RestController
@@ -1934,7 +2032,7 @@ public class PluginAdminController {
 }
 ```
 
-### 18.2 Load and Start All Plugins
+### 19.2 Load and Start All Plugins
 
 ```java
 @PostMapping("/load-all")
@@ -1943,7 +2041,7 @@ public void loadAndStartAll() {
 }
 ```
 
-### 18.3 Install a Plugin
+### 19.3 Install a Plugin
 
 Loads a JAR from `plugins/{pluginId}/` and starts it. Returns `PluginState.STARTED` on success.
 
@@ -1955,7 +2053,7 @@ public String installPlugin(@PathVariable String pluginId) {
 }
 ```
 
-### 18.4 Disable a Plugin
+### 19.4 Disable a Plugin
 
 Stops the plugin and sets `PluginState.DISABLED`. The plugin stays in the registry and can be restarted later. Disabled plugins are skipped during bulk startup.
 
@@ -1967,7 +2065,7 @@ public ResponseEntity<String> disablePlugin(@PathVariable String pluginId) {
 }
 ```
 
-### 18.5 Restart a Plugin
+### 19.5 Restart a Plugin
 
 Restarts a plugin in-place (same ClassLoader). Supports both `STARTED` and `DISABLED` states — a disabled plugin is re-started without an intermediate stop.
 
@@ -1979,7 +2077,7 @@ public String restartPlugin(@PathVariable String pluginId) {
 }
 ```
 
-### 18.6 Unload / Delete a Plugin
+### 19.6 Unload / Delete a Plugin
 
 - `unloadPlugin(id)` — stops, closes ClassLoader, removes from registry. Files on disk are preserved.
 - `deletePlugin(id)` — same as unload, plus deletes the `plugins/{id}/` directory.
@@ -1998,7 +2096,7 @@ public String deletePlugin(@PathVariable String pluginId) {
 }
 ```
 
-### 18.7 Reload All Plugins
+### 19.7 Reload All Plugins
 
 ```java
 @PostMapping("/reload-all")
@@ -2007,27 +2105,29 @@ public void reloadAll() {
 }
 ```
 
-> For hot-reload workflows, lifecycle events, file watcher mode, and app-store integration patterns, see **[§19 Plugin Hot-Reload](#19-plugin-hot-reload)**.
+> For hot-reload workflows, lifecycle events, file watcher mode, and app-store integration patterns, see **[§20 Plugin Hot-Reload](#20-plugin-hot-reload)**.
 
 ---
 
-## 19. Plugin Hot-Reload
+## 20. Plugin Hot-Reload
 
-### 19.1 Concept & Configuration
+### 20.1 Concept & Configuration
 
 Hot-reload updates a plugin to a new version at runtime without restarting the host application. Two modes are available:
 
-```
-gj.plugin.hot-reload=watch   (default)
-gj.plugin.hot-reload=manual
+```yaml
+gj:
+  hot-reload: watch   # default; or manual
 ```
 
-| Property | Default | Description |
-|----------|---------|-------------|
-| `gj.plugin.hot-reload` | `watch` | Hot-reload mode. `watch` — auto-detect JAR changes; `manual` — API-driven only. |
-| `gj.plugin.dir` | (auto) | Plugin directory path. When set, uses the exact path and fails if it does not exist. When unset: `./plugins` in dev/debug profile, `<appHome>/plugins` otherwise. |
+| Key | Default | Description |
+|-----|---------|-------------|
+| `gj.hot-reload` | `watch` | Hot-reload mode. `watch` — auto-detect JAR changes; `manual` — API-driven only. |
+| `gj.plugins-dir` | (auto) | Plugin directory path. When set, uses the exact path and fails if it does not exist. When unset: `./plugins` in dev/debug profile, `<appHome>/plugins` otherwise. |
 
-### 19.2 manual Mode — API-Driven Workflow
+> See [§9.1 Configuration Overview](#91-configuration-overview) for all framework-level configuration keys.
+
+### 20.2 manual Mode — API-Driven Workflow
 
 ```
 1. unloadPlugin(id)        // Remove from memory, keep files on disk
@@ -2037,7 +2137,7 @@ gj.plugin.hot-reload=manual
 
 Each step returns a result that can be validated by the caller.
 
-### 19.3 manual Mode — App Store Integration
+### 20.3 manual Mode — App Store Integration
 
 An app store or orchestrator uses the two-step workflow with custom logic:
 
@@ -2052,7 +2152,7 @@ An app store or orchestrator uses the two-step workflow with custom logic:
 8. On failure → rollback: restore old JAR + installPlugin(id)
 ```
 
-### 19.4 manual Mode — Multi-Node Grayscale
+### 20.4 manual Mode — Multi-Node Grayscale
 
 ```
 1. Place new JAR on all nodes (does not trigger reload)
@@ -2061,7 +2161,7 @@ An app store or orchestrator uses the two-step workflow with custom logic:
 4. Halt rollout on failure; roll back affected nodes
 ```
 
-### 19.5 watch Mode — File Watcher
+### 20.5 watch Mode — File Watcher
 
 A single daemon thread monitors `plugins/` via `WatchService`. A 2s debounce merges rapid file events (e.g., copy-in-progress). After debounce expiration:
 
@@ -2069,13 +2169,13 @@ A single daemon thread monitors `plugins/` via `WatchService`. A 2s debounce mer
 - **New plugin directory** (create) → registers a per-plugin WatchKey + starts debounce
 - **Deleted JAR** → debounce then check for remaining JARs; unload if none found
 
-### 19.6 Lifecycle Events
+### 20.6 Lifecycle Events
 
 `GJPluginBeforeUnloadEvent` and `GJPluginAfterInstallEvent` are published during hot-reload. Both the **host application** and the **plugin being reloaded** can subscribe via `@EventListener`. Other plugins are unaffected — only the target plugin and the host receive these events.
 
 `GJPluginBeforeUnloadEvent` supports veto: throw `PluginHotReloadVetoException` from any listener to abort the unload.
 
-### 19.7 Event Subscription Example
+### 20.7 Event Subscription Example
 
 ```java
 // Plugin side — close custom port before unload
@@ -2099,7 +2199,7 @@ public class HotReloadMonitor {
 
 ---
 
-## 20. Appendix: Host Application Integration
+## 21. Appendix: Host Application Integration
 
 ### 20.1 Version Compatibility
 
@@ -2115,7 +2215,7 @@ In `dependencyManagement`, import the gj BOM followed by the Spring Boot BOM —
         <dependency>
             <groupId>io.github.wangpengxpy</groupId>
             <artifactId>gj-dependencies</artifactId>
-            <version>1.0.10</version>
+            <version>1.0.11</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -2159,7 +2259,7 @@ You can also skip the BOM and depend on gj-pf4j directly, but you must ensure Sp
 <dependency>
     <groupId>io.github.wangpengxpy</groupId>
     <artifactId>gj-pf4j</artifactId>
-    <version>1.6.0</version>
+    <version>1.6.1</version>
 </dependency>
 ```
 
@@ -2318,7 +2418,7 @@ public class AppModelMapperConfig implements GJModelMapperConfig {
 
 ---
 
-## 21. Claude Code Integration
+## 22. Claude Code Integration
 
 The framework ships with built-in [Claude Code](https://claude.ai/code) skills for AI-driven plugin development:
 
@@ -2343,7 +2443,7 @@ cp -r /tmp/gj-pf4j/tools/claude-skills/* .claude/
 
 ---
 
-## 22. FAQ
+## 23. FAQ
 
 ### Q1: Plugin startup fails with `plugin.id` mismatch error?
 
@@ -2443,14 +2543,22 @@ MyBatis-Plus is unaffected and works normally regardless. See [Section 6.2](#62-
 
 ### Q9: I set `spring.jpa.hibernate.ddl-auto=update` but it's not working?
 
-The framework defaults `ddl-auto` to `none`. Automatic DDL is handled by the framework's own migration engine (see [Section 7](#7-database-auto-migration)), which supports 7 databases with a strict additive-only policy (CREATE TABLE / ADD COLUMN only). To enable Hibernate's own DDL generation, override the `GJPluginJpaProperties` bean in the host application:
+The framework defaults `ddl-auto` to `none`. Automatic DDL is handled by the framework's own migration engine (see [Section 7](#7-database-auto-migration)), which supports 7 databases with a strict additive-only policy (CREATE TABLE / ADD COLUMN only). To enable Hibernate's own DDL generation, the simplest way is to set `gj.jpa.ddl-auto` in `application.yml`:
+
+```yaml
+gj:
+  jpa:
+    ddl-auto: update   # or validate, create, create-drop
+```
+
+If you need programmatic control (e.g., conditional logic), override the `GJPluginJpaProperties` bean in the host application:
 
 ```java
 @Bean
 @Primary
 public GJPluginJpaProperties customJpaProperties() {
     GJPluginJpaProperties props = new GJPluginJpaProperties();
-    props.setDdlAuto("update");  // or "validate", "create", "create-drop"
+    props.setDdlAuto("update");
     return props;
 }
 ```

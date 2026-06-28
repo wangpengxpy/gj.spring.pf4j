@@ -7,7 +7,6 @@ import gj.pf4j.socketio.cluster.*;
 import com.corundumstudio.socketio.SocketIOServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -19,6 +18,11 @@ import org.springframework.context.annotation.Configuration;
 public class GJSocketIOClusterConfig {
 
     private static final Logger log = LoggerFactory.getLogger(GJSocketIOClusterConfig.class);
+    private final GJSocketIOProperties props;
+
+    public GJSocketIOClusterConfig(GJSocketIOProperties props) {
+        this.props = props;
+    }
 
     // ===== Monolith mode (default) =====
 
@@ -47,7 +51,7 @@ public class GJSocketIOClusterConfig {
     // ===== Cluster mode =====
 
     @Bean
-    @ConditionalOnProperty(name = "socketio.cluster.enabled", havingValue = "true")
+    @ConditionalOnProperty(name = "gj.socketio.cluster.enabled", havingValue = "true")
     @ConditionalOnMissingBean(IGJRedisService.class)
     public Object clusterRequiresRedisGuard() {
         throw new IllegalStateException(
@@ -61,21 +65,20 @@ public class GJSocketIOClusterConfig {
 
     @Bean
     @ConditionalOnBean({IGJRedisService.class, IGJRedisBusService.class})
-    @ConditionalOnProperty(name = "socketio.cluster.enabled", havingValue = "true")
+    @ConditionalOnProperty(name = "gj.socketio.cluster.enabled", havingValue = "true")
     public IMessageRouter clusterMessageRouter(
             GJHubManager hubManager,
             IGJRedisService redisService,
-            IGJRedisBusService busService,
-            @Value("${socketio.node-id:}") String nodeId) {
-        log.info("Socket.IO cluster enabled — using ClusterMessageRouter (node={})", resolveNodeId(nodeId));
+            IGJRedisBusService busService) {
+        String nodeId = resolveNodeId(props.getNodeId());
+        log.info("Socket.IO cluster enabled — using ClusterMessageRouter (node={})", nodeId);
         return new ClusterMessageRouter(
-                hubManager.getClientRegistry(), redisService, busService,
-                resolveNodeId(nodeId));
+                hubManager.getClientRegistry(), redisService, busService, nodeId);
     }
 
     @Bean
     @ConditionalOnBean(IGJRedisService.class)
-    @ConditionalOnProperty(name = "socketio.cluster.enabled", havingValue = "true")
+    @ConditionalOnProperty(name = "gj.socketio.cluster.enabled", havingValue = "true")
     public ITargetResolver clusterTargetResolver(
             GJHubManager hubManager,
             IGJRedisService redisService) {
@@ -88,16 +91,15 @@ public class GJSocketIOClusterConfig {
 
     @Bean
     @ConditionalOnBean({IGJRedisService.class, IGJRedisBusService.class})
-    @ConditionalOnProperty(name = "socketio.cluster.enabled", havingValue = "true")
+    @ConditionalOnProperty(name = "gj.socketio.cluster.enabled", havingValue = "true")
     public IConnectionEventHandler clusterConnectionEventHandler(
             GJHubManager hubManager,
             IGJRedisService redisService,
-            IGJRedisBusService busService,
-            @Value("${socketio.node-id:}") String nodeId,
-            @Value("${socketio.connection-ttl:3600}") int connectionTtl) {
+            IGJRedisBusService busService) {
+        String nodeId = resolveNodeId(props.getNodeId());
         return new ClusterConnectionEventHandler(
                 hubManager.getClientRegistry(), redisService, busService,
-                resolveNodeId(nodeId), connectionTtl);
+                nodeId, props.getConnectionTtl());
     }
 
     private static String resolveNodeId(String configuredNodeId) {

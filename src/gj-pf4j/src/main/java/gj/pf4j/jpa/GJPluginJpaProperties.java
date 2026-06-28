@@ -1,8 +1,15 @@
 package gj.pf4j.jpa;
 
+import lombok.Getter;
+import lombok.Setter;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
 import java.util.HashMap;
 import java.util.Map;
 
+@Getter
+@Setter
+@ConfigurationProperties("gj.jpa")
 public class GJPluginJpaProperties {
 
     private String ddlAuto = "none";
@@ -30,23 +37,5 @@ public class GJPluginJpaProperties {
         }
         map.putAll(extraProperties);
         return map;
-    }
-
-    public String getDdlAuto() { return ddlAuto; }
-    public void setDdlAuto(String ddlAuto) { this.ddlAuto = ddlAuto; }
-    public boolean isShowSql() { return showSql; }
-    public void setShowSql(boolean showSql) { this.showSql = showSql; }
-    public boolean isFormatSql() { return formatSql; }
-    public void setFormatSql(boolean formatSql) { this.formatSql = formatSql; }
-    public String getDatabasePlatform() { return databasePlatform; }
-    public void setDatabasePlatform(String databasePlatform) { this.databasePlatform = databasePlatform; }
-    public boolean isGenerateStatistics() { return generateStatistics; }
-    public void setGenerateStatistics(boolean generateStatistics) { this.generateStatistics = generateStatistics; }
-    public Map<String, Object> getExtraProperties() { return extraProperties; }
-    public void setExtraProperties(Map<String, Object> extraProperties) {
-        this.extraProperties.clear();
-        if (extraProperties != null) {
-            this.extraProperties.putAll(extraProperties);
-        }
     }
 }

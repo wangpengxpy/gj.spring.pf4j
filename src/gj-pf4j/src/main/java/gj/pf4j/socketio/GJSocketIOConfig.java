@@ -11,12 +11,10 @@ import com.corundumstudio.socketio.listener.ExceptionListener;
 import com.corundumstudio.socketio.protocol.JacksonJsonSupport;
 import gj.pf4j.utils.OSUtils;
 import io.netty.channel.ChannelHandlerContext;
-import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
@@ -24,70 +22,22 @@ import org.springframework.core.env.Profiles;
 import java.util.List;
 
 @Configuration
-@ConditionalOnProperty(name = "socketio.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "gj.socketio.enabled", havingValue = "true")
 public class GJSocketIOConfig {
 
     private final Environment env;
+    private final GJSocketIOProperties props;
 
     private static final Logger log = LoggerFactory.getLogger(GJSocketIOConfig.class);
 
-    public GJSocketIOConfig(Environment env) {
+    public GJSocketIOConfig(Environment env, GJSocketIOProperties props) {
         this.env = env;
+        this.props = props;
     }
-
-    @Value("${socketio.port:9600}")
-    private Integer port;
-
-    @Value("${socketio.bossCount:1}")
-    private int bossCount;
-
-    @Value("${socketio.upgradeTimeout:10000}")
-    private int upgradeTimeout;
-
-    @Value("${socketio.pingTimeout:60000}")
-    private int pingTimeout;
-
-    @Value("${socketio.pingInterval:30000}")
-    private int pingInterval;
-
-    @Getter
-    @Value("${socketio.maxConnections:50000}")
-    private int maxConnections;
-
-    @Value("${socketio.maxFramePayloadLength:64}")
-    private int maxFramePayloadLength;
-
-    @Value("${socketio.maxHttpContentLength:64}")
-    private int maxHttpContentLength;
-
-    @Getter
-    @Value("${socketio.maxConnectionsPerSecond:100}")
-    private int maxConnectionsPerSecond;
-
-    @Getter
-    @Value("${socketio.cluster.enabled:false}")
-    private boolean clusterEnabled;
-
-    @Getter
-    @Value("${socketio.node-id:}")
-    private String nodeId;
-
-    @Getter
-    @Value("${socketio.connection-ttl:3600}")
-    private int connectionTtl;
-
-    @Value("${server.address:0.0.0.0}")
-    private String serverAddress;
-
-    @Value("${server.ssl.enabled:true}")
-    private boolean sslEnabled;
-
-    @Value("${server.ssl.enabled-protocols:TLSv1.2}")
-    private String sslEnabledProtocols;
 
     @Bean
     public SocketIOServer socketIOServer() {
-        final String serverAddress = this.serverAddress.isEmpty() ? "0.0.0.0" : this.serverAddress;
+        final String host = props.getHost().isEmpty() ? "0.0.0.0" : props.getHost();
         SocketConfig socketConfig = new SocketConfig();
         // Disable Nagle's algorithm to send small packets immediately, reducing latency
         socketConfig.setTcpNoDelay(true);
@@ -95,19 +45,19 @@ public class GJSocketIOConfig {
         socketConfig.setSoLinger(0);
         com.corundumstudio.socketio.Configuration config = new com.corundumstudio.socketio.Configuration();
         config.setSocketConfig(socketConfig);
-        config.setHostname(serverAddress);
-        config.setPort(port <= 0 ? 9600 : port);
+        config.setHostname(host);
+        config.setPort(props.getPort() <= 0 ? 9600 : props.getPort());
         // Responsible for accepting new connections.
-        config.setBossThreads(bossCount <= 0 ? 1 : bossCount);
+        config.setBossThreads(props.getBossThreadCount() <= 0 ? 1 : props.getBossThreadCount());
         int workerThreads = 2 * Runtime.getRuntime().availableProcessors();
         // Worker thread count for handling I/O events (read/write).
         config.setWorkerThreads(workerThreads);
         // Whether to allow clients to send custom HTTP requests outside the Socket.IO protocol
         config.setAllowCustomRequests(false);
-        config.setPingTimeout(pingTimeout);
-        config.setPingInterval(pingInterval);
+        config.setPingTimeout(props.getPingTimeout());
+        config.setPingInterval(props.getPingInterval());
         // Maximum wait time for upgrading from HTTP polling to WebSocket (milliseconds)
-        config.setUpgradeTimeout(upgradeTimeout);
+        config.setUpgradeTimeout(props.getUpgradeTimeout());
         config.setJsonSupport(new JacksonJsonSupport());
         // Enable Deflate compression for WebSocket messages (RFC 7692), reducing bandwidth and improving transmission efficiency
         config.setWebsocketCompression(true);
@@ -118,23 +68,23 @@ public class GJSocketIOConfig {
         //config.setEnableCors(true);
         // Set Access-Control-Allow-Headers value
         //config.setAllowHeaders("");
-        config.setSSLProtocol(sslEnabledProtocols);
+        config.setSSLProtocol(props.getSsl().getProtocols());
         // Whether to use Linux native epoll (via Netty's native transport)
         // NIO (Java standard, cross-platform)
         // Epoll (Linux only, requires netty-transport-native-epoll dependency, higher performance)
         config.setUseLinuxNativeEpoll(OSUtils.isLinux());
         // Max single WebSocket frame payload (bytes), prevents large payload DoS (OOM)
-        config.setMaxFramePayloadLength(maxFramePayloadLength * 1024);
+        config.setMaxFramePayloadLength(props.getMaxFramePayloadLength() * 1024);
         // Max POST body size in HTTP polling mode, prevents large JSON DoS.
-        config.setMaxHttpContentLength(maxHttpContentLength * 1024);
+        config.setMaxHttpContentLength(props.getMaxHttpContentLength() * 1024);
         // Explicitly set allowed origin domain or IP (for security)
         if (env.acceptsProfiles(Profiles.of("dev"))) {
             config.setOrigin(null);
         } else {
-            if (sslEnabled) {
-                config.setOrigin("https://" + serverAddress);
+            if (props.getSsl().isEnabled()) {
+                config.setOrigin("https://" + host);
             } else {
-                config.setOrigin("http://" + serverAddress);
+                config.setOrigin("http://" + host);
             }
         }
         config.setExceptionListener(new ExceptionListener() {

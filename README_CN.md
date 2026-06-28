@@ -51,71 +51,78 @@
     * [8.1 映射配置类](#81-映射配置类)
     * [8.2 使用 ModelMapper](#82-使用-modelmapper)
     * [8.3 映射注册机制](#83-映射注册机制)
-9. [插件配置管理](#9-插件配置管理)
-    * [9.1 配置类](#91-配置类)
-    * [9.2 配置文件](#92-配置文件)
-    * [9.3 注入使用](#93-注入使用)
-    * [9.4 配置来源](#94-配置来源)
-10. [实时通信](#10-实时通信)
-    * [10.0 客户端集成](#100-客户端集成)
-    * [10.1 创建 Hub](#101-创建-hub)
-    * [10.2 客户端推送 API](#102-客户端推送-api)
-    * [10.3 分组管理 API](#103-分组管理-api)
-    * [10.4 Hub 上下文](#104-hub-上下文)
-    * [10.5 服务端配置](#105-服务端配置)
-    * [10.6 集群模式（分布式部署）](#106-集群模式分布式部署)
-11. [国际化 i18n](#11-国际化-i18n)
-    * [11.1 插件 i18n 文件](#111-插件-i18n-文件)
-    * [11.2 注入使用](#112-注入使用)
-    * [11.3 兜底机制](#113-兜底机制)
-12. [导入导出](#12-导入导出)
-    * [12.1 导出示例](#121-导出示例)
-    * [12.2 导入示例](#122-导入示例)
-    * [12.3 表头 i18n](#123-表头-i18n)
-13. [定时任务](#13-定时任务)
-    * [13.1 依赖说明](#131-依赖说明)
-    * [13.2 创建定时任务](#132-创建定时任务)
-    * [13.3 @PluginJob 参数说明](#133-pluginjob-参数说明)
-    * [13.4 Cron 表达式示例](#134-cron-表达式示例)
-    * [13.5 手动触发（注入 Scheduler）](#135-手动触发注入-scheduler)
-14. [进程内事件总线](#14-进程内事件总线)
-    * [14.1 定义事件](#141-定义事件)
-    * [14.2 创建监听器](#142-创建监听器)
-    * [14.3 发布事件](#143-发布事件)
-    * [14.4 通配符匹配](#144-通配符匹配)
-15. [JSON 序列化 — ObjectMapper](#15-json-序列化--objectmapper)
-16. [OpenAPI 文档](#16-openapi-文档)
-    * [16.1 自动分组](#161-自动分组)
-    * [16.2 Controller 示例（配合 Swagger）](#162-controller-示例配合-swagger)
-    * [16.3 访问地址](#163-访问地址)
-17. [插件打包与部署](#17-插件打包与部署)
-    * [16.1 构建插件](#161-构建插件)
-    * [16.2 输出目录结构](#162-输出目录结构)
-    * [16.3 MANIFEST.MF](#163-manifestmf)
-    * [16.4 部署到主应用](#164-部署到主应用)
-    * [16.5 版本管理](#165-版本管理)
-18. [插件运行时管理 API](#18-插件运行时管理-api)
-    * [18.1 注入 GJPluginService](#181-注入-gjpluginservice)
-    * [18.2 加载并启动全部插件](#182-加载并启动全部插件)
-    * [18.3 安装插件](#183-安装插件)
-    * [18.4 禁用插件](#184-禁用插件)
-    * [18.5 重启插件](#185-重启插件)
-    * [18.6 卸载 / 删除插件](#186-卸载--删除插件)
-    * [18.7 重载全部插件](#187-重载全部插件)
-19. [插件热加载](#19-插件热加载)
-    * [19.1 概念与配置](#191-概念与配置)
-    * [19.2 manual 模式 — API 驱动工作流](#192-manual-模式--api-驱动工作流)
-    * [19.3 manual 模式 — 应用商店集成](#193-manual-模式--应用商店集成)
-    * [19.4 manual 模式 — 多节点灰度发布](#194-manual-模式--多节点灰度发布)
-    * [19.5 watch 模式 — 文件监听](#195-watch-模式--文件监听)
-    * [19.6 生命周期事件](#196-生命周期事件)
-    * [19.7 事件订阅示例](#197-事件订阅示例)
-20. [附录：主应用集成](#20-附录主应用集成)
-    * [20.1 版本兼容性说明](#201-版本兼容性说明)
-    * [20.2 主应用入口配置](#202-主应用入口配置)
-    * [20.3 按需配置：@GJModelMapperScan（共享模型）](#203-按需配置gjmodelmapperscan共享模型)
-21. [Claude Code 集成](#21-claude-code-集成)
-22. [FAQ](#22-faq)
+9. [框架配置](#9-框架配置)
+    * [9.1 配置总览](#91-配置总览)
+    * [9.2 插件目录](#92-插件目录)
+    * [9.3 热加载](#93-热加载)
+    * [9.4 i18n](#94-i18n)
+    * [9.5 JPA](#95-jpa)
+    * [9.6 Socket.IO](#96-socketio)
+10. [插件配置管理](#10-插件配置管理)
+    * [10.1 配置类](#101-配置类)
+    * [10.2 配置文件](#102-配置文件)
+    * [10.3 注入使用](#103-注入使用)
+    * [10.4 配置来源](#104-配置来源)
+11. [实时通信](#11-实时通信)
+    * [11.0 客户端集成](#110-客户端集成)
+    * [11.1 创建 Hub](#111-创建-hub)
+    * [11.2 客户端推送 API](#112-客户端推送-api)
+    * [11.3 分组管理 API](#113-分组管理-api)
+    * [11.4 Hub 上下文](#114-hub-上下文)
+    * [11.5 服务端配置](#115-服务端配置)
+    * [11.6 集群模式（分布式部署）](#116-集群模式分布式部署)
+12. [国际化 i18n](#12-国际化-i18n)
+    * [12.1 插件 i18n 文件](#121-插件-i18n-文件)
+    * [12.2 注入使用](#122-注入使用)
+    * [12.3 兜底机制](#123-兜底机制)
+13. [导入导出](#13-导入导出)
+    * [13.1 导出示例](#131-导出示例)
+    * [13.2 导入示例](#132-导入示例)
+    * [13.3 表头 i18n](#133-表头-i18n)
+14. [定时任务](#14-定时任务)
+    * [14.1 依赖说明](#141-依赖说明)
+    * [14.2 创建定时任务](#142-创建定时任务)
+    * [14.3 @PluginJob 参数说明](#143-pluginjob-参数说明)
+    * [14.4 Cron 表达式示例](#144-cron-表达式示例)
+    * [14.5 手动触发（注入 Scheduler）](#145-手动触发注入-scheduler)
+15. [进程内事件总线](#15-进程内事件总线)
+    * [15.1 定义事件](#151-定义事件)
+    * [15.2 创建监听器](#152-创建监听器)
+    * [15.3 发布事件](#153-发布事件)
+    * [15.4 通配符匹配](#154-通配符匹配)
+16. [JSON 序列化 — ObjectMapper](#16-json-序列化--objectmapper)
+17. [OpenAPI 文档](#17-openapi-文档)
+    * [17.1 自动分组](#171-自动分组)
+    * [17.2 Controller 示例（配合 Swagger）](#172-controller-示例配合-swagger)
+    * [17.3 访问地址](#173-访问地址)
+18. [插件打包与部署](#18-插件打包与部署)
+    * [18.1 构建插件](#181-构建插件)
+    * [18.2 输出目录结构](#182-输出目录结构)
+    * [18.3 MANIFEST.MF](#183-manifestmf)
+    * [18.4 部署到主应用](#184-部署到主应用)
+    * [18.5 版本管理](#185-版本管理)
+19. [插件运行时管理 API](#19-插件运行时管理-api)
+    * [19.1 注入 GJPluginService](#191-注入-gjpluginservice)
+    * [19.2 加载并启动全部插件](#192-加载并启动全部插件)
+    * [19.3 安装插件](#193-安装插件)
+    * [19.4 禁用插件](#194-禁用插件)
+    * [19.5 重启插件](#195-重启插件)
+    * [19.6 卸载 / 删除插件](#196-卸载--删除插件)
+    * [19.7 重载全部插件](#197-重载全部插件)
+20. [插件热加载](#20-插件热加载)
+    * [20.1 概念与配置](#201-概念与配置)
+    * [20.2 manual 模式 — API 驱动工作流](#202-manual-模式--api-驱动工作流)
+    * [20.3 manual 模式 — 应用商店集成](#203-manual-模式--应用商店集成)
+    * [20.4 manual 模式 — 多节点灰度发布](#204-manual-模式--多节点灰度发布)
+    * [20.5 watch 模式 — 文件监听](#205-watch-模式--文件监听)
+    * [20.6 生命周期事件](#206-生命周期事件)
+    * [20.7 事件订阅示例](#207-事件订阅示例)
+21. [附录：主应用集成](#21-附录主应用集成)
+    * [21.1 版本兼容性说明](#211-版本兼容性说明)
+    * [21.2 主应用入口配置](#212-主应用入口配置)
+    * [21.3 按需配置：@GJModelMapperScan（共享模型）](#213-按需配置gjmodelmapperscan共享模型)
+22. [Claude Code 集成](#22-claude-code-集成)
+23. [FAQ](#23-faq)
     * [Q1: 插件启动报 plugin.id 与包名不一致错误？](#q1-插件启动报-pluginid-与包名不一致错误)
     * [Q2: 插件启动失败/启动异常，如何排查？](#q2-插件启动失败启动异常如何排查)
     * [Q3: SQL 在 MySQL 正常，但切换到达梦/PostgreSQL 报"无效的标识符"？](#q3-sql-在-mysql-正常但切换到达梦postgresql-报无效的标识符)
@@ -140,7 +147,7 @@ gj.spring.pf4j 是基于 [PF4J](https://pf4j.org/) 的轻量级 Spring 插件化
 </p>
 
 - **[插件生命周期管理](#4-插件生命周期)** — 插件安装、禁用、重启、卸载、删除
-- **[插件热加载](#19-插件热加载)** — 支持 API 驱动和文件监听两种热加载模式；生命周期事件自定义编排逻辑
+- **[插件热加载](#20-插件热加载)** — 支持 API 驱动和文件监听两种热加载模式；生命周期事件自定义编排逻辑
 - **[插件运行时管理 API](#18-插件运行时管理-api)** — GJPluginService 提供带锁控制的运行时管理接口
 - **[REST 端点](#5-rest-端点)** — 插件内 @RestController 自动发现并注册到主应用路由表，支持 MVC 和 WebFlux 双路由模式
 - **[双路由模式支持](#52-spring-mvc-与-webflux-双路由模式)** — 同时支持 Spring MVC（Servlet）和 Spring WebFlux（Reactive）路由
@@ -557,7 +564,7 @@ public class UserRouterConfig {
 }
 ```
 
-> 热卸载时调用 `unregister()` 移除。主应用的 MVC / WebFlux 详细配置步骤见 **[附录：主应用集成](#19-附录主应用集成)**。
+> 热卸载时调用 `unregister()` 移除。主应用的 MVC / WebFlux 详细配置步骤见 **[附录：主应用集成](#21-附录主应用集成)**。
 
 ### 5.3 匿名访问
 
@@ -912,7 +919,7 @@ import java.util.List;
 @Slf4j
 @Service
 @Transactional
-    @RequiredArgsConstructor
+@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
@@ -1112,7 +1119,7 @@ public class UserModelMapperConfig implements GJPluginModelMapperConfig {
 框架自动构建并注册 `ModelMapper` Bean，可以直接注入使用：
 
 ```java
-    @RequiredArgsConstructor
+@RequiredArgsConstructor
 @Service
 public class UserServiceImpl implements UserService {
 
@@ -1137,9 +1144,94 @@ public class UserServiceImpl implements UserService {
 
 ---
 
-## 9. 插件配置管理
+## 9. 框架配置
 
-### 9.1 配置类
+所有框架级配置键统一通过 `gj.*` 命名空间管理。本章提供完整参考。示例均使用 YAML 格式，properties 格式（`application.properties`）同样支持——使用完整的点号路径即可（如 `gj.socketio.port=9600`）。
+
+### 9.1 配置总览
+
+| 键 | 类型 | 默认值 | 说明 | 参见 |
+|-----|------|--------|------|------|
+| `gj.plugins-dir` | String | (自动) | 插件 JAR 存放目录。dev/debug 为 `./plugins`，否则为 `<appHome>/plugins` | §9.2 |
+| `gj.hot-reload` | Enum | `watch` | 热加载模式：`watch`（自动检测 JAR 变更）或 `manual`（仅 API 驱动） | §9.3 |
+| `gj.i18n.cache-seconds` | int | `86400` | i18n 消息缓存秒数。开发期建议调小 | §9.4 |
+| `gj.i18n.use-code-as-default-message` | boolean | `true` | 缺 key 时返回 code 本身（`true`）还是抛异常（`false`） | §9.4 |
+| `gj.jpa.ddl-auto` | String | `none` | Hibernate DDL 策略。默认 `none`（由框架迁移引擎接管）。可改为 `update`/`validate` | §9.5 |
+| `gj.jpa.show-sql` | boolean | `false` | SQL 日志输出开关。开发调试时开启 | §9.5 |
+| `gj.socketio.enabled` | boolean | `false` | 是否启动 Socket.IO 服务。必须显式设为 `true` | §9.6 |
+| `gj.socketio.host` | String | `0.0.0.0` | 服务绑定地址 | §9.6 |
+| `gj.socketio.port` | int | `9600` | 服务端口 | §9.6 |
+| `gj.socketio.boss-thread-count` | int | `1` | Netty boss 线程数 | §9.6 |
+| `gj.socketio.upgrade-timeout` | int | `10000` | HTTP→WebSocket 升级超时（ms） | §9.6 |
+| `gj.socketio.ping-timeout` | int | `60000` | Ping 超时（ms） | §9.6 |
+| `gj.socketio.ping-interval` | int | `30000` | Ping 间隔（ms） | §9.6 |
+| `gj.socketio.max-connections` | int | `50000` | 最大连接数 | §9.6 |
+| `gj.socketio.max-frame-payload-length` | int | `64` | 最大帧载荷（KB） | §9.6 |
+| `gj.socketio.max-http-content-length` | int | `64` | 最大 HTTP 内容长度（KB） | §9.6 |
+| `gj.socketio.max-connections-per-second` | int | `100` | 每秒最大连接数 | §9.6 |
+| `gj.socketio.node-id` | String | `""` | 集群节点标识。空则自动从 `HOSTNAME` 检测 | §9.6 |
+| `gj.socketio.connection-ttl` | int | `3600` | 连接映射 Redis TTL（秒） | §9.6 |
+| `gj.socketio.ssl.enabled` | boolean | `true` | 是否启用 SSL | §9.6 |
+| `gj.socketio.ssl.protocols` | String | `TLSv1.2` | SSL 协议版本 | §9.6 |
+| `gj.socketio.cluster.enabled` | boolean | `false` | 是否启用集群模式（需 Redis） | §9.6 |
+
+### 9.2 插件目录
+
+```yaml
+gj:
+  plugins-dir: /opt/app/plugins   # 显式指定；不设则自动检测
+```
+
+未设置时自动检测：dev/debug 为 `./plugins`，否则为 `<appHome>/plugins`。
+
+### 9.3 热加载
+
+```yaml
+gj:
+  hot-reload: watch   # 或 manual
+```
+
+详见 [§20 插件热加载](#20-插件热加载)。
+
+### 9.4 i18n
+
+```yaml
+gj:
+  i18n:
+    cache-seconds: 60             # 开发期调小，即时看到翻译改动
+    use-code-as-default-message: true
+```
+
+### 9.5 JPA
+
+```yaml
+gj:
+  jpa:
+    ddl-auto: none               # 默认 none，由框架自动迁移接管
+    show-sql: true               # 开发调试时开启
+```
+
+`ddl-auto` 默认 `none` 是因为框架自带的迁移引擎已处理建表/加字段。如需 Hibernate 原生 DDL，改为 `update` 或 `validate`。
+
+### 9.6 Socket.IO
+
+```yaml
+gj:
+  socketio:
+    enabled: true               # 必须显式开启，默认不启动
+    port: 9600
+    max-connections-per-second: 100
+```
+
+Socket.IO 默认不启用。设置 `gj.socketio.enabled=true` 才会启动服务。集群相关配置见 [§11.6](#116-集群模式分布式部署)。
+
+> 完整配置键列表参见 [§9.1 配置总览](#91-配置总览)。
+
+---
+
+## 10. 插件配置管理
+
+### 10.1 配置类
 
 使用 `@ConfigurationProperties` 绑定插件专属配置：
 
@@ -1163,7 +1255,7 @@ public class UserConfig {
 }
 ```
 
-### 9.2 配置文件
+### 10.2 配置文件
 
 在 `src/main/resources/{pluginId}.properties` 中提供值：
 
@@ -1174,13 +1266,13 @@ gj.module.user.max-retry=5
 gj.module.user.api-url=https://api.example.com
 ```
 
-### 9.3 注入使用
+### 10.3 注入使用
 
 插件内任何 Spring Bean 都可以注入配置类：
 
-    @RequiredArgsConstructor
 ```java
 @Service
+@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     private final UserConfig config;
@@ -1194,7 +1286,7 @@ public class UserServiceImpl implements UserService {
 }
 ```
 
-### 9.4 配置来源
+### 10.4 配置来源
 
 框架按优先级加载配置：
 1. 插件容器内部环境变量
@@ -1203,11 +1295,11 @@ public class UserServiceImpl implements UserService {
 
 ---
 
-## 10. 实时通信
+## 11. 实时通信
 
 基于 [netty-socketio](https://github.com/mrniko/netty-socketio) 实现实时通信。服务端 API 设计参考了 **ASP.NET Core SignalR Hub** 模式——继承 `GJHub`、`@GJHubMethod` 注解标记方法、`getClients().group().sendAsync()` 分组推送。底层线路协议为 **Socket.IO**。
 
-### 10.0 客户端集成
+### 11.0 客户端集成
 
 客户端必须使用 **Socket.IO** 客户端库（`socket.io-client`），**不能**使用 SignalR 客户端。
 
@@ -1227,9 +1319,9 @@ const socket = io('http://localhost:9600/socket.io/', {
 | 参数 | 必填 | 说明 |
 |---|---|---|
 | `hub` | 是 | Hub 名称（与 `GJHub` 构造器传入的字符串一致） |
-| `userName` | 是† | 用户标识；集群模式下同时用于 nginx 粘性会话路由 |
+| `userName` | 是 | 用户标识；集群模式下同时用于 nginx 粘性会话路由 |
 
-† `dev`/`debug` profile 下可不填（默认值为 `"test"`）。
+`dev`/`debug` profile 下可不填（默认值为 `"test"`）。
 
 **向服务端发送消息：**
 
@@ -1253,7 +1345,7 @@ socket.on('newMessage', (msg) => {
 });
 ```
 
-### 10.1 创建 Hub
+### 11.1 创建 Hub
 
 继承 `GJHub`，使用 `@GJHubMethod` 注解标记消息处理方法：
 
@@ -1316,7 +1408,7 @@ public class UserHub extends GJHub {
 }
 ```
 
-### 10.2 客户端推送 API
+### 11.2 客户端推送 API
 
 `getClients()` 返回 `GJHubCallerClients`，提供以下推送渠道：
 
@@ -1346,7 +1438,7 @@ getClients().groupExceptUser("admin", "excludedUserId").sendAsync("eventName", d
 getClients().allExcept(List.of("connId1", "connId2")).sendAsync("eventName", data);
 ```
 
-### 10.3 分组管理 API
+### 11.3 分组管理 API
 
 `getGroups()` 返回 `GJGroupManager`：
 
@@ -1373,7 +1465,7 @@ getGroups().getConnectionsInGroupAsync("groupName").thenAccept(connections -> {
 });
 ```
 
-### 10.4 Hub 上下文
+### 11.4 Hub 上下文
 
 在 Hub 方法内通过 `getContext()` 获取当前连接信息：
 
@@ -1385,22 +1477,23 @@ Map<String, String> queryParams = ctx.getQueryParams();
 
 > 前端可通过连接 URL 传递自定义参数（如 `?hub=userHub&userName=123`），Hub 内通过 `ctx.getQueryParam("key")` 获取。注意不要在 URL 中明文传递敏感信息。
 
-### 10.5 服务端配置
+### 11.5 服务端配置
 
 Socket.IO **默认不启用**。如需启用，在主应用配置中显式设置 `socketio.enabled=true`：
 
-```properties
-socketio.enabled=true
-socketio.port=9600
-socketio.maxConnectionsPerSecond=10
+```yaml
+gj:
+  socketio:
+    enabled: true              # Socket.IO 默认不启用，必须显式开启
+    port: 9600
 ```
 
 如果应用不需要 Socket.IO（如纯 REST 场景），直接省略该配置即可——Socket.IO
 服务器不会启动，节省资源并避免端口冲突。
 
-所有配置项及默认值参见 `GJSocketIOConfig` 源码。
+> 完整配置键列表参见 [§9.1 配置总览](#91-配置总览)。
 
-### 10.6 集群模式（分布式部署）
+### 11.6 集群模式（分布式部署）
 
 gj.spring.pf4j 支持通过 Redis 共享状态实现多节点水平扩展。启用集群模式后，所有连接、分组、用户映射数据同步至 Redis，跨节点消息通过 Redis Pub/Sub 投递。
 
@@ -1425,18 +1518,21 @@ gj.spring.pf4j 支持通过 Redis 共享状态实现多节点水平扩展。启�
 #### 启用集群模式
 
 ```yaml
-socketio:
-  cluster:
-    enabled: true
-  node-id: ${HOSTNAME:}       # 留空则自动检测（hostname:PID）
-  connection-ttl: 3600         # 秒，连接映射的 Redis key TTL
+gj:
+  socketio:
+    cluster:
+      enabled: true
+    node-id: ${HOSTNAME:}       # 留空则自动检测（hostname:PID）
+    connection-ttl: 3600         # 秒，连接映射的 Redis key TTL
 ```
 
-| 属性 | 默认值 | 说明 |
+| 键 | 默认值 | 说明 |
 |---|---|---|
-| `socketio.cluster.enabled` | `false` | 启用跨节点集群支持 |
-| `socketio.node-id` | 自动 | 节点标识。优先读取 `HOSTNAME` 环境变量，兜底使用 `host:PID` |
-| `socketio.connection-ttl` | `3600` | 连接归属 key 的 Redis TTL；同时也是过期脏数据的最终兜底清理 |
+| `gj.socketio.cluster.enabled` | `false` | 启用跨节点集群支持 |
+| `gj.socketio.node-id` | 自动 | 节点标识。优先读取 `HOSTNAME` 环境变量，兜底使用 `host:PID` |
+| `gj.socketio.connection-ttl` | `3600` | 连接归属 key 的 Redis TTL；同时也是过期脏数据的最终兜底清理 |
+
+> 完整 Socket.IO 集群配置键参见 [§9.1 配置总览](#91-配置总览)。
 
 #### Nginx 配置
 
@@ -1502,9 +1598,9 @@ server {
 
 ---
 
-## 11. 国际化 i18n
+## 12. 国际化 i18n
 
-### 11.1 插件 i18n 文件
+### 12.1 插件 i18n 文件
 
 在插件 classpath 下创建 `i18n/messages*.properties`：
 
@@ -1532,11 +1628,11 @@ user.create.success=Created Successfully
 user.delete.confirm=Confirm to delete this user?
 ```
 
-### 11.2 注入使用
+### 12.2 注入使用
 
-    @RequiredArgsConstructor
 ```java
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/v1/user")
 public class UserController {
 
@@ -1549,24 +1645,26 @@ public class UserController {
 }
 ```
 
-### 11.3 兜底机制
+### 12.3 兜底机制
 
 - 框架自动为每个插件创建 `GJPluginReloadableMessageSource`（Bean 名 `plugin_i18n_{pluginId}`）
 - 查找 i18n key 时，优先查插件自己的 messages，查不到则 fallback 到主应用的 `messageSource`
-- 找不到 key 时返回 key 本身（`useCodeAsDefaultMessage = true`）
-- 缓存 24 小时，编码 UTF-8
+- 找不到 key 时返回 key 本身（可通过 `gj.i18n.use-code-as-default-message` 配置，默认 `true`）
+- 消息缓存时长可通过 `gj.i18n.cache-seconds` 配置（默认 86400 = 24h，开发期建议调小）
+
+> 详见 [§9.4 i18n](#94-i18n)。
 
 ---
 
-## 12. 导入导出
+## 13. 导入导出
 
 基于 [EasyExcel](https://easyexcel.opensource.alibaba.com/)，提供 `IImportManager` 和 `IExportManager` 接口，支持多 Sheet 读写及 i18n 表头自动翻译。
 
-    @RequiredArgsConstructor
-### 12.1 导出示例
+### 13.1 导出示例
 
 ```java
 @Service
+@RequiredArgsConstructor
 public class UserExportService {
 
     private final IExportManager exportManager;
@@ -1599,12 +1697,12 @@ public class UserExportService {
     }
 }
 ```
-    @RequiredArgsConstructor
 
-### 12.2 导入示例
+### 13.2 导入示例
 
 ```java
 @Service
+@RequiredArgsConstructor
 public class UserImportService {
 
     private final IImportManager importManager;
@@ -1628,7 +1726,7 @@ public class UserImportService {
 }
 ```
 
-### 12.3 表头 i18n
+### 13.3 表头 i18n
 
 EasyExcel 的 `@ExcelProperty` 注解值会在导入/导出时通过 i18n 自动翻译。框架重写了 `SimpleWriteHandler` 和 `ReadEventListener`，确保生成和解析的 Excel 表头与当前语言环境匹配。
 
@@ -1645,15 +1743,15 @@ public class UserExcelVO {
 
 ---
 
-## 13. 定时任务
+## 14. 定时任务
 
 基于 [Quartz](https://www.quartz-scheduler.org/) 提供插件定时任务调度能力。插件只需实现 `IPluginJob` 接口并标注 `@PluginJob` 注解，框架会在插件启动后自动扫描并注册到 Quartz 调度器。
 
-### 13.1 依赖说明
+### 14.1 依赖说明
 
 框架已内置 Quartz 支持（`org.quartz-scheduler:quartz`），通过 `GJQuartzConfig` 自动创建 `Scheduler` Bean（`@ConditionalOnMissingBean`）。主应用无需额外引入任何 Quartz 依赖。若主应用已有自定义 `Scheduler` Bean，框架自动复用。
 
-### 13.2 创建定时任务
+### 14.2 创建定时任务
 
 在插件中创建实现 `IPluginJob` 的 Bean，用 `@PluginJob` 注解标记：
 
@@ -1678,7 +1776,7 @@ public class TokenCleanupJob implements IPluginJob {
 }
 ```
 
-### 13.3 @PluginJob 参数说明
+### 14.3 @PluginJob 参数说明
 
 | 参数 | 类型 | 默认值 | 说明 |
 |---|---|---|---|
@@ -1688,7 +1786,7 @@ public class TokenCleanupJob implements IPluginJob {
 | `runOnce` | boolean | false | 是否仅执行一次 |
 | `disallowConcurrentExecution` | boolean | true | 是否禁止并发执行 |
 
-### 13.4 Cron 表达式示例
+### 14.4 Cron 表达式示例
 
 ```java
 @PluginJob(name = "dailyReport", cronExpression = "0 0 8 * * ?")       // 每天 8:00
@@ -1696,13 +1794,13 @@ public class TokenCleanupJob implements IPluginJob {
 @PluginJob(name = "initData", runOnce = true)                            // 启动后执行一次
 ```
 
-    @RequiredArgsConstructor
-### 13.5 手动触发（注入 Scheduler）
+### 14.5 手动触发（注入 Scheduler）
 
 对于需要在业务逻辑中手动触发的场景，可直接注入 Quartz `Scheduler`：
 
 ```java
 @Service
+@RequiredArgsConstructor
 public class ReportService {
 
     private final Scheduler scheduler;
@@ -1715,11 +1813,11 @@ public class ReportService {
 
 ---
 
-## 14. 进程内事件总线
+## 15. 进程内事件总线
 
 框架提供轻量级进程内事件总线，支持插件间解耦通信。监听器通过实现 `GJPluginLocalEventListener<T>` 接口处理特定类型的事件，事件类通过 `@EventName` 注解标记名称，支持 Ant 风格通配符匹配。
 
-### 14.1 定义事件
+### 15.1 定义事件
 
 事件类需要标注 `@EventName`，名称支持 `.` 分隔的层级结构：
 
@@ -1737,7 +1835,7 @@ public class UserCreatedEvent {
 }
 ```
 
-### 14.2 创建监听器
+### 15.2 创建监听器
 
 实现 `GJPluginLocalEventListener<T>` 接口，标注 `@Component` 注册为 Spring Bean：
 
@@ -1760,14 +1858,14 @@ public class UserCreatedListener implements GJPluginLocalEventListener<UserCreat
     }
 }
 ```
-    @RequiredArgsConstructor
 
-### 14.3 发布事件
+### 15.3 发布事件
 
 在任何 Spring Bean 中注入 `GJPluginLocalEventBus` 发布事件：
 
 ```java
 @Service
+@RequiredArgsConstructor
 public class UserService {
 
     private final GJPluginLocalEventBus eventBus;
@@ -1784,7 +1882,7 @@ public class UserService {
 }
 ```
 
-### 14.4 通配符匹配
+### 15.4 通配符匹配
 
 `@EventName` 支持 Ant 风格通配符，`.` 作为路径分隔符：
 
@@ -1798,7 +1896,7 @@ public class UserService {
 ---
 
 
-## 15. JSON 序列化 — ObjectMapper
+## 16. JSON 序列化 — ObjectMapper
 
 每个插件获得**完全隔离的 `ObjectMapper`** 实例。框架复制主应用的 `ObjectMapper`，在每个插件的 Spring 上下文中注册为 `objectMapper` Bean。机制保证：
 
@@ -1819,13 +1917,13 @@ public class UserController {
 
 ---
 
-## 16. OpenAPI 文档
+## 17. OpenAPI 文档
 
-### 16.1 自动分组
+### 17.1 自动分组
 
 框架为每个已注册 Controller 的插件自动创建独立的 `GroupedOpenApi` Bean（SpringDoc），分组名规则为 `pluginGroupedOpenApi-{pluginId}`。访问 Swagger-UI 时，通过右上角下拉菜单选择对应插件查看其 API 文档。
 
-### 16.2 Controller 示例（配合 Swagger）
+### 17.2 Controller 示例（配合 Swagger）
 
 ```java
 @RestController
@@ -1849,22 +1947,22 @@ public class UserController {
 }
 ```
 
-### 16.3 访问地址
+### 17.3 访问地址
 
 启动后访问：`http://localhost:{port}/swagger-ui/index.html`
 
 ---
 
-## 17. 插件打包与部署
+## 18. 插件打包与部署
 
-### 16.1 构建插件
+### 17.1 构建插件
 
 ```bash
 cd user-plugin
 mvn clean package
 ```
 
-### 16.2 输出目录结构
+### 17.2 输出目录结构
 
 构建完成后，`target/plugins/{artifactId}/` 目录结构如下：
 
@@ -1877,7 +1975,7 @@ target/plugins/gj.module.user/
     └── ...
 ```
 
-### 16.3 MANIFEST.MF
+### 17.3 MANIFEST.MF
 
 ```manifest
 Plugin-Id: gj.module.user
@@ -1885,7 +1983,7 @@ Plugin-Version: 1.0.0-SNAPSHOT
 Class-Path: lib/some-third-party.jar lib/another-lib.jar
 ```
 
-### 16.4 部署到主应用
+### 17.4 部署到主应用
 
 将 `target/plugins/gj.module.user/` 整个目录复制到主应用的 `plugins/` 目录下：
 
@@ -1903,19 +2001,19 @@ Class-Path: lib/some-third-party.jar lib/another-lib.jar
 
 生产环境（非 dev/debug profile）下，插件目录位于 `ApplicationHome`（Spring Boot JAR 所在目录）下的 `plugins/`。
 
-### 16.5 版本管理
+### 17.5 版本管理
 
 `GJJarPluginRepository` 自动扫描每个插件目录，解析 JAR 文件名中的版本号（格式 `{pluginId}-{version}.jar`），选择最新版本加载。目录中存在多个版本时只加载最高版本，并在日志中记录。
 
 ---
-    @RequiredArgsConstructor
 
-## 18. 插件运行时管理 API
+## 19. 插件运行时管理 API
 
-### 18.1 注入 GJPluginService
+### 19.1 注入 GJPluginService
 
 ```java
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/admin/plugins")
 public class PluginAdminController {
 
@@ -1925,7 +2023,7 @@ public class PluginAdminController {
 }
 ```
 
-### 18.2 加载并启动所有插件
+### 19.2 加载并启动所有插件
 
 ```java
 @PostMapping("/load-all")
@@ -1934,7 +2032,7 @@ public void loadAndStartAll() {
 }
 ```
 
-### 18.3 安装插件
+### 19.3 安装插件
 
 从 `plugins/{pluginId}/` 加载 JAR 并启动。成功返回 `PluginState.STARTED`。
 
@@ -1946,7 +2044,7 @@ public String installPlugin(@PathVariable String pluginId) {
 }
 ```
 
-### 18.4 禁用插件
+### 19.4 禁用插件
 
 停止插件并设为 `PluginState.DISABLED`。插件保留在注册表中，可后续重启。批量启动时禁用插件被跳过。
 
@@ -1958,7 +2056,7 @@ public ResponseEntity<String> disablePlugin(@PathVariable String pluginId) {
 }
 ```
 
-### 18.5 重启插件
+### 19.5 重启插件
 
 原地重启（同一 ClassLoader）。同时支持 `STARTED` 和 `DISABLED` 状态——禁用插件跳过停止直接启动。
 
@@ -1970,7 +2068,7 @@ public String restartPlugin(@PathVariable String pluginId) {
 }
 ```
 
-### 18.6 卸载 / 删除插件
+### 19.6 卸载 / 删除插件
 
 - `unloadPlugin(id)` — 停止、关闭 ClassLoader、从注册表移除。磁盘文件保留。
 - `deletePlugin(id)` — 同卸载，另删除 `plugins/{id}/` 目录。
@@ -1989,7 +2087,7 @@ public String deletePlugin(@PathVariable String pluginId) {
 }
 ```
 
-### 18.7 重载全部插件
+### 19.7 重载全部插件
 
 ```java
 @PostMapping("/reload-all")
@@ -1998,27 +2096,29 @@ public void reloadAll() {
 }
 ```
 
-> 热加载工作流、生命周期事件、文件监听模式和应用商店集成示例，参见 **[§19 插件热加载](#19-插件热加载)**。
+> 热加载工作流、生命周期事件、文件监听模式和应用商店集成示例，参见 **[§20 插件热加载](#20-插件热加载)**。
 
 ---
 
-## 19. 插件热加载
+## 20. 插件热加载
 
-### 19.1 概念与配置
+### 20.1 概念与配置
 
 热加载在运行时将插件更新至新版本，无需重启主应用。支持两种模式：
 
-```
-gj.plugin.hot-reload=watch   （默认）
-gj.plugin.hot-reload=manual
+```yaml
+gj:
+  hot-reload: watch   # 默认；或 manual
 ```
 
-| 属性 | 默认 | 说明 |
-|------|------|------|
-| `gj.plugin.hot-reload` | `watch` | 热加载模式。`watch` — 自动检测 JAR 变更；`manual` — 仅 API 驱动。 |
-| `gj.plugin.dir` | （自动） | 插件目录路径。显式指定时使用精确路径，不存在则启动失败。未指定时：dev/debug profile 为 `./plugins`，否则为 `<appHome>/plugins`。 |
+| 键 | 默认 | 说明 |
+|-----|------|------|
+| `gj.hot-reload` | `watch` | 热加载模式。`watch` — 自动检测 JAR 变更；`manual` — 仅 API 驱动。 |
+| `gj.plugins-dir` | （自动） | 插件目录路径。显式指定时使用精确路径，不存在则启动失败。未指定时：dev/debug profile 为 `./plugins`，否则为 `<appHome>/plugins`。 |
 
-### 19.2 manual 模式 — API 驱动工作流
+> 完整框架配置键列表参见 [§9.1 配置总览](#91-配置总览)。
+
+### 20.2 manual 模式 — API 驱动工作流
 
 ```
 1. unloadPlugin(id)        // 从内存移除，保留磁盘文件
@@ -2028,7 +2128,7 @@ gj.plugin.hot-reload=manual
 
 每步返回结果可被调用方校验。
 
-### 19.3 manual 模式 — 应用商店集成
+### 20.3 manual 模式 — 应用商店集成
 
 应用商店或编排器使用两步工作流加入自定义逻辑：
 
@@ -2043,7 +2143,7 @@ gj.plugin.hot-reload=manual
 8. 失败 → 回滚：恢复旧 JAR + installPlugin(id)
 ```
 
-### 19.4 manual 模式 — 多节点灰度发布
+### 20.4 manual 模式 — 多节点灰度发布
 
 ```
 1. 在所有节点上放置新 JAR（不触发重载）
@@ -2052,7 +2152,7 @@ gj.plugin.hot-reload=manual
 4. 任何节点失败 → 停止推广，已重载节点回滚
 ```
 
-### 19.5 watch 模式 — 文件监听
+### 20.5 watch 模式 — 文件监听
 
 单守护线程通过 `WatchService` 监听 `plugins/` 目录。2s 防抖合并快速文件事件。防抖到期后：
 
@@ -2060,13 +2160,13 @@ gj.plugin.hot-reload=manual
 - **新插件目录**（创建）→ 注册逐插件 WatchKey + 启动防抖
 - **JAR 删除** → 防抖后检查残留 JAR；无则卸载
 
-### 19.6 生命周期事件
+### 20.6 生命周期事件
 
 热加载过程发布 `GJPluginBeforeUnloadEvent` 和 `GJPluginAfterInstallEvent`。**宿主应用** 和**被热加载的插件自身**都可通过 `@EventListener` 订阅。其他插件不受影响——仅目标插件和宿主收到事件。
 
 `GJPluginBeforeUnloadEvent` 支持否决：监听器抛出 `PluginHotReloadVetoException` 即可阻止卸载。
 
-### 19.7 事件订阅示例
+### 20.7 事件订阅示例
 
 ```java
 // 插件自身 — 订阅卸载事件，关闭自定义端口
@@ -2090,7 +2190,7 @@ public class HotReloadMonitor {
 
 ---
 
-## 20. 附录：主应用集成
+## 21. 附录：主应用集成
 
 ### 20.1 版本兼容性说明
 
@@ -2106,7 +2206,7 @@ gj-pf4j 自身依赖 Spring 核心包（spring-webmvc、spring-beans、spring-jd
         <dependency>
             <groupId>io.github.wangpengxpy</groupId>
             <artifactId>gj-dependencies</artifactId>
-            <version>1.0.10</version>
+            <version>1.0.11</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -2150,7 +2250,7 @@ gj BOM 中与 Spring Boot 重叠的依赖（spring-webmvc、spring-beans 等）�
 <dependency>
     <groupId>io.github.wangpengxpy</groupId>
     <artifactId>gj-pf4j</artifactId>
-    <version>1.6.0</version>
+    <version>1.6.1</version>
 </dependency>
 ```
 
@@ -2309,7 +2409,7 @@ public class AppModelMapperConfig implements GJModelMapperConfig {
 
 ---
 
-## 21. Claude Code 集成
+## 22. Claude Code 集成
 
 框架内置 [Claude Code](https://claude.ai/code) skills，通过 AI 命令驱动插件开发：
 
@@ -2334,7 +2434,7 @@ cp -r /tmp/gj-pf4j/tools/claude-skills/* .claude/
 
 ---
 
-## 22. FAQ
+## 23. FAQ
 
 ### Q1: 插件启动报 `plugin.id` 与包名不一致错误？
 
@@ -2434,14 +2534,22 @@ MyBatis-Plus 不受影响，正常工作。详见 [6.2 节](#62-jpa-数据访问
 
 ### Q9: 配置了 `spring.jpa.hibernate.ddl-auto=update` 为什么不生效？
 
-框架默认 `ddl-auto` 为 `none`。DDL 自动维护由框架自带的迁移引擎接管（详见 [第 7 节](#7-数据库自动迁移)），支持 7 种数据库，只做纯增量操作（仅 CREATE TABLE / ADD COLUMN）。如需启用 Hibernate 自带的 DDL，在宿主应用覆盖 `GJPluginJpaProperties` Bean：
+框架默认 `ddl-auto` 为 `none`。DDL 自动维护由框架自带的迁移引擎接管（详见 [第 7 节](#7-数据库自动迁移)），支持 7 种数据库，只做纯增量操作（仅 CREATE TABLE / ADD COLUMN）。如需启用 Hibernate 自带的 DDL，最简单的方式是在 `application.yml` 中配置 `gj.jpa.ddl-auto`：
+
+```yaml
+gj:
+  jpa:
+    ddl-auto: update   # 或 validate, create, create-drop
+```
+
+如果需要编程式控制（如根据条件动态决定），可覆盖 `GJPluginJpaProperties` Bean：
 
 ```java
 @Bean
 @Primary
 public GJPluginJpaProperties customJpaProperties() {
     GJPluginJpaProperties props = new GJPluginJpaProperties();
-    props.setDdlAuto("update");  // 或 "validate"、"create"、"create-drop"
+    props.setDdlAuto("update");
     return props;
 }
 ```
