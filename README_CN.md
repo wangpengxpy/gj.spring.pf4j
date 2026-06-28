@@ -728,6 +728,8 @@ public class AdvancedRouterConfig {
 }
 ```
 
+> 与 `@AllowAnonymous` 中 `reason` 选填不同（类名/方法名已提供审计上下文），函数式 DSL 的三参数重载要求 **`reason` 非空**——它是函数式路由唯一的审计字段。reason 为空时输出 `WARN` 日志且**不会注册为匿名**，路由回退为需认证访问。
+>
 > 注解式控制器使用 `@AllowAnonymous`（§5.3.1）；函数式 RouterFunction 路由使用 `GJRouterFunctions.route()` 或 `GJRouterFunctions.wrap()`。两种机制写入同一个 `PluginAnonymousPathRegistry`——宿主应用通过 `isAnonymous()` 查询方式完全一致。
 
 运维可观测：注入 Registry 后调用 `listAll()`、`listByPlugin(pluginId)` 或 `getCount()` 可查询匿名接口清单，按需暴露为 REST 或 JMX 端点。
@@ -2329,7 +2331,7 @@ gj-pf4j 自身依赖 Spring 核心包（spring-webmvc、spring-beans、spring-jd
         <dependency>
             <groupId>io.github.wangpengxpy</groupId>
             <artifactId>gj-dependencies</artifactId>
-            <version>1.0.11</version>
+            <version>1.0.12</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -2373,7 +2375,7 @@ gj BOM 中与 Spring Boot 重叠的依赖（spring-webmvc、spring-beans 等）�
 <dependency>
     <groupId>io.github.wangpengxpy</groupId>
     <artifactId>gj-pf4j</artifactId>
-    <version>1.6.1</version>
+    <version>1.6.2</version>
 </dependency>
 ```
 

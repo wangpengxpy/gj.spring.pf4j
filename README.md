@@ -729,6 +729,8 @@ public class AdvancedRouterConfig {
 }
 ```
 
+> Unlike `@AllowAnonymous` where `reason` is optional (the class/method name already provides audit context), the functional DSL's 3-argument overloads require a **non-blank `reason`** — it is the sole audit field for functional routes. A blank reason triggers a `WARN` log and the route is **not registered as anonymous**; it falls back to authenticated access.
+>
 > Annotation-based controllers use `@AllowAnonymous` (§5.3.1); functional RouterFunction routes use `GJRouterFunctions.route()` or `GJRouterFunctions.wrap()`. Both mechanisms feed into the same `PluginAnonymousPathRegistry` — host applications query it the same way via `isAnonymous()`.
 
 For operational visibility, inject the registry and call `listAll()`, `listByPlugin(pluginId)`, or `getCount()` to expose the anonymous endpoint inventory through REST or JMX endpoints.
@@ -2338,7 +2340,7 @@ In `dependencyManagement`, import the gj BOM followed by the Spring Boot BOM —
         <dependency>
             <groupId>io.github.wangpengxpy</groupId>
             <artifactId>gj-dependencies</artifactId>
-            <version>1.0.11</version>
+            <version>1.0.12</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -2382,7 +2384,7 @@ You can also skip the BOM and depend on gj-pf4j directly, but you must ensure Sp
 <dependency>
     <groupId>io.github.wangpengxpy</groupId>
     <artifactId>gj-pf4j</artifactId>
-    <version>1.6.1</version>
+    <version>1.6.2</version>
 </dependency>
 ```
 

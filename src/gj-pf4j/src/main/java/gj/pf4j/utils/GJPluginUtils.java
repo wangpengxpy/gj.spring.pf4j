@@ -34,7 +34,7 @@ public class GJPluginUtils {
         }
 
         if (!Files.isDirectory(pluginsDir)) {
-            throw new IllegalArgumentException("指定路径不是目录: " + pluginsDir.toAbsolutePath());
+            throw new IllegalArgumentException("Specified path is not a directory: " + pluginsDir.toAbsolutePath());
         }
 
         // 2. Check for duplicate first-level subdirectory names

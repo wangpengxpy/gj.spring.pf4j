@@ -155,6 +155,13 @@ class ControllerRegistrar implements PluginResourceRegistrar {
             RouterFunction<ServerResponse> casted = (RouterFunction<ServerResponse>) rf;
             if (rf instanceof GJRouterFunctions.AnnotatedRouterFunction arf) {
                 for (AnonymousRouteDeclaration decl : arf.getDeclarations()) {
+                    if (decl.reason() == null || decl.reason().isBlank()) {
+                        log.warn("[Plugin: {}] Anonymous functional route {}:{} has blank reason — " +
+                                "registration as anonymous is blocked. " +
+                                "A non-empty reason is required for audit.",
+                                pluginContext.getPluginId(), decl.httpMethod(), decl.pathPattern());
+                        continue;
+                    }
                     registrar.register(pluginContext.getPluginId(),
                             new AnonymousPathEntry(
                                     pluginContext.getPluginId(), decl.pathPattern(),

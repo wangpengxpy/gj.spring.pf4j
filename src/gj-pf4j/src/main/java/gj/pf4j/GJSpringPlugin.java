@@ -130,12 +130,18 @@ public final class GJSpringPlugin extends Plugin {
     private AnnotationConfigApplicationContext preCreateApplicationContext() {
         final String pluginId = pluginContext.getPluginId();
         String packageName = plugin.getClass().getPackageName();
-        if (!StringUtils.hasLength(packageName) || !packageName.equals(pluginId)) {
-            throw new IllegalStateException(
-                    "Plugin configuration does not comply with the convention rules:\n" +
-                            "1. The plugin.id must be exactly consistent with the plugin package name;\n" +
-                            "2. Plugin classes that inherit from GJPlugin must be located under the package directory specified by plugin.id.\n" +
-                            "Current plugin.id = '" + pluginId + "', but the actual parsed package name of the plugin class = '" + packageName + "'."
+        if (!StringUtils.hasLength(packageName)) {
+            throw new GJPluginException(
+                    "Plugin class '" + plugin.getClass().getName() + "' is in the default package. "
+                    + "GJPlugin subclasses must be placed under a named package that matches plugin.id from plugin.properties."
+            );
+        }
+        if (!packageName.equals(pluginId)) {
+            throw new GJPluginException(
+                    "Plugin package mismatch: plugin.id from plugin.properties is '" + pluginId
+                    + "', but GJPlugin subclass '" + plugin.getClass().getName()
+                    + "' is in package '" + packageName + "'. "
+                    + "The plugin.id must exactly match the package name of the GJPlugin subclass."
             );
         }
         // Initialize the plugin context
@@ -143,7 +149,11 @@ public final class GJSpringPlugin extends Plugin {
         // Set a custom Bean name generator to prevent conflicts between multiple plugins
         int lastDotIndex = pluginId.lastIndexOf('.');
         if (lastDotIndex < 0) {
-            throw new IllegalArgumentException("Plugin Id is not a valid fully qualified name: " + pluginId);
+            throw new GJPluginException(
+                    "plugin.id '" + pluginId + "' is not a fully qualified name. "
+                    + "plugin.id must contain at least one dot (e.g. 'com.example.myplugin'), "
+                    + "because its last segment is used as the plugin's bean name prefix."
+            );
         }
         final String home = pluginId.substring(lastDotIndex + 1);
         applicationContext.setBeanNameGenerator(
