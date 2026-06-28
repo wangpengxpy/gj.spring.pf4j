@@ -66,8 +66,8 @@
 11. [实时通信](#11-实时通信)
     * [11.0 客户端集成](#110-客户端集成)
     * [11.1 创建 Hub](#111-创建-hub)
-    * [11.2 客户端推送 API](#112-客户端推送-api)
-    * [11.3 分组管理 API](#113-分组管理-api)
+    * [11.2 Hub 内部推送与管理](#112-hub-内部推送与管理)
+    * [11.3 从 Service 推送与管理](#113-从-service-推送与管理)
     * [11.4 Hub 上下文](#114-hub-上下文)
     * [11.5 服务端配置](#115-服务端配置)
     * [11.6 集群模式（分布式部署）](#116-集群模式分布式部署)
@@ -1408,7 +1408,9 @@ public class UserHub extends GJHub {
 }
 ```
 
-### 11.2 客户端推送 API
+### 11.2 Hub 内部推送与管理
+
+在 `@GJHubMethod` 方法内，通过 `getClients()` 推送消息、`getGroups()` 管理分组。
 
 `getClients()` 返回 `GJHubCallerClients`，提供以下推送渠道：
 
@@ -1438,7 +1440,6 @@ getClients().groupExceptUser("admin", "excludedUserId").sendAsync("eventName", d
 getClients().allExcept(List.of("connId1", "connId2")).sendAsync("eventName", data);
 ```
 
-### 11.3 分组管理 API
 
 `getGroups()` 返回 `GJGroupManager`：
 
@@ -1464,6 +1465,128 @@ getGroups().getConnectionsInGroupAsync("groupName").thenAccept(connections -> {
     System.out.println("Connections in group: " + connections);
 });
 ```
+
+### 11.3 从 Service 推送与管理
+
+在任意 Spring Bean 中注入 `GJHubManager`，调用 `getHubContext()` 获取 `GJHubContext`，即可使用与 Hub 内部相同的 `GJHubCallerClients` 和 `GJGroupManager` API。
+
+**客户端推送：**
+
+```java
+package gj.module.user.serviceimpl;
+
+import gj.module.user.socketio.UserHub;
+import gj.pf4j.socketio.GJHubContext;
+import gj.pf4j.socketio.GJHubManager;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Map;
+
+@Service
+@RequiredArgsConstructor
+public class UserNotifyService {
+
+    private final GJHubManager hubManager;
+
+    /** 广播系统通知给所有客户端 */
+    public void broadcastSystemNotice(String message) {
+        GJHubContext<UserHub> ctx = hubManager.getHubContext(UserHub.class);
+        ctx.getClients().all().sendAsync("systemNotice", Map.of("msg", message));
+    }
+
+    /** 新订单推送给指定用户 */
+    public void notifyOrderCreated(String userId, Object orderData) {
+        GJHubContext<UserHub> ctx = hubManager.getHubContext(UserHub.class);
+        ctx.getClients().user(userId).sendAsync("orderCreated", orderData);
+    }
+
+    /** 分组推送 */
+    public void notifyAdmins(String message) {
+        GJHubContext<UserHub> ctx = hubManager.getHubContext(UserHub.class);
+        ctx.getClients().group("admin").send("adminAlert", Map.of("msg", message));
+    }
+
+    /** 指定连接推送 */
+    public void sendToConnection(String connectionId, String event, Object data) {
+        GJHubContext<UserHub> ctx = hubManager.getHubContext(UserHub.class);
+        ctx.getClients().client(connectionId).sendAsync(event, data);
+    }
+
+    /** 分组但排除指定用户 */
+    public void notifyGroupExceptUser(String groupName, String excludedUserId, Object data) {
+        GJHubContext<UserHub> ctx = hubManager.getHubContext(UserHub.class);
+        ctx.getClients().groupExceptUser(groupName, excludedUserId).sendAsync("groupEvent", data);
+    }
+
+    /** 排除指定连接的全员推送 */
+    public void broadcastExcept(List<String> excludedConnIds, Object data) {
+        GJHubContext<UserHub> ctx = hubManager.getHubContext(UserHub.class);
+        ctx.getClients().allExcept(excludedConnIds).sendAsync("broadcast", data);
+    }
+}
+```
+
+**分组管理：**
+
+```java
+package gj.module.user.serviceimpl;
+
+import gj.module.user.socketio.UserHub;
+import gj.pf4j.socketio.GJHubContext;
+import gj.pf4j.socketio.GJHubManager;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+
+@Service
+@RequiredArgsConstructor
+public class UserGroupService {
+
+    private final GJHubManager hubManager;
+
+    /** 将指定连接加入分组 */
+    public CompletableFuture<Void> addToGroup(String connectionId, String groupName) {
+        GJHubContext<UserHub> ctx = hubManager.getHubContext(UserHub.class);
+        return ctx.getGroups().addToGroupAsync(connectionId, groupName);
+    }
+
+    /** 将指定连接移出分组 */
+    public CompletableFuture<Void> removeFromGroup(String connectionId, String groupName) {
+        GJHubContext<UserHub> ctx = hubManager.getHubContext(UserHub.class);
+        return ctx.getGroups().removeFromGroupAsync(connectionId, groupName);
+    }
+
+    /** 检查连接是否在分组中 */
+    public CompletableFuture<Boolean> isInGroup(String connectionId, String groupName) {
+        GJHubContext<UserHub> ctx = hubManager.getHubContext(UserHub.class);
+        return ctx.getGroups().isInGroupAsync(connectionId, groupName);
+    }
+
+    /** 查询连接所属的所有分组 */
+    public CompletableFuture<Set<String>> getGroupsForConnection(String connectionId) {
+        GJHubContext<UserHub> ctx = hubManager.getHubContext(UserHub.class);
+        return ctx.getGroups().getGroupsForConnectionAsync(connectionId);
+    }
+
+    /** 获取分组内所有连接 */
+    public CompletableFuture<Set<String>> getConnectionsInGroup(String groupName) {
+        GJHubContext<UserHub> ctx = hubManager.getHubContext(UserHub.class);
+        return ctx.getGroups().getConnectionsInGroupAsync(groupName);
+    }
+
+    /** 检查分组是否存在 */
+    public CompletableFuture<Boolean> groupExists(String groupName) {
+        GJHubContext<UserHub> ctx = hubManager.getHubContext(UserHub.class);
+        return ctx.getGroups().groupExistsAsync(groupName);
+    }
+}
+```
+
+典型触发场景：`@EventListener` 监听数据变更事件后推送、Quartz 定时任务批量推送、REST 接口处理完成后触发推送。
 
 ### 11.4 Hub 上下文
 

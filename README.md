@@ -66,8 +66,8 @@ A lightweight, modular plugin framework powered by PF4J and Spring, with no heav
 11. [Real-Time Communication](#11-real-time-communication)
     * [11.0 Client Integration](#110-client-integration)
     * [11.1 Creating a Hub](#111-creating-a-hub)
-    * [11.2 Client Push API](#112-client-push-api)
-    * [11.3 Group Management API](#113-group-management-api)
+    * [11.2 Sending from Inside a Hub](#112-sending-from-inside-a-hub)
+    * [11.3 Sending from a Service](#113-sending-from-a-service)
     * [11.4 Hub Context](#114-hub-context)
     * [11.5 Server-Side Configuration](#115-server-side-configuration)
     * [11.6 Cluster Mode (Distributed Deployment)](#116-cluster-mode-distributed-deployment)
@@ -1415,7 +1415,9 @@ public class UserHub extends GJHub {
 }
 ```
 
-### 11.2 Client Push API
+### 11.2 Sending from Inside a Hub
+
+From within a `@GJHubMethod`, use `getClients()` to push messages and `getGroups()` to manage group membership.
 
 `getClients()` returns a `GJHubCallerClients` with the following targeting methods:
 
@@ -1445,7 +1447,6 @@ getClients().groupExceptUser("admin", "excludedUserId").sendAsync("eventName", d
 getClients().allExcept(List.of("connId1", "connId2")).sendAsync("eventName", data);
 ```
 
-### 11.3 Group Management API
 
 `getGroups()` returns a `GJGroupManager`:
 
@@ -1471,6 +1472,128 @@ getGroups().getConnectionsInGroupAsync("groupName").thenAccept(connections -> {
     System.out.println("Connections in group: " + connections);
 });
 ```
+
+### 11.3 Sending from a Service
+
+From any Spring Bean, inject `GJHubManager` and call `getHubContext()` to obtain a `GJHubContext`, which exposes the same `GJHubCallerClients` and `GJGroupManager` APIs used inside a Hub.
+
+**Client Push:**
+
+```java
+package gj.module.user.serviceimpl;
+
+import gj.module.user.socketio.UserHub;
+import gj.pf4j.socketio.GJHubContext;
+import gj.pf4j.socketio.GJHubManager;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Map;
+
+@Service
+@RequiredArgsConstructor
+public class UserNotifyService {
+
+    private final GJHubManager hubManager;
+
+    /** Broadcast to all connected clients */
+    public void broadcastSystemNotice(String message) {
+        GJHubContext<UserHub> ctx = hubManager.getHubContext(UserHub.class);
+        ctx.getClients().all().sendAsync("systemNotice", Map.of("msg", message));
+    }
+
+    /** Push to a specific user (all their devices) */
+    public void notifyOrderCreated(String userId, Object orderData) {
+        GJHubContext<UserHub> ctx = hubManager.getHubContext(UserHub.class);
+        ctx.getClients().user(userId).sendAsync("orderCreated", orderData);
+    }
+
+    /** Push to a group */
+    public void notifyAdmins(String message) {
+        GJHubContext<UserHub> ctx = hubManager.getHubContext(UserHub.class);
+        ctx.getClients().group("admin").send("adminAlert", Map.of("msg", message));
+    }
+
+    /** Push to a specific connection */
+    public void sendToConnection(String connectionId, String event, Object data) {
+        GJHubContext<UserHub> ctx = hubManager.getHubContext(UserHub.class);
+        ctx.getClients().client(connectionId).sendAsync(event, data);
+    }
+
+    /** Push to a group excluding a user */
+    public void notifyGroupExceptUser(String groupName, String excludedUserId, Object data) {
+        GJHubContext<UserHub> ctx = hubManager.getHubContext(UserHub.class);
+        ctx.getClients().groupExceptUser(groupName, excludedUserId).sendAsync("groupEvent", data);
+    }
+
+    /** Broadcast to all except specified connections */
+    public void broadcastExcept(List<String> excludedConnIds, Object data) {
+        GJHubContext<UserHub> ctx = hubManager.getHubContext(UserHub.class);
+        ctx.getClients().allExcept(excludedConnIds).sendAsync("broadcast", data);
+    }
+}
+```
+
+**Group Management:**
+
+```java
+package gj.module.user.serviceimpl;
+
+import gj.module.user.socketio.UserHub;
+import gj.pf4j.socketio.GJHubContext;
+import gj.pf4j.socketio.GJHubManager;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+
+@Service
+@RequiredArgsConstructor
+public class UserGroupService {
+
+    private final GJHubManager hubManager;
+
+    /** Add a connection to a group */
+    public CompletableFuture<Void> addToGroup(String connectionId, String groupName) {
+        GJHubContext<UserHub> ctx = hubManager.getHubContext(UserHub.class);
+        return ctx.getGroups().addToGroupAsync(connectionId, groupName);
+    }
+
+    /** Remove a connection from a group */
+    public CompletableFuture<Void> removeFromGroup(String connectionId, String groupName) {
+        GJHubContext<UserHub> ctx = hubManager.getHubContext(UserHub.class);
+        return ctx.getGroups().removeFromGroupAsync(connectionId, groupName);
+    }
+
+    /** Check if a connection is in a group */
+    public CompletableFuture<Boolean> isInGroup(String connectionId, String groupName) {
+        GJHubContext<UserHub> ctx = hubManager.getHubContext(UserHub.class);
+        return ctx.getGroups().isInGroupAsync(connectionId, groupName);
+    }
+
+    /** Get all groups a connection belongs to */
+    public CompletableFuture<Set<String>> getGroupsForConnection(String connectionId) {
+        GJHubContext<UserHub> ctx = hubManager.getHubContext(UserHub.class);
+        return ctx.getGroups().getGroupsForConnectionAsync(connectionId);
+    }
+
+    /** Get all connections in a group */
+    public CompletableFuture<Set<String>> getConnectionsInGroup(String groupName) {
+        GJHubContext<UserHub> ctx = hubManager.getHubContext(UserHub.class);
+        return ctx.getGroups().getConnectionsInGroupAsync(groupName);
+    }
+
+    /** Check if a group exists */
+    public CompletableFuture<Boolean> groupExists(String groupName) {
+        GJHubContext<UserHub> ctx = hubManager.getHubContext(UserHub.class);
+        return ctx.getGroups().groupExistsAsync(groupName);
+    }
+}
+```
+
+Common trigger scenarios: `@EventListener` listening for data change events, Quartz scheduled jobs, and REST endpoints that push notifications after processing.
 
 ### 11.4 Hub Context
 
