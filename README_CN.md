@@ -1955,14 +1955,14 @@ public class UserController {
 
 ## 18. 插件打包与部署
 
-### 17.1 构建插件
+### 18.1 构建插件
 
 ```bash
 cd user-plugin
 mvn clean package
 ```
 
-### 17.2 输出目录结构
+### 18.2 输出目录结构
 
 构建完成后，`target/plugins/{artifactId}/` 目录结构如下：
 
@@ -1975,7 +1975,7 @@ target/plugins/gj.module.user/
     └── ...
 ```
 
-### 17.3 MANIFEST.MF
+### 18.3 MANIFEST.MF
 
 ```manifest
 Plugin-Id: gj.module.user
@@ -1983,7 +1983,7 @@ Plugin-Version: 1.0.0-SNAPSHOT
 Class-Path: lib/some-third-party.jar lib/another-lib.jar
 ```
 
-### 17.4 部署到主应用
+### 18.4 部署到主应用
 
 将 `target/plugins/gj.module.user/` 整个目录复制到主应用的 `plugins/` 目录下：
 
@@ -2001,7 +2001,7 @@ Class-Path: lib/some-third-party.jar lib/another-lib.jar
 
 生产环境（非 dev/debug profile）下，插件目录位于 `ApplicationHome`（Spring Boot JAR 所在目录）下的 `plugins/`。
 
-### 17.5 版本管理
+### 18.5 版本管理
 
 `GJJarPluginRepository` 自动扫描每个插件目录，解析 JAR 文件名中的版本号（格式 `{pluginId}-{version}.jar`），选择最新版本加载。目录中存在多个版本时只加载最高版本，并在日志中记录。
 
@@ -2192,7 +2192,7 @@ public class HotReloadMonitor {
 
 ## 21. 附录：主应用集成
 
-### 20.1 版本兼容性说明
+### 21.1 版本兼容性说明
 
 gj-pf4j 自身依赖 Spring 核心包（spring-webmvc、spring-beans、spring-jdbc 等），但**不锁定版本号**。框架通过发布 `gj-dependencies` BOM 统一管理版本，开发者在项目中按优先级引入 BOM，Spring 全家桶版本会自动跟随开发者所选 Spring Boot 版本，避免冲突。
 
@@ -2254,7 +2254,7 @@ gj BOM 中与 Spring Boot 重叠的依赖（spring-webmvc、spring-beans 等）�
 </dependency>
 ```
 
-### 20.2 主应用入口配置
+### 21.2 主应用入口配置
 
 **必须配置：**
 
@@ -2271,7 +2271,7 @@ public class GJApplication {
 - 框架已内置 `GJPluginConfig` 和 `GJPluginWebFluxConfig`，随 `@ComponentScan("gj")` 自动激活。
 - 框架会在主应用 `ContextRefreshedEvent` 触发后自动加载并启动 `plugins/` 目录下的所有插件。
 
-> 如需在主应用中配置共享 ModelMapper 映射（基础模型包），参见 [20.3](#203-按需配置gjmodelmapperscan共享模型)。
+> 如需在主应用中配置共享 ModelMapper 映射（基础模型包），参见 [21.3](#213-按需配置gjmodelmapperscan共享模型)。
 
 ### Spring MVC 模式（默认）
 
@@ -2348,7 +2348,7 @@ gj-pf4j 检测到 `GJPluginWebFluxRequestMappingHandlerMapping` Bean 后，自�
 | 插件 Controller 写法 | `@RestController` | `@RestController`（完全一样） |
 | 路由注册 | `GJPluginRequestMappingHandlerMapping` | `GJPluginWebFluxRequestMappingHandlerMapping` |
 
-### 20.3 按需配置：`@GJModelMapperScan`（共享模型）
+### 21.3 按需配置：`@GJModelMapperScan`（共享模型）
 
 当主应用有通用的基础模型包（如 `User`、`Menu`、`Role` 等实体及其 Mapper、DTO、ModelMapper 映射配置），可以单独引入 `gj-modelmapper` artifact 并用 `@GJModelMapperScan` 扫描，将这些映射注入全局 `ModelMapper` Bean。业务插件通过父容器继承自动共享：
 
@@ -2494,7 +2494,7 @@ public class GJApplication {
 }
 ```
 
-不加 `@ComponentScan("gj")`，框架所有 Bean 都不会被发现，整个框架处于停用状态。详见 [20.2 节](#202-主应用入口配置)。
+不加 `@ComponentScan("gj")`，框架所有 Bean 都不会被发现，整个框架处于停用状态。详见 [21.2 节](#212-主应用入口配置)。
 
 ### Q6: 如何让主应用和插件共享 ModelMapper 映射？
 
@@ -2507,7 +2507,7 @@ public class GJApplication {
 )
 ```
 
-插件会自动将自己的映射追加到共享 `ModelMapper` 实例上。详见 [20.3 节](#203-按需配置gjmodelmapperscan共享模型)。
+插件会自动将自己的映射追加到共享 `ModelMapper` 实例上。详见 [21.3 节](#213-按需配置gjmodelmapperscan共享模型)。
 
 ### Q7: 自动迁移会删表或删字段吗？
 

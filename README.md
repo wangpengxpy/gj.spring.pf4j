@@ -1964,14 +1964,14 @@ Visit `http://localhost:{port}/swagger-ui/index.html` after startup.
 
 ## 18. Plugin Packaging & Deployment
 
-### 17.1 Build the Plugin
+### 18.1 Build the Plugin
 
 ```bash
 cd user-plugin
 mvn clean package
 ```
 
-### 17.2 Output Directory Structure
+### 18.2 Output Directory Structure
 
 After a successful build, `target/plugins/{artifactId}/` contains:
 
@@ -1984,7 +1984,7 @@ target/plugins/gj.module.user/
     └── ...
 ```
 
-### 17.3 MANIFEST.MF
+### 18.3 MANIFEST.MF
 
 ```manifest
 Plugin-Id: gj.module.user
@@ -1992,7 +1992,7 @@ Plugin-Version: 1.0.0-SNAPSHOT
 Class-Path: lib/some-third-party.jar lib/another-lib.jar
 ```
 
-### 17.4 Deploy to the Host Application
+### 18.4 Deploy to the Host Application
 
 Copy the entire `target/plugins/gj.module.user/` directory into the host application's `plugins/` directory:
 
@@ -2010,7 +2010,7 @@ Host application root/       ← current working directory in dev/debug mode
 
 In production (non-dev/debug profiles), the plugin directory is located at `plugins/` under the Spring Boot JAR's `ApplicationHome` directory.
 
-### 17.5 Version Management
+### 18.5 Version Management
 
 `GJJarPluginRepository` scans each plugin directory, parses version numbers from JAR filenames (format: `{pluginId}-{version}.jar`), and loads the latest version. When multiple versions exist in a directory, only the highest version is loaded, with a log entry recording the selection.
 
@@ -2201,7 +2201,7 @@ public class HotReloadMonitor {
 
 ## 21. Appendix: Host Application Integration
 
-### 20.1 Version Compatibility
+### 21.1 Version Compatibility
 
 gj-pf4j depends on Spring core libraries (spring-webmvc, spring-beans, spring-jdbc, etc.) but does **not lock version numbers**. The framework publishes a `gj-dependencies` BOM for unified version management. By importing both gj BOM and Spring Boot BOM with the correct priority order, Spring versions automatically follow the developer's chosen Spring Boot version, avoiding conflicts.
 
@@ -2263,7 +2263,7 @@ You can also skip the BOM and depend on gj-pf4j directly, but you must ensure Sp
 </dependency>
 ```
 
-### 20.2 Host Application Entry Point
+### 21.2 Host Application Entry Point
 
 **Required:**
 
@@ -2280,7 +2280,7 @@ public class GJApplication {
 - The framework includes `GJPluginConfig` and `GJPluginWebFluxConfig`; both are auto-activated via `@ComponentScan("gj")`.
 - Plugins under the `plugins/` directory are automatically loaded and started after the main application's `ContextRefreshedEvent` fires.
 
-> For configuring shared ModelMapper mappings in the host app (base model packages), see [20.3](#203-optional-gjmodelmapperscan-shared-models).
+> For configuring shared ModelMapper mappings in the host app (base model packages), see [21.3](#213-optional-gjmodelmapperscan-shared-models).
 
 ### Spring MVC Mode (Default)
 
@@ -2357,7 +2357,7 @@ Once gj-pf4j detects a `GJPluginWebFluxRequestMappingHandlerMapping` bean, it au
 | Plugin Controller Code | `@RestController` | `@RestController` (identical) |
 | Route Registration | `GJPluginRequestMappingHandlerMapping` | `GJPluginWebFluxRequestMappingHandlerMapping` |
 
-### 20.3 Optional: `@GJModelMapperScan` (Shared Models)
+### 21.3 Optional: `@GJModelMapperScan` (Shared Models)
 
 When the host application has common base model packages (entities such as `User`, `Menu`, `Role`, plus their Mappers, DTOs, and ModelMapper mappings), add the `gj-modelmapper` artifact and use `@GJModelMapperScan` to register those mappings into a global `ModelMapper` bean. Business plugins inherit this shared instance via the parent context:
 
@@ -2503,7 +2503,7 @@ public class GJApplication {
 }
 ```
 
-Without `@ComponentScan("gj")`, no framework beans are discovered and the entire framework stays inactive. See [Section 20.2](#202-host-application-entry-point).
+Without `@ComponentScan("gj")`, no framework beans are discovered and the entire framework stays inactive. See [Section 21.2](#212-host-application-entry-point).
 
 ### Q6: How to share ModelMapper mappings between host app and plugins?
 
@@ -2516,7 +2516,7 @@ Add the `gj-modelmapper` dependency and use `@GJModelMapperScan` on the host app
 )
 ```
 
-Plugins append their own mappings to the shared `ModelMapper` instance automatically. See [Section 20.3](#203-optional-gjmodelmapperscan-shared-models).
+Plugins append their own mappings to the shared `ModelMapper` instance automatically. See [Section 21.3](#213-optional-gjmodelmapperscan-shared-models).
 
 ### Q7: Does auto-migration ever drop tables or columns?
 
