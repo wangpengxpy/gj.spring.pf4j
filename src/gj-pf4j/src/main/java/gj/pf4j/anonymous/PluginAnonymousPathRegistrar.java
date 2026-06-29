@@ -12,5 +12,5 @@ public interface PluginAnonymousPathRegistrar {
 
     void register(String pluginId, AnonymousPathEntry entry);
 
-    void unregisterByPlugin(String pluginId);
+    void unregister(String pluginId);
 }

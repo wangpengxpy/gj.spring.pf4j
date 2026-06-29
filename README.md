@@ -184,7 +184,7 @@ mvn clean install
 mvn archetype:generate \
   -DarchetypeGroupId=io.github.wangpengxpy \
   -DarchetypeArtifactId=gj-archetype \
-  -DarchetypeVersion=1.2.0 \
+  -DarchetypeVersion=1.2.3 \
   -DgroupId=com.example \
   -DpluginName=user \
   -DpackagePrefix=gj.module
@@ -199,6 +199,8 @@ mvn archetype:generate \
 | `packagePrefix` | Java package prefix for the plugin | `gj.module` |
 
 The generated `plugin.id` will be `gj.module.user`, and all Java classes will reside under the `gj.module.user` package.
+
+> A complete working plugin demonstrating all capabilities (REST, MyBatis-Plus, JPA, ModelMapper, Socket.IO Hub, Quartz Job, EventBus) with both MVC and WebFlux support is available at [`src/gj-plugin-demo`](src/gj-plugin-demo).
 
 ### 2.3 Generated Project Structure
 
@@ -1969,6 +1971,8 @@ public class UserCreatedEvent {
 }
 ```
 
+> Event classes must be Jackson-deserializable — the EventBus serializes events to JSON for cross-ClassLoader delivery. Use Lombok `@Data` (recommended), or provide a no-arg constructor plus getters/setters for all fields.
+
 ### 15.2 Creating Listeners
 
 Implement `GJPluginLocalEventListener<T>` and annotate with `@Component` to register as a Spring bean:
@@ -2340,7 +2344,7 @@ In `dependencyManagement`, import the gj BOM followed by the Spring Boot BOM —
         <dependency>
             <groupId>io.github.wangpengxpy</groupId>
             <artifactId>gj-dependencies</artifactId>
-            <version>1.0.12</version>
+            <version>1.0.13</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -2384,7 +2388,7 @@ You can also skip the BOM and depend on gj-pf4j directly, but you must ensure Sp
 <dependency>
     <groupId>io.github.wangpengxpy</groupId>
     <artifactId>gj-pf4j</artifactId>
-    <version>1.6.2</version>
+    <version>1.6.3</version>
 </dependency>
 ```
 

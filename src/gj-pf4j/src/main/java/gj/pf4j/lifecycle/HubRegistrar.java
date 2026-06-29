@@ -66,6 +66,9 @@ class HubRegistrar implements PluginResourceRegistrar {
         if (hubs.isEmpty()) {
             return;
         }
+        if (mainAppCtx.getBeansOfType(GJHubManager.class).isEmpty()) {
+            return;
+        }
         GJHubManager hubManager = mainAppCtx.getBean(GJHubManager.class);
         for (String hubName : hubs.keySet()) {
             hubManager.unregisterHub(hubName);

@@ -4,6 +4,12 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>io.github.wangpengxpy</groupId>
+        <artifactId>gj-plugin-build-parent</artifactId>
+        <version>1.0.0</version>
+        <relativePath>pom-parent.xml</relativePath>
+    </parent>
     <groupId>io.github.wangpengxpy</groupId>
     <artifactId>gj.plugin.demo</artifactId>
     <version>1.0.0</version>
@@ -15,7 +21,8 @@
         <dependency>
             <groupId>io.github.wangpengxpy</groupId>
             <artifactId>gj-pf4j</artifactId>
-            <version>1.6.2</version>
+            <version>1.6.3</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>io.github.wangpengxpy</groupId>
@@ -25,19 +32,6 @@
     </dependencies>
     <build>
         <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <version>4.0.0-RC1</version>
-                <executions>
-                    <execution>
-                        <id>repackage</id>
-                        <configuration>
-                            <skip>true</skip>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -49,20 +43,5 @@
                 </configuration>
             </plugin>
         </plugins>
-        <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-                <excludes>
-                    <exclude>plugin.properties</exclude>
-                </excludes>
-            </resource>
-            <resource>
-                <directory>src/main/resources</directory>
-                <includes>
-                    <include>plugin.properties</include>
-                </includes>
-                <filtering>true</filtering>
-            </resource>
-        </resources>
     </build>
 </project>

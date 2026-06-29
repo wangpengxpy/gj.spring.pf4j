@@ -64,6 +64,12 @@ public final class GJSpringPlugin extends Plugin {
 
     @Override
     public void stop() {
+        if (applicationContext == null) {
+            log.warn("Plugin '{}' stop() called but ApplicationContext is null " +
+                    "(start may have failed), nothing to stop.", pluginContext.getPluginId());
+            return;
+        }
+
         log.info("Stopping plugin '{}' ......", pluginContext.getPluginId());
 
         engine.executePhase(PluginLifecyclePhase.BEFORE_CONTEXT_CLOSE, (AnnotationConfigApplicationContext) applicationContext);
@@ -120,11 +126,15 @@ public final class GJSpringPlugin extends Plugin {
         if (context == null) {
             throw new IllegalArgumentException("AnnotationConfigApplicationContext cannot be null");
         }
-        // Context is already active, no need to refresh.
         if (context.isActive()) {
             return;
         }
-        context.refresh();
+        try {
+            context.refresh();
+        } catch (Exception e) {
+            throw new GJPluginException(
+                    "[Plugin: " + pluginContext.getPluginId() + "] Startup failed: " + e.getMessage(), e);
+        }
     }
 
     private AnnotationConfigApplicationContext preCreateApplicationContext() {

@@ -198,6 +198,6 @@ class ControllerRegistrar implements PluginResourceRegistrar {
         // Clean up anonymous paths
         PluginAnonymousPathRegistrar registrar =
                 mainAppCtx.getBean(PluginAnonymousPathRegistrar.class);
-        registrar.unregisterByPlugin(pluginContext.getPluginId());
+        registrar.unregister(pluginContext.getPluginId());
     }
 }

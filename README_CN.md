@@ -184,7 +184,7 @@ mvn clean install
 mvn archetype:generate \
   -DarchetypeGroupId=io.github.wangpengxpy \
   -DarchetypeArtifactId=gj-archetype \
-  -DarchetypeVersion=1.2.0 \
+  -DarchetypeVersion=1.2.3 \
   -DgroupId=com.example \
   -DpluginName=user \
   -DpackagePrefix=gj.module
@@ -199,6 +199,8 @@ mvn archetype:generate \
 | `packagePrefix` | 插件包前缀 | `gj.module` |
 
 生成后，`plugin.id` 自动拼接为 `gj.module.user`，所有 Java 类位于包 `gj.module.user` 下。
+
+> 完整可运行的示例插件位于 [`src/gj-plugin-demo`](src/gj-plugin-demo)，演示了全部 6 种能力（REST、MyBatis-Plus、JPA、ModelMapper、Socket.IO Hub、Quartz Job、EventBus），同时包含 MVC 和 WebFlux 两套代码，方便在两种模式下切换测试验证。
 
 ### 2.3 生成后的项目结构
 
@@ -1960,6 +1962,8 @@ public class UserCreatedEvent {
 }
 ```
 
+> 事件类必须可被 Jackson 反序列化——EventBus 会将事件序列化为 JSON 进行跨 ClassLoader 投递。推荐使用 Lombok `@Data`，或手动提供无参构造器及所有字段的 getter/setter。
+
 ### 15.2 创建监听器
 
 实现 `GJPluginLocalEventListener<T>` 接口，标注 `@Component` 注册为 Spring Bean：
@@ -2331,7 +2335,7 @@ gj-pf4j 自身依赖 Spring 核心包（spring-webmvc、spring-beans、spring-jd
         <dependency>
             <groupId>io.github.wangpengxpy</groupId>
             <artifactId>gj-dependencies</artifactId>
-            <version>1.0.12</version>
+            <version>1.0.13</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -2375,7 +2379,7 @@ gj BOM 中与 Spring Boot 重叠的依赖（spring-webmvc、spring-beans 等）�
 <dependency>
     <groupId>io.github.wangpengxpy</groupId>
     <artifactId>gj-pf4j</artifactId>
-    <version>1.6.2</version>
+    <version>1.6.3</version>
 </dependency>
 ```
 

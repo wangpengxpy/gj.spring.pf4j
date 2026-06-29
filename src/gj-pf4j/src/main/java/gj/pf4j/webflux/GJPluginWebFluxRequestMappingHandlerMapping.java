@@ -178,7 +178,7 @@ public class GJPluginWebFluxRequestMappingHandlerMapping extends RequestMappingH
 
     public void unregisterHandlerMethods(String pluginId) {
         if (anonymousPathRegistrar != null) {
-            anonymousPathRegistrar.unregisterByPlugin(pluginId);
+            anonymousPathRegistrar.unregister(pluginId);
         }
         if (!StringUtils.hasText(pluginId)) {
             return;

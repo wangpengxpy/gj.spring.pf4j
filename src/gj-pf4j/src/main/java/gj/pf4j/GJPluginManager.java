@@ -9,6 +9,7 @@ import gj.pf4j.descriptor.GJPropertiesPluginDescriptorFinder;
 import gj.pf4j.events.GJPluginAfterInstallEvent;
 import gj.pf4j.events.GJPluginBeforeUnloadEvent;
 import gj.pf4j.events.GJPluginDisabledEvent;
+import gj.pf4j.events.GJPluginStartFailedEvent;
 import gj.pf4j.events.GJPluginStartedEvent;
 import gj.pf4j.events.GJPluginStartingError;
 import gj.pf4j.events.GJPluginStoppedEvent;
@@ -47,7 +48,7 @@ public class GJPluginManager extends DefaultPluginManager implements Application
     private boolean autoStartPlugin = true;
     private PluginRepository pluginRepository;
     private ConfigurationRepository configurationRepository;
-    private final Map<String, GJPluginStartingError> startingErrors = new HashMap<>();
+    private final Map<String, GJPluginStartingError> startingErrors = new ConcurrentHashMap<>();
     final Map<String, ReentrantLock> pluginLocks = new ConcurrentHashMap<>();
     final Set<String> everStartedPluginIds = ConcurrentHashMap.newKeySet();
 
@@ -131,8 +132,12 @@ public class GJPluginManager extends DefaultPluginManager implements Application
                                     (GJPluginDescriptor) pluginWrapper.getDescriptor()));
                 } catch (Exception e) {
                     log.error(e.getMessage(), e);
-                    startingErrors.put(pluginWrapper.getPluginId(), new GJPluginStartingError(
-                            pluginWrapper.getPluginId(), e.getMessage(), e.toString()));
+                    GJPluginStartingError error = new GJPluginStartingError(
+                            pluginWrapper.getPluginId(), e);
+                    startingErrors.put(pluginWrapper.getPluginId(), error);
+                    mainApplicationContext.publishEvent(
+                            new GJPluginStartFailedEvent(mainApplicationContext,
+                                    (GJPluginDescriptor) pluginWrapper.getDescriptor(), error));
                 }
             }
         }
@@ -175,7 +180,7 @@ public class GJPluginManager extends DefaultPluginManager implements Application
                 } catch (PluginRuntimeException e) {
                     log.error(e.getMessage(), e);
                     startingErrors.put(pluginWrapper.getPluginId(), new GJPluginStartingError(
-                            pluginWrapper.getPluginId(), e.getMessage(), e.toString()));
+                            pluginWrapper.getPluginId(), e));
                 }
             }
         }
@@ -240,8 +245,12 @@ public class GJPluginManager extends DefaultPluginManager implements Application
             return pluginState;
         } catch (Exception e) {
             log.error("Plugin start failed：'{}',error message：{}", pluginId, e.getMessage());
-            startingErrors.put(pluginWrapper.getPluginId(), new GJPluginStartingError(
-                    pluginWrapper.getPluginId(), e.getMessage(), e.toString()));
+            GJPluginStartingError error = new GJPluginStartingError(
+                    pluginWrapper.getPluginId(), e);
+            startingErrors.put(pluginWrapper.getPluginId(), error);
+            mainApplicationContext.publishEvent(
+                    new GJPluginStartFailedEvent(mainApplicationContext,
+                            (GJPluginDescriptor) pluginWrapper.getDescriptor(), error));
         }
         return pluginWrapper.getPluginState();
     }
@@ -284,7 +293,7 @@ public class GJPluginManager extends DefaultPluginManager implements Application
         } catch (Exception e) {
             log.error("Plugin stopped failed：'{}',error message：{}", pluginId, e.getMessage());
             startingErrors.put(pluginWrapper.getPluginId(), new GJPluginStartingError(
-                    pluginWrapper.getPluginId(), e.getMessage(), e.toString()));
+                    pluginWrapper.getPluginId(), e));
         }
         return pluginWrapper.getPluginState();
     }

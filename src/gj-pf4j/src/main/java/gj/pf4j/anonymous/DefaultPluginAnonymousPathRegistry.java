@@ -69,7 +69,7 @@ public class DefaultPluginAnonymousPathRegistry
     }
 
     @Override
-    public void unregisterByPlugin(String pluginId) {
+    public void unregister(String pluginId) {
         Set<String> keys = pluginIndex.remove(pluginId);
         if (keys == null || keys.isEmpty()) {
             return;

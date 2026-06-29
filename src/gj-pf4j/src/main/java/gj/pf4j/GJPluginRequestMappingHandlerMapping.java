@@ -187,7 +187,7 @@ public class GJPluginRequestMappingHandlerMapping extends RequestMappingHandlerM
 
     public void unregisterController(String pluginId) {
         if (anonymousPathRegistrar != null) {
-            anonymousPathRegistrar.unregisterByPlugin(pluginId);
+            anonymousPathRegistrar.unregister(pluginId);
         }
         List<RequestMappingInfo> mappings = pluginMappingInfo.remove(pluginId);
         if (mappings == null) {

@@ -143,12 +143,6 @@ public class GJPluginConfig {
     }
 
     @Bean
-    public PluginAnonymousPathRegistrar pluginAnonymousPathRegistrar(
-            PluginAnonymousPathRegistry registry) {
-        return (PluginAnonymousPathRegistrar) registry;
-    }
-
-    @Bean
     @ConditionalOnMissingBean(GJProperties.class)
     public GJProperties gjProperties() {
         return new GJProperties();

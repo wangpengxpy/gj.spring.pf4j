@@ -7,7 +7,7 @@ spring:
       matching-strategy: ant_path_matcher
   datasource:
     druid:
-      url: jdbc:sqlite:D:\ideas\plugin.test.demo\gj.db
+      url: jdbc:sqlite:./gj.db
       driver-class-name: org.sqlite.JDBC
       db-type: com.alibaba.druid.pool.DruidDataSource
       initialSize: 5
@@ -28,6 +28,10 @@ spring:
     encoding: UTF-8
     cache-duration: -1
     use-code-as-default-message: false
+  security:
+    user:
+      name: admin
+      password: admin
 mybatis-plus:
   global-config:
     banner: false
@@ -54,17 +58,19 @@ spring-doc:
     operations-sorter: method
     tags-sorter: alpha
     groups-order: DESC
-socket-io:
-  cluster:
-    enabled: false
-    node-id: ${HOSTNAME:}       # 留空则自动检测（hostname:PID）
-    connection-ttl: 3600         # 秒，连接映射的 Redis key TTL
-  port: 9600
-  bossCount: 1
-  upgradeTimeout: 10000 #从 HTTP polling升级到 WebSocket的最大等待时间（毫秒），默认10秒
-  pingTimeout: 60000 # 服务器发送 ping 后，等待客户端 pong 的超时时间，默认60秒
-  pingInterval: 30000 #服务器每隔多久发送一次 ping（心跳间隔），默认30秒
-  maxConnections: 50000 #最大连接数
-  maxFramePayloadLength: 64 #WebSocket帧 ≤ 64KB
-  maxHttpContentLength: 64 #HTTP polling body ≤ 64KB
-  maxConnectionsPerSecond: 100 #每秒最大建链数限制
+gj:
+  socketio:
+    enabled: false            # Disabled by default, set true to enable
+    port: 9600
+    boss-thread-count: 1
+    upgrade-timeout: 10000    # HTTP→WebSocket upgrade timeout (ms)
+    ping-timeout: 60000       # Ping timeout (ms)
+    ping-interval: 30000      # Ping interval (ms)
+    max-connections: 50000    # Max concurrent connections
+    max-frame-payload-length: 64    # Max WebSocket frame payload (KB)
+    max-http-content-length: 64     # Max HTTP polling body (KB)
+    max-connections-per-second: 100 # Max connection rate per second
+    node-id: ${HOSTNAME:}     # Cluster node ID, auto-detected from HOSTNAME when empty
+    connection-ttl: 3600      # Connection mapping Redis key TTL (seconds)
+    cluster:
+      enabled: false          # Cluster mode, requires Redis

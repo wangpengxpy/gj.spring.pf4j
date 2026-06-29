@@ -4,6 +4,7 @@
 
 package gj.pf4j.webflux;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.*;
@@ -15,6 +16,7 @@ import java.util.Collection;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 @Component
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.REACTIVE)
 public class GJPluginWebFluxDefaultRouterFunctionRegistry
         implements RouterFunction<ServerResponse>, GJPluginWebFluxRouterFunctionRegistry {
 
