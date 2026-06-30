@@ -7,7 +7,7 @@
 
 基于 PF4J 与 Spring 的轻量级模块化插件框架，无 Spring Boot 重依赖。支持 Spring MVC 与 Spring WebFlux 双路由模式，自动适配主应用架构。
 
-> [English](README.md)
+> [English](README.md) | [完整文档 → Wiki](https://github.com/wangpengxpy/gj.spring.pf4j/wiki)
 
 <p align="center">
   <img src="images/architecture.png" alt="gj.spring.pf4j 插件化架构设计" width="85%">
@@ -60,6 +60,3 @@ mvn archetype:generate \
   -DpluginName=user
 ```
 
----
-
-**完整文档** → [Wiki](https://github.com/wangpengxpy/gj.spring.pf4j/wiki)

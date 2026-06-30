@@ -7,7 +7,7 @@
 
 A lightweight, modular plugin framework powered by PF4J and Spring, with no heavyweight Spring Boot dependency. Supports both Spring MVC and Spring WebFlux routing — auto-adapts to the host application's web stack.
 
-> [中文文档](README_CN.md)
+> [中文文档](README_CN.md) | [Full Documentation → Wiki](https://github.com/wangpengxpy/gj.spring.pf4j/wiki)
 
 <p align="center">
   <img src="images/architecture.png" alt="gj.spring.pf4j Plugin Architecture" width="85%">
@@ -60,6 +60,3 @@ mvn archetype:generate \
   -DpluginName=user
 ```
 
----
-
-**Full documentation** → [Wiki](https://github.com/wangpengxpy/gj.spring.pf4j/wiki)
