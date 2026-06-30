@@ -5,7 +5,7 @@
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.wangpengxpy/gj-pf4j?color=green)](https://central.sonatype.com/artifact/io.github.wangpengxpy/gj-pf4j)
 [![Stars](https://img.shields.io/github/stars/wangpengxpy/gj.spring.pf4j?style=social)](https://github.com/wangpengxpy/gj.spring.pf4j/stargazers)
 
-基于 PF4J 与 Spring 的轻量级模块化插件框架，无 Spring Boot 重依赖。支持 Spring MVC 与 Spring WebFlux 双路由模式，自动适配主应用架构。
+基于 PF4J 与 Spring 的轻量级模块化插件框架，无 Spring Boot 重依赖。可插拔扩展点允许任意第三方组件以零框架改动的方式接入插件生命周期。支持 Spring MVC 与 Spring WebFlux 双路由模式，自动适配主应用架构。
 
 > [English](README.md) | [完整文档 → Wiki](https://github.com/wangpengxpy/gj.spring.pf4j/wiki)
 
@@ -21,6 +21,7 @@
   <img src="images/capabilities.png" alt="插件核心能力" width="90%">
 </p>
 
+- **[插件扩展](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Plugin-Extensions_CN)** — 可插拔扩展点；任意组件（如 MongoDB、Kafka、MQTT、gRPC 等）通过 `PluginResourceRegistrar` 接入，无需修改框架源码
 - **[插件生命周期管理](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Plugin-Lifecycle_CN)** — 运行时安装、禁用、重启、卸载和删除插件
 - **[插件热加载](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Plugin-Hot-Reload_CN)** — 通过 API 驱动工作流或文件监听实现热加载；生命周期事件支持自定义编排逻辑
 - **[插件运行时管理 API](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Runtime-Management-API_CN)** — `GJPluginService` 提供加锁控制的运行时管理 API
@@ -46,17 +47,4 @@
   <img src="images/quickstart.png" alt="快速上手指南" width="85%">
 </p>
 
-```bash
-# 1. 安装 Archetype 到本地仓库
-cd src/gj-archetypes
-mvn clean install
-
-# 2. 生成插件项目
-mvn archetype:generate \
-  -DarchetypeGroupId=io.github.wangpengxpy \
-  -DarchetypeArtifactId=gj-archetype \
-  -DarchetypeVersion=1.2.3 \
-  -DgroupId=com.example \
-  -DpluginName=user
-```
-
+> 详见 [快速开始 → Wiki](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Quick-Start_CN)

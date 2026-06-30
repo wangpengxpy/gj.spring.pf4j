@@ -46,13 +46,12 @@ public class GJPluginRequestMappingHandlerMapping extends RequestMappingHandlerM
     protected void initHandlerMethods() {
     }
 
-    public Set<Object> registerControllers(GJPluginContext pluginContext) {
-        String pluginId = pluginContext.getPluginId();
+    public Set<Object> registerControllers(String pluginId, ApplicationContext ctx) {
         long startTime = System.currentTimeMillis();
         log.debug("Starting to register controllers for plugin: {}", pluginId);
 
         try {
-            Set<Object> controllers = getControllerBeans(pluginContext);
+            Set<Object> controllers = getControllerBeans(ctx);
             List<String> controllerNames = controllers.stream()
                     .map(c -> c.getClass().getSimpleName())
                     .collect(Collectors.toList());
@@ -165,12 +164,11 @@ public class GJPluginRequestMappingHandlerMapping extends RequestMappingHandlerM
         return count;
     }
 
-    private Set<Object> getControllerBeans(GJPluginContext pluginContext) {
-        ApplicationContext applicationContext = pluginContext.getApplicationContext();
+    private Set<Object> getControllerBeans(ApplicationContext ctx) {
         Set<Object> beans = new LinkedHashSet<>();
 
-        Map<String, Object> controllerBeans = applicationContext.getBeansWithAnnotation(Controller.class);
-        Map<String, Object> restControllerBeans = applicationContext.getBeansWithAnnotation(RestController.class);
+        Map<String, Object> controllerBeans = ctx.getBeansWithAnnotation(Controller.class);
+        Map<String, Object> restControllerBeans = ctx.getBeansWithAnnotation(RestController.class);
 
         beans.addAll(controllerBeans.values());
         beans.addAll(restControllerBeans.values());

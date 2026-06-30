@@ -4,7 +4,6 @@
 
 package gj.pf4j.lifecycle;
 
-import gj.pf4j.GJPluginContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -18,12 +17,6 @@ class PropertyResourceRegistrar implements PluginResourceRegistrar {
 
     private static final Logger log = LoggerFactory.getLogger(PropertyResourceRegistrar.class);
 
-    private final GJPluginContext pluginContext;
-
-    PropertyResourceRegistrar(GJPluginContext pluginContext) {
-        this.pluginContext = pluginContext;
-    }
-
     @Override
     public Set<PluginLifecyclePhase> phases() {
         return Set.of(PluginLifecyclePhase.BEFORE_CONTEXT_REFRESH);
@@ -33,13 +26,13 @@ class PropertyResourceRegistrar implements PluginResourceRegistrar {
     public int order() { return 1; }
 
     @Override
-    public void onBeforeContextRefresh(AnnotationConfigApplicationContext ctx) {
-        String pluginId = pluginContext.getPluginId();
+    public void onBeforeContextRefresh(AnnotationConfigApplicationContext pluginCtx) {
+        String pluginId = pluginCtx.getId();
         try {
             String resourceName = pluginId + ".properties";
-            Resource resource = new ClassPathResource(resourceName, pluginContext.getClassLoader());
+            Resource resource = new ClassPathResource(resourceName, pluginCtx.getClassLoader());
             if (resource.exists()) {
-                ctx.getEnvironment()
+                pluginCtx.getEnvironment()
                         .getPropertySources()
                         .addFirst(new ResourcePropertySource(resource));
             } else {

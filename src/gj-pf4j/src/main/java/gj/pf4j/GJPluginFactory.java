@@ -1,6 +1,7 @@
 package gj.pf4j;
 
 import gj.pf4j.descriptor.GJPluginDescriptor;
+import gj.pf4j.lifecycle.PluginResourceRegistrar;
 import lombok.extern.slf4j.Slf4j;
 import org.pf4j.Plugin;
 import org.pf4j.PluginFactory;
@@ -9,6 +10,7 @@ import org.springframework.context.support.GenericApplicationContext;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
+import java.util.List;
 
 @Slf4j
 public class GJPluginFactory implements PluginFactory {
@@ -32,26 +34,17 @@ public class GJPluginFactory implements PluginFactory {
             var pluginManager = (GJPluginManager) wrapper.getPluginManager();
             var pluginContext = GJPluginContext.builder()
                     .pluginId(wrapper.getPluginId())
-                    .path(String.valueOf(wrapper.getPluginPath()))
-                    .version(wrapper.getDescriptor().getVersion())
-                    .description(wrapper.getDescriptor().getPluginDescription())
-                    .descriptor((GJPluginDescriptor) wrapper.getDescriptor())
-                    .order(getOrder(wrapper))
                     .classLoader(wrapper.getPluginClassLoader())
+                    .descriptor((GJPluginDescriptor) wrapper.getDescriptor())
                     .everStarted(pluginManager.wasEverStarted(wrapper.getPluginId()))
                     .build();
+            List<PluginResourceRegistrar> programmatic = pluginManager.getExternalRegistrars();
             return new GJSpringPlugin(pluginContext, plugin,
-                    (GenericApplicationContext) pluginManager.getMainApplicationContext());
+                    (GenericApplicationContext) pluginManager.getMainApplicationContext(),
+                    programmatic);
         } catch (Exception e) {
             throw new RuntimeException("Failed to instantiate plugin：" + e.getMessage(), e);
         }
-    }
-
-    private static int getOrder(PluginWrapper wrapper) {
-        if (wrapper.getDescriptor() instanceof GJPluginDescriptor gd) {
-            return gd.getOrder();
-        }
-        return 100000;
     }
 
     private GJPlugin createInstance(Class<?> pluginClass, PluginWrapper pluginWrapper) {

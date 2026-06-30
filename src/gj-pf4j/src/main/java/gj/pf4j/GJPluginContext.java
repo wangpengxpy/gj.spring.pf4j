@@ -1,5 +1,6 @@
 package gj.pf4j;
 
+import gj.pf4j.descriptor.GJPluginDescriptor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -10,12 +11,8 @@ import org.springframework.context.ApplicationContext;
 @Builder
 public class GJPluginContext {
     public String pluginId;
-    public String path;
-    public String version;
-    public String description;
-    public int order;
     public ClassLoader classLoader;
     public ApplicationContext applicationContext;
-    public gj.pf4j.descriptor.GJPluginDescriptor descriptor;
+    public GJPluginDescriptor descriptor;
     public boolean everStarted;
 }

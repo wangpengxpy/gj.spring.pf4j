@@ -7,6 +7,7 @@ package gj.pf4j;
 import gj.pf4j.descriptor.GJPluginDescriptor;
 import gj.pf4j.descriptor.GJPropertiesPluginDescriptorFinder;
 import gj.pf4j.events.GJPluginAfterInstallEvent;
+import gj.pf4j.lifecycle.PluginResourceRegistrar;
 import gj.pf4j.events.GJPluginBeforeUnloadEvent;
 import gj.pf4j.events.GJPluginDisabledEvent;
 import gj.pf4j.events.GJPluginStartFailedEvent;
@@ -51,6 +52,8 @@ public class GJPluginManager extends DefaultPluginManager implements Application
     private final Map<String, GJPluginStartingError> startingErrors = new ConcurrentHashMap<>();
     final Map<String, ReentrantLock> pluginLocks = new ConcurrentHashMap<>();
     final Set<String> everStartedPluginIds = ConcurrentHashMap.newKeySet();
+    private final List<PluginResourceRegistrar> externalRegistrars = new ArrayList<>();
+    private volatile boolean registrarsFrozen;
 
     ReentrantLock getPluginLock(String pluginId) {
         return pluginLocks.computeIfAbsent(pluginId, k -> new ReentrantLock());
@@ -64,9 +67,41 @@ public class GJPluginManager extends DefaultPluginManager implements Application
         return everStartedPluginIds.contains(pluginId);
     }
 
+    /**
+     * Register an external {@link PluginResourceRegistrar} programmatically.
+     * Must be called before {@code loadPlugins()} / {@code startPlugins()}.
+     * Duplicate registrations of the same instance are ignored with a warning.
+     *
+     * @throws IllegalStateException if called after plugins have been loaded
+     */
+    public void addExternalRegistrar(PluginResourceRegistrar registrar) {
+        Objects.requireNonNull(registrar);
+        if (this.registrarsFrozen) {
+            throw new IllegalStateException(
+                    "Registrar must be added before loadPlugins() / startPlugins()");
+        }
+        if (this.externalRegistrars.contains(registrar)) {
+            log.warn("[Registrar] Duplicate registrar ignored: {}",
+                    registrar.getClass().getSimpleName());
+            return;
+        }
+        this.externalRegistrars.add(registrar);
+    }
+
+    /** Returns programmatic registrars (internal use). */
+    List<PluginResourceRegistrar> getExternalRegistrars() {
+        return Collections.unmodifiableList(this.externalRegistrars);
+    }
+
     public GJPluginManager(Path pluginsRoot) {
         super(pluginsRoot);
         this.pluginsRoot = pluginsRoot;
+    }
+
+    @Override
+    public void loadPlugins() {
+        this.registrarsFrozen = true;
+        super.loadPlugins();
     }
 
     @Override

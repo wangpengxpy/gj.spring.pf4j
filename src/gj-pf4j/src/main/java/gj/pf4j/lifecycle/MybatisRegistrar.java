@@ -4,22 +4,13 @@
 
 package gj.pf4j.lifecycle;
 
-import gj.pf4j.GJPluginContext;
 import gj.pf4j.mybatis.GJPluginMybatisSqlSessionManager;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
-import org.springframework.context.support.GenericApplicationContext;
 
 import java.util.Set;
 
 class MybatisRegistrar implements PluginResourceRegistrar {
-
-    private final GJPluginContext pluginContext;
-    private final GenericApplicationContext mainAppCtx;
-
-    MybatisRegistrar(GJPluginContext pluginContext, GenericApplicationContext mainAppCtx) {
-        this.pluginContext = pluginContext;
-        this.mainAppCtx = mainAppCtx;
-    }
 
     @Override
     public Set<PluginLifecyclePhase> phases() {
@@ -31,20 +22,17 @@ class MybatisRegistrar implements PluginResourceRegistrar {
     public int order() { return 3; }
 
     @Override
-    public void onBeforeContextRefresh(AnnotationConfigApplicationContext ctx) {
-        String pluginId = pluginContext.getPluginId();
+    public void onBeforeContextRefresh(AnnotationConfigApplicationContext pluginCtx) {
+        ApplicationContext hostCtx = pluginCtx.getParent();
         GJPluginMybatisSqlSessionManager mybatisRegistry =
-                this.mainAppCtx.getBean(GJPluginMybatisSqlSessionManager.class);
-        mybatisRegistry.initializeMyBatisForPlugin(pluginId, ctx);
+                hostCtx.getBean(GJPluginMybatisSqlSessionManager.class);
+        mybatisRegistry.initializeMyBatisForPlugin(pluginCtx.getId(), pluginCtx);
     }
 
     @Override
-    public void onBeforeContextClose() {
-        String pluginId = pluginContext.getPluginId();
-        AnnotationConfigApplicationContext ctx = (AnnotationConfigApplicationContext)
-                pluginContext.getApplicationContext();
+    public void onBeforeContextClose(AnnotationConfigApplicationContext pluginCtx) {
         GJPluginMybatisSqlSessionManager mybatisRegistry =
-                ctx.getBean(GJPluginMybatisSqlSessionManager.class);
-        mybatisRegistry.cleanupPluginResources(pluginId);
+                pluginCtx.getBean(GJPluginMybatisSqlSessionManager.class);
+        mybatisRegistry.cleanupPluginResources(pluginCtx.getId());
     }
 }

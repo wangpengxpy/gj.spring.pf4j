@@ -4,22 +4,12 @@
 
 package gj.pf4j.lifecycle;
 
-import gj.pf4j.GJPluginContext;
 import gj.pf4j.migration.GJPluginModelMigrator;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
-import org.springframework.context.support.GenericApplicationContext;
 
 import java.util.Set;
 
 class MigrationRegistrar implements PluginResourceRegistrar {
-
-    private final GJPluginContext pluginContext;
-    private final GenericApplicationContext mainAppCtx;
-
-    MigrationRegistrar(GJPluginContext pluginContext, GenericApplicationContext mainAppCtx) {
-        this.pluginContext = pluginContext;
-        this.mainAppCtx = mainAppCtx;
-    }
 
     @Override
     public Set<PluginLifecyclePhase> phases() {
@@ -30,11 +20,11 @@ class MigrationRegistrar implements PluginResourceRegistrar {
     public int order() { return 5; }
 
     @Override
-    public void onBeforeContextRefresh(AnnotationConfigApplicationContext ctx) {
-        if (this.mainAppCtx.getBeansOfType(GJPluginModelMigrator.class).isEmpty()) {
+    public void onBeforeContextRefresh(AnnotationConfigApplicationContext pluginCtx) {
+        if (pluginCtx.getParent().getBeansOfType(GJPluginModelMigrator.class).isEmpty()) {
             return;
         }
-        GJPluginModelMigrator migrator = this.mainAppCtx.getBean(GJPluginModelMigrator.class);
-        migrator.migrate(pluginContext.getPluginId(), pluginContext.getClassLoader());
+        GJPluginModelMigrator migrator = pluginCtx.getParent().getBean(GJPluginModelMigrator.class);
+        migrator.migrate(pluginCtx.getId(), pluginCtx.getClassLoader());
     }
 }

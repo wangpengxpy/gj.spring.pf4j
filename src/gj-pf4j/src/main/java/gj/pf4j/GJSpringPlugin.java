@@ -9,6 +9,7 @@ import gj.pf4j.events.GJPluginStartingEvent;
 import gj.pf4j.events.GJPluginStoppedEvent;
 import gj.pf4j.lifecycle.PluginLifecycleEngine;
 import gj.pf4j.lifecycle.PluginLifecyclePhase;
+import gj.pf4j.lifecycle.PluginResourceRegistrar;
 import org.pf4j.Plugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +20,9 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.lang.NonNull;
 import org.springframework.util.StringUtils;
+
+import java.util.Collections;
+import java.util.List;
 
 public final class GJSpringPlugin extends Plugin {
 
@@ -35,11 +39,13 @@ public final class GJSpringPlugin extends Plugin {
     private ApplicationContext applicationContext;
 
     public GJSpringPlugin(GJPluginContext pluginContext, GJPlugin plugin,
-                          GenericApplicationContext mainApplicationContext) {
+                          GenericApplicationContext mainApplicationContext,
+                          List<PluginResourceRegistrar> programmaticRegistrars) {
         this.pluginContext = pluginContext;
         this.plugin = plugin;
         this.mainAppCtx = mainApplicationContext;
-        this.engine = PluginLifecycleEngine.create(pluginContext, mainApplicationContext);
+        this.engine = PluginLifecycleEngine.create(mainApplicationContext,
+                programmaticRegistrars != null ? programmaticRegistrars : Collections.emptyList());
     }
 
     @Override
@@ -170,6 +176,10 @@ public final class GJSpringPlugin extends Plugin {
                 new GJPluginBeanNameGenerator(home));
         // Set the property processor to enable @ConfigurationProperties in the plugin
         ConfigurationPropertiesBindingPostProcessor.register(applicationContext);
+        // Carry pluginId via Spring's ApplicationContext.setId(). This field is only
+        // used by toString() in AbstractApplicationContext — it has no effect on Spring
+        // lifecycle or bean resolution logic. Registrars retrieve it via ctx.getId().
+        applicationContext.setId(pluginId);
         // Set the parent context (inherit Beans from the main application)
         applicationContext.setParent(mainAppCtx);
         // Set the plugin classLoader

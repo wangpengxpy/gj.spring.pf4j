@@ -4,7 +4,6 @@
 
 package gj.pf4j.lifecycle;
 
-import gj.pf4j.GJPluginContext;
 import gj.pf4j.modelmapper.GJPluginModelMapperRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,12 +15,6 @@ class ModelMapperRegistrar implements PluginResourceRegistrar {
 
     private static final Logger log = LoggerFactory.getLogger(ModelMapperRegistrar.class);
 
-    private final GJPluginContext pluginContext;
-
-    ModelMapperRegistrar(GJPluginContext pluginContext) {
-        this.pluginContext = pluginContext;
-    }
-
     @Override
     public Set<PluginLifecyclePhase> phases() {
         return Set.of(PluginLifecyclePhase.AFTER_CONTEXT_REFRESH);
@@ -31,15 +24,14 @@ class ModelMapperRegistrar implements PluginResourceRegistrar {
     public int order() { return 12; }
 
     @Override
-    public void onAfterContextRefresh(AnnotationConfigApplicationContext ctx) {
+    public void onAfterContextRefresh(AnnotationConfigApplicationContext pluginCtx) {
         GJPluginModelMapperRegistry modelMapperRegistry =
-                ctx.getBean(GJPluginModelMapperRegistry.class);
+                pluginCtx.getBean(GJPluginModelMapperRegistry.class);
         try {
-            modelMapperRegistry.registerModelMappers(
-                    pluginContext.getPluginId(), pluginContext.getApplicationContext());
+            modelMapperRegistry.registerModelMappers(pluginCtx.getId(), pluginCtx);
         } catch (Exception ignored) {
             log.debug("[Plugin: {}] ModelMapper registration skipped or failed: {}",
-                    pluginContext.getPluginId(), ignored.getMessage());
+                    pluginCtx.getId(), ignored.getMessage());
         }
     }
 }

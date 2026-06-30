@@ -5,7 +5,7 @@
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.wangpengxpy/gj-pf4j?color=green)](https://central.sonatype.com/artifact/io.github.wangpengxpy/gj-pf4j)
 [![Stars](https://img.shields.io/github/stars/wangpengxpy/gj.spring.pf4j?style=social)](https://github.com/wangpengxpy/gj.spring.pf4j/stargazers)
 
-A lightweight, modular plugin framework powered by PF4J and Spring, with no heavyweight Spring Boot dependency. Supports both Spring MVC and Spring WebFlux routing — auto-adapts to the host application's web stack.
+A lightweight, modular plugin framework powered by PF4J and Spring, with no heavyweight Spring Boot dependency. Pluggable extension points enable any third-party component to integrate into the plugin lifecycle without modifying framework source code. Supports both Spring MVC and Spring WebFlux routing — auto-adapts to the host application's web stack.
 
 > [中文文档](README_CN.md) | [Full Documentation → Wiki](https://github.com/wangpengxpy/gj.spring.pf4j/wiki)
 
@@ -21,6 +21,7 @@ A lightweight, modular plugin framework powered by PF4J and Spring, with no heav
   <img src="images/capabilities.png" alt="Plugin Core Capabilities" width="90%">
 </p>
 
+- **[Plugin Extensions](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Plugin-Extensions)** — pluggable extension points; any component (MongoDB, Kafka, MQTT, gRPC, etc.) integrates via `PluginResourceRegistrar` without framework changes
 - **[Plugin Lifecycle Management](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Plugin-Lifecycle)** — install, disable, restart, unload, and delete plugins at runtime
 - **[Plugin Hot-Reload](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Plugin-Hot-Reload)** — hot-reload via API-driven workflow or file watcher; lifecycle events for custom orchestration
 - **[Runtime Plugin Management API](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Runtime-Management-API)** — `GJPluginService` provides lock-controlled runtime management APIs
@@ -46,17 +47,5 @@ A lightweight, modular plugin framework powered by PF4J and Spring, with no heav
   <img src="images/quickstart.png" alt="Quick Start Guide" width="85%">
 </p>
 
-```bash
-# 1. Install the archetype locally
-cd src/gj-archetypes
-mvn clean install
-
-# 2. Generate a plugin project
-mvn archetype:generate \
-  -DarchetypeGroupId=io.github.wangpengxpy \
-  -DarchetypeArtifactId=gj-archetype \
-  -DarchetypeVersion=1.2.3 \
-  -DgroupId=com.example \
-  -DpluginName=user
-```
+> See [Quick Start → Wiki](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Quick-Start)
 
