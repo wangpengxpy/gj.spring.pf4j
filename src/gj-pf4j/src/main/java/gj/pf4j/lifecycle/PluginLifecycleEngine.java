@@ -54,7 +54,8 @@ public class PluginLifecycleEngine {
                 new I18NRegistrar(),                // 2
                 new MybatisRegistrar(),             // 3
                 new JpaRegistrar(),                 // 4
-                new MigrationRegistrar(),           // 5
+                new SqlScriptRegistrar(),           // 5
+                new MigrationRegistrar(),           // 6
                 new ControllerRegistrar(),          // 10
                 new OpenApiRegistrar(),             // 11
                 new AnonymousPathRegistrar(),       // 11

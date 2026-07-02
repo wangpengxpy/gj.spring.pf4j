@@ -73,9 +73,29 @@ public class PluginJobManager {
             PluginJob annotation = beanClass.getAnnotation(PluginJob.class);
 
             try {
-                JobKey jobKey = scheduleJob(pluginId, beanName, annotation);
-                keys.add(jobKey);
-                log.info("[Plugin: {}] Registered job: name='{}', class={}", pluginId, annotation.name(), beanClass.getSimpleName());
+                String jobName = pluginId + ":" + annotation.name();
+                JobKey jobKey = JobKey.jobKey(jobName, pluginId);
+
+                if (scheduler.checkExists(jobKey)) {
+                    // Reload scenario (e.g. clustered mode): job already exists in DB.
+                    // Update JobDataMap so PluginJobWrapper resolves the reloaded bean.
+                    JobDataMap dataMap = new JobDataMap();
+                    dataMap.put(PluginJobWrapper.JOB_DATA_PLUGIN_ID, pluginId);
+                    dataMap.put(PluginJobWrapper.JOB_DATA_BEAN_NAME, beanName);
+
+                    JobDetail jobDetail = JobBuilder.newJob(PluginJobWrapper.class)
+                            .withIdentity(jobKey)
+                            .usingJobData(dataMap)
+                            .storeDurably()
+                            .build();
+                    scheduler.addJob(jobDetail, true);
+                    keys.add(jobKey);
+                    log.info("[Plugin: {}] Job '{}' already exists, replaced job data", pluginId, annotation.name());
+                } else {
+                    JobKey scheduledKey = scheduleJob(pluginId, beanName, annotation);
+                    keys.add(scheduledKey);
+                    log.info("[Plugin: {}] Registered job: name='{}', class={}", pluginId, annotation.name(), beanClass.getSimpleName());
+                }
             } catch (SchedulerException e) {
                 log.error("[Plugin: {}] Failed to register job: name='{}', class={}",
                         pluginId, annotation.name(), beanClass.getSimpleName(), e);
@@ -88,37 +108,15 @@ public class PluginJobManager {
 
     /**
      * Remove all scheduled jobs for the given plugin.
+     * <p>
+     * In clustered mode the job/trigger records are shared via the database and must NOT
+     * be deleted — other nodes still need them. Removing the plugin context is sufficient:
+     * {@link PluginJobWrapper#execute} returns immediately when {@code pluginCtx} is null.
      */
     public void unregisterJobs(String pluginId) {
-        Set<JobKey> keys = pluginJobKeys.remove(pluginId);
-        if (keys == null || keys.isEmpty()) {
-            pluginContexts.remove(pluginId);
-            return;
-        }
-
-        try {
-            for (JobKey key : keys) {
-                scheduler.pauseJob(key);
-            }
-
-            int waitCount = 0;
-            while (hasRunningJobs(keys) && waitCount < 30) {
-                try {
-                    Thread.sleep(1000);
-                    waitCount++;
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
-            }
-
-            scheduler.deleteJobs(keys.stream().toList());
-            log.info("[Plugin: {}] Job unregistration completed, {} job(s) deleted", pluginId, keys.size());
-        } catch (SchedulerException e) {
-            log.error("[Plugin: {}] Failed to unregister jobs", pluginId, e);
-        } finally {
-            pluginContexts.remove(pluginId);
-        }
+        pluginJobKeys.remove(pluginId);
+        pluginContexts.remove(pluginId);
+        log.info("[Plugin: {}] Job unregistration completed, context removed", pluginId);
     }
 
     // ==================== internal ====================
@@ -130,16 +128,12 @@ public class PluginJobManager {
         dataMap.put(PluginJobWrapper.JOB_DATA_PLUGIN_ID, pluginId);
         dataMap.put(PluginJobWrapper.JOB_DATA_BEAN_NAME, beanName);
 
-        JobBuilder jobBuilder = JobBuilder.newJob(PluginJobWrapper.class)
+        JobDetail jobDetail = JobBuilder.newJob(PluginJobWrapper.class)
                 .withIdentity(jobName, pluginId)
                 .usingJobData(dataMap)
-                .storeDurably();
+                .storeDurably()
+                .build();
 
-        if (annotation.disallowConcurrentExecution()) {
-            jobBuilder = jobBuilder.withIdentity(jobName, pluginId);
-        }
-
-        JobDetail jobDetail = jobBuilder.build();
         Trigger trigger = buildTrigger(annotation, jobName, pluginId);
 
         scheduler.scheduleJob(jobDetail, trigger);
@@ -183,14 +177,5 @@ public class PluginJobManager {
 
         throw new IllegalArgumentException(
                 "Job '" + annotation.name() + "': must specify intervalSeconds, cronExpression, or runOnce");
-    }
-
-    private boolean hasRunningJobs(Set<JobKey> keys) throws SchedulerException {
-        for (JobExecutionContext ctx : scheduler.getCurrentlyExecutingJobs()) {
-            if (keys.contains(ctx.getJobDetail().getKey())) {
-                return true;
-            }
-        }
-        return false;
     }
 }

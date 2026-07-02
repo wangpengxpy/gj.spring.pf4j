@@ -18,6 +18,8 @@ import gj.pf4j.modelmapper.GJPluginModelMapperRegistry;
 import gj.pf4j.mybatis.GJPluginMybatisSqlSessionManager;
 import gj.pf4j.mybatis.interceptor.GJSqlKeywordQuoteInterceptor;
 import gj.pf4j.mybatis.interceptor.GJTableKeywordRegistry;
+import gj.pf4j.migration.script.ScriptRunner;
+import gj.pf4j.quartzjob.GJQuartzProperties;
 import gj.pf4j.socketio.GJSocketIOProperties;
 import gj.pf4j.utils.GJPluginUtils;
 import org.slf4j.Logger;
@@ -45,7 +47,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 @Configuration
-@EnableConfigurationProperties({GJI18nProperties.class, GJSocketIOProperties.class})
+@EnableConfigurationProperties({GJI18nProperties.class, GJSocketIOProperties.class, GJQuartzProperties.class})
 public class GJPluginConfig {
 
     private static final Logger log = LoggerFactory.getLogger(GJPluginConfig.class);
@@ -199,5 +201,12 @@ public class GJPluginConfig {
             JpaVendorAdapter jpaVendorAdapter,
             GJPluginJpaProperties properties) {
         return new GJPluginJpaEntityManagerManager(dataSource, jpaVendorAdapter, properties);
+    }
+
+    @Bean
+    @ConditionalOnBean(DataSource.class)
+    public ScriptRunner scriptRunner(DataSource dataSource,
+                                     GJQuartzProperties properties) {
+        return new ScriptRunner(dataSource, properties.isContinueOnError());
     }
 }

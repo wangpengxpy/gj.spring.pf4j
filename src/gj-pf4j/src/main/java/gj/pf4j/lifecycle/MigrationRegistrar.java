@@ -17,7 +17,7 @@ class MigrationRegistrar implements PluginResourceRegistrar {
     }
 
     @Override
-    public int order() { return 5; }
+    public int order() { return 6; }
 
     @Override
     public void onBeforeContextRefresh(AnnotationConfigApplicationContext pluginCtx) {

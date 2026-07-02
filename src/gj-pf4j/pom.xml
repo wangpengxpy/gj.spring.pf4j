@@ -11,7 +11,7 @@
         <relativePath>../gj-parent/pom.xml</relativePath>
     </parent>
     <artifactId>gj-pf4j</artifactId>
-    <version>1.7.0</version>
+    <version>1.8.0</version>
     <name>gj-pf4j</name>
     <description>A lightweight, modular plugin framework powered by PF4J and Spring, with no heavyweight Spring Boot dependency.</description>
     <url>https://github.com/wangpengxpy/gj.spring.pf4j</url>

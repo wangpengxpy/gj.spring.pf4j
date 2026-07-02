@@ -19,7 +19,7 @@
 
     <properties>
         <version>1.0.0</version>
-        <gj.pf4j.version>1.7.0</gj.pf4j.version>
+        <gj.pf4j.version>1.8.0</gj.pf4j.version>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
