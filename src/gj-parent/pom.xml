@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.github.wangpengxpy</groupId>
     <artifactId>gj-dependencies</artifactId>
-    <version>1.0.13</version>
+    <version>1.0.14</version>
     <packaging>pom</packaging>
     <name>gj-dependencies</name>
     <description>gj.spring.pf4j Bill of Materials (BOM) — manages all dependency versions for the gj-pf4j plugin framework ecosystem.</description>
@@ -47,6 +47,7 @@
         <spring.context.version>6.2.10</spring.context.version>
         <spring.webflux.version>6.2.10</spring.webflux.version>
         <spring.jdbc.version>6.2.10</spring.jdbc.version>
+        <spring.context.support.version>6.2.10</spring.context.support.version>
         <pf4j.version>3.13.0</pf4j.version>
         <jackson.core.version>2.19.2</jackson.core.version>
         <jackson.datatype.jsr310.version>2.19.2</jackson.datatype.jsr310.version>
@@ -204,6 +205,11 @@
                 <groupId>org.springframework</groupId>
                 <artifactId>spring-jdbc</artifactId>
                 <version>${spring.jdbc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-context-support</artifactId>
+                <version>${spring.context.support.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.springframework.data</groupId>

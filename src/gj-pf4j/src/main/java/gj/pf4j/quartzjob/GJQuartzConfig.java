@@ -16,6 +16,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.scheduling.quartz.SchedulerFactoryBean;
 import org.springframework.scheduling.quartz.SpringBeanJobFactory;
 
@@ -32,6 +33,7 @@ public class GJQuartzConfig {
 
     private Scheduler scheduler;
 
+    @Primary
     @Bean
     @ConditionalOnMissingBean(Scheduler.class)
     public Scheduler scheduler(GJQuartzProperties properties,
