@@ -16,7 +16,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
-        <gj.pf4j.version>1.8.1</gj.pf4j.version>
+        <gj.pf4j.version>1.9.0</gj.pf4j.version>
         <gj.data.version>0.0.1-SNAPSHOT</gj.data.version>
         <gj.modelmapper.version>1.0.6</gj.modelmapper.version>
     </properties>

@@ -32,7 +32,7 @@ public class SimpleReadEventListener<T> extends AnalysisEventListener<T> {
         int rowIndex = readRowHolder.getRowIndex();
         int currentHeadRowNumber = context.readSheetHolder().getHeadRowNumber();
         if (rowIndex + 1 == currentHeadRowNumber) {
-            IoTExcelUtil.buildUpdateHeadAgain(applicationContext, context, headMap, clazz);
+            GJExcelUtil.buildUpdateHeadAgain(applicationContext, context, headMap, clazz);
         }
     }
 

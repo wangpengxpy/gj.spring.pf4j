@@ -129,7 +129,7 @@ public abstract class GJHub implements GJSocketIOHub {
         }
         long durationNanos = System.nanoTime() - startTime;
         long durationMillis = TimeUnit.NANOSECONDS.toMillis(durationNanos);
-        log.info("Hub '{}' registered {} @IoTHubMethod(s) in {} ms", hubName, methodCount, durationMillis);
+        log.info("Hub '{}' registered {} @GJHubMethod(s) in {} ms", hubName, methodCount, durationMillis);
     }
 
     private DataListener<Object> getHandler(String methodName) {

@@ -83,7 +83,7 @@ public class GJPluginMybatisSqlSessionManager {
 
         // 0. Avoid repeated initialization
         if (pluginSessionCache.containsKey(pluginId)) {
-            log.warn("IoTPluginMybatisSqlSessionManager already initialized for plugin '{}'. Skipping.", pluginId);
+            log.warn("GJPluginMybatisSqlSessionManager already initialized for plugin '{}'. Skipping.", pluginId);
             return;
         }
 

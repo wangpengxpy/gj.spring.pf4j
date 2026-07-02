@@ -34,7 +34,7 @@ public class SimpleCellWriteHandler implements CellWriteHandler {
     public void beforeCellCreate(WriteSheetHolder writeSheetHolder, WriteTableHolder writeTableHolder, Row row, Head head, Integer columnIndex, Integer relativeRowIndex, Boolean isHead) {
         if (isHead) {
             String fieldName = head.getFieldName();
-            String headerKey = IoTExcelUtil.getExcelPropertyValue(clazz, fieldName);
+            String headerKey = GJExcelUtil.getExcelPropertyValue(clazz, fieldName);
             if (StringUtils.isEmpty(headerKey)) {
                 log.warn("Class [{}] field [{}] @ExcelProperty annotation is empty, possible causes: field does not exist or annotation is missing",
                         clazz.getName(),

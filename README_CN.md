@@ -41,10 +41,10 @@
 
 ---
 
-## 快速开始
+## 捐赠
 
-<p align="center">
-  <img src="images/quickstart.png" alt="快速上手指南" width="85%">
-</p>
+如果本项目对你有帮助，欢迎支持开发者。
 
-> 详见 [快速开始 → Wiki](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Quick-Start_CN)
+| 支付宝 | 微信支付 |
+|:------:|:--------:|
+| <img src="images/ali_pay.jpg" alt="支付宝" height="260"> | <img src="images/wechat_pay.jpg" alt="微信支付" height="260"> |

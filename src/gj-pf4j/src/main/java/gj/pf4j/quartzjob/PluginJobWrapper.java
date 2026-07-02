@@ -45,7 +45,14 @@ public class PluginJobWrapper implements Job {
         }
 
         long start = System.currentTimeMillis();
-        pluginJob.execute();
-        log.debug("[Plugin: {}] Job '{}' executed in {}ms", pluginId, beanName, System.currentTimeMillis() - start);
+        try {
+            pluginJob.execute();
+            log.debug("[Plugin: {}] Job '{}' executed in {}ms", pluginId, beanName,
+                    System.currentTimeMillis() - start);
+        } catch (Exception e) {
+            log.error("[Plugin: {}] Job '{}' failed after {}ms", pluginId, beanName,
+                    System.currentTimeMillis() - start, e);
+            throw new JobExecutionException(e, false);
+        }
     }
 }

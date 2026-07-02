@@ -41,11 +41,11 @@ A lightweight, modular plugin framework powered by PF4J and Spring, with no heav
 
 ---
 
-## Quick Start
+## Sponsor
 
-<p align="center">
-  <img src="images/quickstart.png" alt="Quick Start Guide" width="85%">
-</p>
+If this project helps you, consider supporting the developer.
 
-> See [Quick Start → Wiki](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Quick-Start)
+| Alipay | WeChat Pay |
+|:------:|:----------:|
+| <img src="images/ali_pay.jpg" alt="Alipay" height="260"> | <img src="images/wechat_pay.jpg" alt="WeChat Pay" height="260"> |
 

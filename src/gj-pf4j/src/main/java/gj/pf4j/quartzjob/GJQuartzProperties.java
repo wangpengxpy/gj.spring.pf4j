@@ -16,12 +16,6 @@ public class GJQuartzProperties {
     /** Scheduler mode. */
     private Mode mode = Mode.STANDALONE;
 
-    /** Quartz table prefix, only effective in clustered mode. */
-    private String tablePrefix = "QRTZ_";
-
-    /** Scheduler name. */
-    private String schedulerName = "gjScheduler";
-
     /** Continue executing remaining scripts when one fails. Default false (fail-fast). */
     private boolean continueOnError = false;
 

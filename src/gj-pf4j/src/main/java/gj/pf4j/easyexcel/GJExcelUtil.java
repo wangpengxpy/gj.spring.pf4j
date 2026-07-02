@@ -22,9 +22,9 @@ import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 
-public class IoTExcelUtil {
+public class GJExcelUtil {
 
-    private static final Logger log = LoggerFactory.getLogger(IoTExcelUtil.class);
+    private static final Logger log = LoggerFactory.getLogger(GJExcelUtil.class);
 
     /**
      * Rebuild header mapping: translate the internationalization key in annotations to the actual header in the current language, and match with actual Excel columns

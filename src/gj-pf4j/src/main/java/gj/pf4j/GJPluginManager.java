@@ -144,38 +144,15 @@ public class GJPluginManager extends DefaultPluginManager implements Application
         startingErrors.clear();
         long ts = System.currentTimeMillis();
 
-        List<PluginWrapper> sortedPlugins = resolvedPlugins.stream()
+        resolvedPlugins.stream()
                 .sorted(Comparator.comparingInt(pw -> {
                     if (pw.getDescriptor() instanceof GJPluginDescriptor gd) {
                         return gd.getOrder();
                     }
                     return 100000;
                 }))
-                .toList();
-
-        for (PluginWrapper pluginWrapper : sortedPlugins) {
-            PluginState pluginState = pluginWrapper.getPluginState();
-            if ((PluginState.DISABLED != pluginState) && (PluginState.STARTED != pluginState)) {
-                try {
-                    pluginWrapper.getPlugin().start();
-                    pluginWrapper.setPluginState(PluginState.STARTED);
-                    startedPlugins.add(pluginWrapper);
-                    firePluginStateEvent(new PluginStateEvent(this, pluginWrapper, pluginState));
-                    GJSpringPlugin springPlugin = (GJSpringPlugin) pluginWrapper.getPlugin();
-                    springPlugin.getApplicationContext().publishEvent(
-                            new GJPluginStartedEvent(pluginWrapper.getPluginId(),
-                                    (GJPluginDescriptor) pluginWrapper.getDescriptor()));
-                } catch (Exception e) {
-                    log.error(e.getMessage(), e);
-                    GJPluginStartingError error = new GJPluginStartingError(
-                            pluginWrapper.getPluginId(), e);
-                    startingErrors.put(pluginWrapper.getPluginId(), error);
-                    mainApplicationContext.publishEvent(
-                            new GJPluginStartFailedEvent(mainApplicationContext,
-                                    (GJPluginDescriptor) pluginWrapper.getDescriptor(), error));
-                }
-            }
-        }
+                .map(PluginWrapper::getPluginId)
+                .forEach(this::doStartPlugin);
 
         long duration = System.currentTimeMillis() - ts;
 
@@ -183,17 +160,15 @@ public class GJPluginManager extends DefaultPluginManager implements Application
                 .map(PluginWrapper::getPluginId)
                 .toList();
 
-        // Log INFO level information for successfully started plugins
         log.info("[PF4J] {} plugins are started in {}ms. {} failed. Started plugins: [{}]",
                 startedPluginIds.size(),
                 duration,
                 startingErrors.size(),
                 String.join(", ", startedPluginIds));
 
-        // Log ERROR-level detailed exception information for plugins that failed to start
         if (!startingErrors.isEmpty()) {
             log.error("[PF4J] Plugin startup failures ({}):", startingErrors.size());
-            PluginErrors();
+            pluginErrors();
         }
     }
 
@@ -223,11 +198,11 @@ public class GJPluginManager extends DefaultPluginManager implements Application
         // Log ERROR-level detailed exception information for plugins that failed to stop
         if (!startingErrors.isEmpty()) {
             log.error("[PF4J] Plugin stopped failures ({}):", startingErrors.size());
-            PluginErrors();
+            pluginErrors();
         }
     }
 
-    private void PluginErrors() {
+    private void pluginErrors() {
         int index = 1;
         for (Map.Entry<String, GJPluginStartingError> entry : startingErrors.entrySet()) {
             String pluginId = entry.getKey();

@@ -742,7 +742,7 @@ public class GJHubManager {
         }
         String hubName = iotHub.getHubName();
         if (hubName == null || hubName.isEmpty()) {
-            throw new IllegalStateException("No IoTHub registered for class: " + hubClass.getName() +
+            throw new IllegalStateException("No GJHub registered for class: " + hubClass.getName() +
                     ". Did you forget to register it as a @Component?");
         }
         return (GJHubContext<T>) hubContexts.get(hubName);
@@ -764,7 +764,7 @@ public class GJHubManager {
 
             if (result != null) {
                 if (log.isDebugEnabled()) {
-                    log.debug("Found IoTHub instance of type {} in {} ms",
+                    log.debug("Found GJHub instance of type {} in {} ms",
                             hubClass.getSimpleName(), elapsed);
                 }
                 return result;
@@ -774,16 +774,16 @@ public class GJHubManager {
                         .map(hub -> hub.getClass().getName())
                         .collect(Collectors.toList());
 
-                log.debug("No IoTHub instance found for type {} after {} ms. " +
+                log.debug("No GJHub instance found for type {} after {} ms. " +
                                 "Currently registered hub types: {}",
                         hubClass.getName(), elapsed, registeredTypes);
 
                 throw new IllegalStateException(
-                        "No registered IoTHub implements " + hubClass.getName());
+                        "No registered GJHub implements " + hubClass.getName());
             }
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
-            log.error("Error while looking up IoTHub instance for type {} (took {} ms)",
+            log.error("Error while looking up GJHub instance for type {} (took {} ms)",
                     hubClass.getName(), elapsed, e);
             throw e;
         }

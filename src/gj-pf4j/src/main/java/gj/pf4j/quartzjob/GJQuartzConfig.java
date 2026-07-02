@@ -93,8 +93,8 @@ public class GJQuartzConfig {
         props.setProperty("org.quartz.jobStore.driverDelegateClass",
                 resolveDriverDelegate(dbType));
         props.setProperty("org.quartz.scheduler.instanceId", "AUTO");
-        props.setProperty("org.quartz.jobStore.tablePrefix", properties.getTablePrefix());
-        props.setProperty("org.quartz.scheduler.instanceName", properties.getSchedulerName());
+        props.setProperty("org.quartz.jobStore.tablePrefix", "QRTZ_");
+        props.setProperty("org.quartz.scheduler.instanceName", "gjScheduler");
         return props;
     }
 
