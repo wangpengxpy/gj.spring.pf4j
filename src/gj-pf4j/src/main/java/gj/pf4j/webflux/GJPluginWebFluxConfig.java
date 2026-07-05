@@ -35,7 +35,7 @@ public class GJPluginWebFluxConfig {
         return new WebFluxRegistrations() {
             @Override
             public RequestMappingHandlerAdapter getRequestMappingHandlerAdapter() {
-                return new GJPlguinWebFluxSecureRequestMappingHandlerAdapter();
+                return new GJPluginWebFluxSecureRequestMappingHandlerAdapter();
             }
         };
     }

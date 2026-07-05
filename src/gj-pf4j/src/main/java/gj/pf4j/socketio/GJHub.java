@@ -13,13 +13,6 @@ import org.springframework.util.StopWatch;
 
 import javax.annotation.PostConstruct;
 import java.lang.reflect.Method;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -38,7 +31,7 @@ public abstract class GJHub implements GJSocketIOHub {
     private final Map<String, DataListener<Object>> methodHandlers = new ConcurrentHashMap<>();
 
     // Connection management
-    protected final Map<String, ConnectionContext> connections = new ConcurrentHashMap<>();
+    protected final Map<String, GJHubConnectionContext> connections = new ConcurrentHashMap<>();
     protected final Map<String, Set<String>> userConnections = new ConcurrentHashMap<>();
 
     // Thread management
@@ -47,7 +40,7 @@ public abstract class GJHub implements GJSocketIOHub {
     protected ScheduledExecutorService heartbeatScheduler;
 
     // Thread-local variables for storing current request context
-    private final ThreadLocal<ConnectionContext> currentContext = new ThreadLocal<>();
+    private final ThreadLocal<GJHubConnectionContext> currentContext = new ThreadLocal<>();
     private final ThreadLocal<GJHubCallerClients> currentClients = new ThreadLocal<>();
     private final ThreadLocal<GJGroupManager> currentGroups = new ThreadLocal<>();
 
@@ -55,9 +48,6 @@ public abstract class GJHub implements GJSocketIOHub {
     private final AtomicInteger totalConnections = new AtomicInteger(0);
     private final AtomicInteger activeConnections = new AtomicInteger(0);
     private final AtomicLong totalMessages = new AtomicLong(0);
-
-    // Heartbeat interval timeout (in minutes)
-    private static final int HEARTBEAT_INTERVAL_TIMEOUT = 5;
 
     // ================ Constructor ================
 
@@ -154,7 +144,7 @@ public abstract class GJHub implements GJSocketIOHub {
                 long startTime = System.currentTimeMillis();
                 // 1. Create connection context
                 Map<String, String> queryParams = extractQueryParams(client);
-                ConnectionContext context = new ConnectionContext(
+                GJHubConnectionContext context = new GJHubConnectionContext(
                         connectionId, userId, client, queryParams
                 );
                 // 2. Store connection
@@ -167,6 +157,8 @@ public abstract class GJHub implements GJSocketIOHub {
                 // 5. Call subclass connection handler
                 CompletableFuture<Void> future = onConnectedAsync();
                 CompletableFuture<Void> safeFuture = future != null ? future : CompletableFuture.completedFuture(null);
+                // Block until plugin's onConnectedAsync completes — required to keep
+                // ThreadLocal context alive and ensure stats/log reflect final state.
                 safeFuture.get();
                 // 6. Update statistics
                 totalConnections.incrementAndGet();
@@ -187,7 +179,7 @@ public abstract class GJHub implements GJSocketIOHub {
         String connectionId = client.getSessionId().toString();
         return CompletableFuture.runAsync(() -> {
             long startTime = System.currentTimeMillis();
-            ConnectionContext context = connections.get(connectionId);
+            GJHubConnectionContext context = connections.get(connectionId);
             if (context == null) {
                 log.warn("No context found for disconnected client: {}", connectionId);
                 return;
@@ -196,6 +188,8 @@ public abstract class GJHub implements GJSocketIOHub {
                 setCurrentContext(context);
                 CompletableFuture<Void> future = onDisconnectedAsync();
                 CompletableFuture<Void> safeFuture = future != null ? future : CompletableFuture.completedFuture(null);
+                // Block until plugin's onDisconnectedAsync completes — required to keep
+                // ThreadLocal context alive and ensure stats/log reflect final state.
                 safeFuture.get();
                 log.info("Client {} disconnected from {} in {}ms (User: {})",
                         connectionId, hubName, System.currentTimeMillis() - startTime, context.getUserId());
@@ -212,7 +206,7 @@ public abstract class GJHub implements GJSocketIOHub {
     void onClientMessage(SocketIOClient client, String method, Object data, AckRequest ack) {
         String connectionId = client.getSessionId().toString();
         totalMessages.incrementAndGet();
-        ConnectionContext context = connections.get(connectionId);
+        GJHubConnectionContext context = connections.get(connectionId);
         if (context == null) {
             log.warn("Received message from unknown client: {}", connectionId);
             return;
@@ -267,7 +261,7 @@ public abstract class GJHub implements GJSocketIOHub {
     /**
      * Set current thread context
      */
-    private void setCurrentContext(ConnectionContext context) {
+    private void setCurrentContext(GJHubConnectionContext context) {
         currentContext.set(context);
         // Create client proxy (inject hubManager for unified group management)
         GJHubCallerClients clients = new InternalHubClients(
@@ -303,7 +297,7 @@ public abstract class GJHub implements GJSocketIOHub {
      * Get current connection context
      */
     protected GJHubCallerContext getContext() {
-        ConnectionContext context = currentContext.get();
+        GJHubConnectionContext context = currentContext.get();
         if (context == null) {
             throw new IllegalStateException("No current context available. This method can only be called during connection or message handling.");
         }
@@ -366,7 +360,7 @@ public abstract class GJHub implements GJSocketIOHub {
         }
         List<SocketIOClient> clients = new ArrayList<>();
         for (String connectionId : connectionIds) {
-            ConnectionContext context = connections.get(connectionId);
+            GJHubConnectionContext context = connections.get(connectionId);
             if (context != null) {
                 clients.add(context.getClient());
             }
@@ -378,7 +372,7 @@ public abstract class GJHub implements GJSocketIOHub {
      * Check if connection is active
      */
     boolean isConnectionActive(String connectionId) {
-        ConnectionContext context = connections.get(connectionId);
+        GJHubConnectionContext context = connections.get(connectionId);
         return context != null && context.getClient().isChannelOpen();
     }
 
@@ -484,417 +478,5 @@ public abstract class GJHub implements GJSocketIOHub {
         } catch (Exception e) {
             log.error("Error during hub {} shutdown", hubName, e);
         }
-    }
-
-    // ================ Inner Classes ================
-
-    /**
-     * Connection context
-     */
-    public static class ConnectionContext {
-        private final String connectionId;
-        private final String userId;
-        private final SocketIOClient client;
-        private final GJHubCallerContext hubCallerContext;
-        private volatile long lastActivityTime;
-
-        public ConnectionContext(String connectionId, String userId,
-                                 SocketIOClient client, Map<String, String> queryParams) {
-            this.connectionId = connectionId;
-            this.userId = userId;
-            this.client = client;
-            this.hubCallerContext = new GJHubCallerContext(connectionId, userId, queryParams);
-            this.lastActivityTime = System.currentTimeMillis();
-        }
-
-        public String getConnectionId() {
-            return connectionId;
-        }
-
-        public String getUserId() {
-            return userId;
-        }
-
-        public SocketIOClient getClient() {
-            return client;
-        }
-
-        public GJHubCallerContext getHubCallerContext() {
-            return hubCallerContext;
-        }
-
-        public long getLastActivityTime() {
-            return lastActivityTime;
-        }
-
-        public void updateLastActivity() {
-            this.lastActivityTime = System.currentTimeMillis();
-        }
-    }
-}
-
-// ================ Internal Hub Client Proxy ================
-
-class InternalHubClients implements GJHubCallerClients {
-    private static final Logger log = LoggerFactory.getLogger(InternalHubClients.class);
-
-    private final String currentConnectionId;
-    private final String currentUserId;
-    private final SocketIOClient currentClient;
-    private final String hubName;
-    private final GJHubManager hubManager;
-    private final ExecutorService asyncExecutor;
-
-    public InternalHubClients(String currentConnectionId, String currentUserId,
-                              SocketIOClient currentClient, String hubName,
-                              GJHubManager hubManager, ExecutorService asyncExecutor) {
-        this.currentConnectionId = currentConnectionId;
-        this.currentUserId = currentUserId;
-        this.currentClient = currentClient;
-        this.hubName = hubName;
-        this.hubManager = hubManager;
-        this.asyncExecutor = asyncExecutor;
-    }
-
-    @Override
-    public GJClientProxy all() {
-        return new InternalClientProxy(hubName, null, null, null, false, null, null, hubManager, asyncExecutor);
-    }
-
-    @Override
-    public GJClientProxy caller() {
-        return new InternalClientProxy(hubName,
-                Collections.singleton(currentConnectionId), null, null, false, null, null, hubManager, asyncExecutor);
-    }
-
-    @Override
-    public GJClientProxy others() {
-        return new InternalClientProxy(hubName,
-                null, null, Collections.singleton(currentConnectionId), false, null, null, hubManager, asyncExecutor);
-    }
-
-    @Override
-    public GJClientProxy client(String connectionId) {
-        return new InternalClientProxy(hubName,
-                Collections.singleton(connectionId), null, null, false, null, null, hubManager, asyncExecutor);
-    }
-
-    @Override
-    public GJClientProxy clients(Collection<String> connectionIds) {
-        return new InternalClientProxy(hubName,
-                connectionIds, null, null, false, null, null, hubManager, asyncExecutor);
-    }
-
-    @Override
-    public GJClientProxy group(String groupName) {
-        return new InternalClientProxy(hubName,
-                null, Collections.singleton(groupName), null, false, null, null, hubManager, asyncExecutor);
-    }
-
-    @Override
-    public GJClientProxy groups(Collection<String> groupNames) {
-        return new InternalClientProxy(hubName,
-                null, groupNames, null, false, null, null, hubManager, asyncExecutor);
-    }
-
-    @Override
-    public GJClientProxy othersInGroup(String groupName) {
-        return new InternalClientProxy(hubName,
-                null, Collections.singleton(groupName),
-                Collections.singleton(currentConnectionId), false, null, null, hubManager, asyncExecutor);
-    }
-
-    @Override
-    public GJClientProxy othersInGroups(Collection<String> groupNames) {
-        return new InternalClientProxy(hubName,
-                null, groupNames, Collections.singleton(currentConnectionId), false, null, null, hubManager, asyncExecutor);
-    }
-
-    @Override
-    public GJClientProxy user(String userId) {
-        return new InternalClientProxy(hubName,
-                null, null, null, false, Collections.singleton(userId), null, hubManager, asyncExecutor);
-    }
-
-    @Override
-    public GJClientProxy users(Collection<String> userIds) {
-        return new InternalClientProxy(hubName,
-                null, null, null, false, userIds, null, hubManager, asyncExecutor);
-    }
-
-    @Override
-    public GJClientProxy groupExceptUser(String groupName, String userId) {
-        return new InternalClientProxy(hubName,
-                null, Collections.singleton(groupName), null, false, null,
-                Collections.singleton(userId), hubManager, asyncExecutor);
-    }
-
-    @Override
-    public GJClientProxy allExcept(Collection<String> excludedConnectionIds) {
-        return new InternalClientProxy(hubName,
-                null, null, excludedConnectionIds, false, null, null, hubManager, asyncExecutor);
-    }
-
-    @Override
-    public GJClientProxy groupExceptUsers(String groupName, Collection<String> excludedUserIds) {
-        return new InternalClientProxy(hubName,
-                null, Collections.singleton(groupName), null, false, null, excludedUserIds, hubManager, asyncExecutor);
-    }
-
-    public String getCurrentUserId() {
-        return currentUserId;
-    }
-
-    public SocketIOClient getCurrentClient() {
-        return currentClient;
-    }
-}
-
-// ================ Internal Client Proxy ================
-
-class InternalClientProxy implements GJClientProxy {
-    private static final Logger log = LoggerFactory.getLogger(InternalClientProxy.class);
-
-    private final String hubName;
-    private final Collection<String> targetConnectionIds;
-    private final Collection<String> targetGroups;
-    private final Collection<String> excludedConnectionIds;
-    private final boolean excludeCaller;
-    private final Collection<String> targetUserIds;
-    private final Collection<String> excludedUserIds;
-    private final GJHubManager hubManager;
-    private final ExecutorService asyncExecutor;
-
-    public InternalClientProxy(String hubName,
-                               Collection<String> targetConnectionIds,
-                               Collection<String> targetGroups,
-                               Collection<String> excludedConnectionIds,
-                               boolean excludeCaller,
-                               Collection<String> targetUserIds,
-                               Collection<String> excludedUserIds,
-                               GJHubManager hubManager,
-                               ExecutorService asyncExecutor) {
-        this.hubName = hubName;
-        this.targetConnectionIds = targetConnectionIds;
-        this.targetGroups = targetGroups;
-        this.excludedConnectionIds = excludedConnectionIds;
-        this.excludeCaller = excludeCaller;
-        this.targetUserIds = targetUserIds;
-        this.excludedUserIds = excludedUserIds;
-        this.hubManager = hubManager;
-        this.asyncExecutor = asyncExecutor;
-    }
-
-    @Override
-    public CompletableFuture<Void> sendAsync(String method, Object data) {
-        return CompletableFuture.runAsync(() -> {
-            try {
-                Map<String, Object> message = new HashMap<>();
-                if (data != null) {
-                    message.put("data", data);
-                    message.put("success", true);
-                    message.put("error", "");
-                    message.put("type", 3);
-                }
-                List<SocketIOClient> targetClients = getTargetClients();
-                for (SocketIOClient client : targetClients) {
-                    if (client.isChannelOpen()) {
-                        try {
-                            client.sendEvent(method, message);
-                        } catch (Exception e) {
-                            log.error("Failed to send to client: {} in hub {}:{} ", client.getSessionId(), hubName, method, e);
-                        }
-                    }
-                }
-                log.debug("Sent message {} to {} clients in hub {}",
-                        method, targetClients.size(), hubName);
-            } catch (Exception e) {
-                log.error("Failed to send message {} in hub {}", method, hubName, e);
-                throw new RuntimeException("Failed to send message", e);
-            }
-        }, asyncExecutor);
-    }
-
-    /**
-     * Calculate target client list, query through GJHubManager, and apply exclusion logic.
-     */
-    private List<SocketIOClient> getTargetClients() {
-        Map<String, SocketIOClient> hubClients = hubManager.getHubClients(hubName);
-        if (hubClients == null || hubClients.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        Set<String> targetIds;
-
-        if (targetConnectionIds != null && !targetConnectionIds.isEmpty()) {
-            targetIds = new HashSet<>(targetConnectionIds);
-        } else if (targetGroups != null && !targetGroups.isEmpty()) {
-            targetIds = new HashSet<>();
-            for (String group : targetGroups) {
-                targetIds.addAll(hubManager.getConnectionIdsInGroup(group));
-            }
-        } else if (targetUserIds != null && !targetUserIds.isEmpty()) {
-            targetIds = new HashSet<>();
-            for (String userId : targetUserIds) {
-                targetIds.addAll(hubManager.getConnectionIdsForUser(userId));
-            }
-        } else {
-            targetIds = new HashSet<>(hubClients.keySet());
-        }
-
-        // Exclude filtering
-        if (excludedConnectionIds != null && !excludedConnectionIds.isEmpty()) {
-            targetIds.removeAll(excludedConnectionIds);
-        }
-        if (excludedUserIds != null && !excludedUserIds.isEmpty()) {
-            for (String userId : excludedUserIds) {
-                targetIds.removeAll(hubManager.getConnectionIdsForUser(userId));
-            }
-        }
-
-        // Resolve to SocketIOClient list
-        List<SocketIOClient> result = new ArrayList<>();
-        for (String id : targetIds) {
-            SocketIOClient client = hubClients.get(id);
-            if (client != null && client.isChannelOpen()) {
-                result.add(client);
-            }
-        }
-        return result;
-    }
-
-    public Collection<String> getExcludedConnectionIds() {
-        return excludedConnectionIds;
-    }
-
-    public boolean isExcludeCaller() {
-        return excludeCaller;
-    }
-
-    public Collection<String> getExcludedUserIds() {
-        return excludedUserIds;
-    }
-}
-
-// ================ Internal Group Manager ================
-
-class InternalGroupManager implements GJGroupManager {
-    private static final Logger log = LoggerFactory.getLogger(InternalGroupManager.class);
-
-    private final String currentConnectionId;
-    private final SocketIOClient currentClient;
-    private final String hubName;
-    private final GJHubManager hubManager;
-    private final ExecutorService asyncExecutor;
-
-    public InternalGroupManager(String currentConnectionId, SocketIOClient currentClient,
-                                String hubName, GJHubManager hubManager,
-                                ExecutorService asyncExecutor) {
-        this.currentConnectionId = currentConnectionId;
-        this.currentClient = currentClient;
-        this.hubName = hubName;
-        this.hubManager = hubManager;
-        this.asyncExecutor = asyncExecutor;
-    }
-
-    @Override
-    public CompletableFuture<Void> addToGroupAsync(String groupName) {
-        return CompletableFuture.runAsync(() -> {
-            try {
-                // 1. Join SocketIO room
-                currentClient.joinRoom(groupName);
-                // 2. Record in global HubManager (single source of truth)
-                hubManager.addToGroup(currentConnectionId, groupName);
-                log.debug("Connection {} added to group {} in hub {}",
-                        currentConnectionId, groupName, hubName);
-            } catch (Exception e) {
-                log.error("Failed to add connection {} to group {}: {}",
-                        currentConnectionId, groupName, e.getMessage());
-                throw new RuntimeException("Failed to add to group", e);
-            }
-        }, asyncExecutor);
-    }
-
-    @Override
-    public CompletableFuture<Void> addToGroupAsync(String connectionId, String groupName) {
-        if (!currentConnectionId.equals(connectionId)) {
-            log.warn("Cannot add other connections to group from current context. " +
-                            "Attempted: connectionId='{}', currentConnectionId='{}', groupName='{}'",
-                    connectionId, currentConnectionId, groupName);
-            return CompletableFuture.failedFuture(
-                    new IllegalArgumentException("Cannot add other connection to group from current context"));
-        }
-        return addToGroupAsync(groupName);
-    }
-
-    @Override
-    public CompletableFuture<Void> removeFromGroupAsync(String groupName) {
-        return CompletableFuture.runAsync(() -> {
-            try {
-                // 1. Leave SocketIO room
-                currentClient.leaveRoom(groupName);
-                // 2. Remove from global HubManager
-                hubManager.removeFromGroup(currentConnectionId, groupName);
-                log.debug("Connection {} removed from group {} in hub {}",
-                        currentConnectionId, groupName, hubName);
-            } catch (Exception e) {
-                log.error("Failed to remove connection {} from group {}: {}",
-                        currentConnectionId, groupName, e.getMessage());
-                throw new RuntimeException("Failed to remove from group", e);
-            }
-        }, asyncExecutor);
-    }
-
-    @Override
-    public CompletableFuture<Void> removeFromGroupAsync(String connectionId, String groupName) {
-        if (!currentConnectionId.equals(connectionId)) {
-            log.warn("Cannot remove other connections from group from current context. " +
-                            "Attempted: connectionId='{}', currentConnectionId='{}', groupName='{}'",
-                    connectionId, currentConnectionId, groupName);
-            return CompletableFuture.failedFuture(
-                    new IllegalArgumentException("Cannot remove other connection from group from current context"));
-        }
-        return removeFromGroupAsync(groupName);
-    }
-
-    @Override
-    public CompletableFuture<Boolean> isInGroupAsync(String groupName) {
-        return CompletableFuture.supplyAsync(() ->
-                hubManager.getConnectionIdsInGroup(groupName).contains(currentConnectionId), asyncExecutor);
-    }
-
-    @Override
-    public CompletableFuture<Boolean> isInGroupAsync(String connectionId, String groupName) {
-        if (!currentConnectionId.equals(connectionId)) {
-            log.warn("Cannot check other connections' group membership from current context. " +
-                            "Attempted: connectionId='{}', currentConnectionId='{}', groupName='{}'",
-                    connectionId, currentConnectionId, groupName);
-            return CompletableFuture.completedFuture(false);
-        }
-        return isInGroupAsync(groupName);
-    }
-
-    @Override
-    public CompletableFuture<Set<String>> getGroupsForConnectionAsync() {
-        return hubManager.getGroupsForConnectionAsync(currentConnectionId);
-    }
-
-    @Override
-    public CompletableFuture<Set<String>> getGroupsForConnectionAsync(String connectionId) {
-        if (!currentConnectionId.equals(connectionId)) {
-            log.warn("Cannot get groups for other connections from current context. " +
-                            "Attempted: connectionId='{}', currentConnectionId='{}'",
-                    connectionId, currentConnectionId);
-            return CompletableFuture.completedFuture(Collections.emptySet());
-        }
-        return getGroupsForConnectionAsync();
-    }
-
-    @Override
-    public CompletableFuture<Set<String>> getConnectionsInGroupAsync(String groupName) {
-        return CompletableFuture.supplyAsync(() -> {
-            Set<String> connectionIds = hubManager.getConnectionIdsInGroup(groupName);
-            return connectionIds;
-        }, asyncExecutor);
     }
 }

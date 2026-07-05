@@ -10,7 +10,7 @@ import org.springframework.web.reactive.result.method.annotation.RequestMappingH
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-public class GJPlguinWebFluxSecureRequestMappingHandlerAdapter extends RequestMappingHandlerAdapter {
+public class GJPluginWebFluxSecureRequestMappingHandlerAdapter extends RequestMappingHandlerAdapter {
 
     @Override
     @NonNull

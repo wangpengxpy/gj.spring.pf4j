@@ -425,12 +425,12 @@ public class GJHubManager {
             log.warn("Hub not found for client {}: {}", connectionId, hubName);
             return;
         }
-        String methodName = payload.get("method").asText();
-        if (methodName == null || methodName.isEmpty()) {
+        JsonNode methodNode = payload.get("method");
+        if (methodNode == null || methodNode.isNull() || methodNode.asText().isEmpty()) {
             log.error("Client {} sent message without valid 'method' field (hub='{}')", connectionId, hubName);
             return;
         }
-        methodName = methodName.toLowerCase();
+        String methodName = methodNode.asText().toLowerCase();
         JsonNode dataNode = payload.get("data");
         if (dataNode == null || dataNode.isNull()) {
             log.error("Client {} sent message with missing or null 'data' (hub='{}', method='{}')",
