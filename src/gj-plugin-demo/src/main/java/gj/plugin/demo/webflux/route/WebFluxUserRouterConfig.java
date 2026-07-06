@@ -51,6 +51,6 @@ public class WebFluxUserRouterConfig {
                 .anonymous("/api/v2/webflux/users", "POST", "嵌套路由中的用户创建接口")
                 .build();
 
-        registry.register(List.of(simpleRoutes, advancedRoutes));
+        registry.register("gj.plugin.demo", List.of(simpleRoutes, advancedRoutes));
     }
 }

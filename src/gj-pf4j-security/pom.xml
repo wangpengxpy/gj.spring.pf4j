@@ -16,7 +16,27 @@
     <version>1.0.0</version>
     <packaging>jar</packaging>
     <name>gj-pf4j-security</name>
-    <description>gj.spring.pf4j — Pluggable Authentication &amp; Authorization for Plugin Controllers</description>
+    <description>gj.spring.pf4j — Pluggable Authentication for Plugin Controllers.
+
+  Two-layer provider API: AbstractPluginAuthenticationProvider (simple, single-strategy)
+  and IPluginAuthenticationProvider (advanced, multi-provider routing with supports()).
+  Strategy-driven provider chain: AtLeastOneSuccessfulStrategy (default) and
+  FirstSuccessfulStrategy, both pluggable via AuthenticationStrategy bean override.
+
+  Dual-stack auth filters: PluginDelegatingAuthFilter (MVC Servlet) and
+  PluginDelegatingAuthWebFilter (WebFlux Reactive). Shared provider chain execution
+  engine (AuthChainExecutor) for consistent behavior across both stacks.
+
+  Seven-position filter extension framework: FIRST, SESSION_RESTORE, FORM_LOGIN,
+  AUTHENTICATION (framework-reserved), ANONYMOUS, PRE_AUTHORIZE, LAST — each with
+  Servlet and WebFlux interfaces, registered via lifecycle PluginResourceRegistrar.
+  Three-tier host configuration: global on/off, per-position allowlist, per-plugin
+  authorization — all disabled by default.
+
+  Control-flow exceptions: PluginAuthChallenge (OAuth2/SAML redirect, non-error),
+  PluginBadCredentialsException (client fault), PluginAuthServiceException (server
+  fault). Authentication events (PluginAuthenticationSuccessEvent / FailureEvent)
+  for host audit and alerting integration.</description>
 
     <dependencies>
         <!-- Core framework (compile scope: always required) -->

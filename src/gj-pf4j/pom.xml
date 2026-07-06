@@ -13,7 +13,11 @@
     <artifactId>gj-pf4j</artifactId>
     <version>2.0.0</version>
     <name>gj-pf4j</name>
-    <description>A lightweight, modular plugin framework powered by PF4J and Spring, with no heavyweight Spring Boot dependency.</description>
+    <description>A lightweight, modular plugin framework powered by PF4J and Spring,
+  with no Spring Boot runtime dependency. Pluggable extension points
+  enable any third-party component to integrate into the plugin lifecycle
+  without modifying framework source code. Supports both Spring MVC and
+  Spring WebFlux routing — auto-adapts to the host application's web stack.</description>
     <url>https://github.com/wangpengxpy/gj.spring.pf4j</url>
     <scm>
         <connection>scm:git:git://github.com/wangpengxpy/gj.spring.pf4j.git</connection>
