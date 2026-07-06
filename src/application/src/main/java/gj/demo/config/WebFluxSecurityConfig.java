@@ -1,6 +1,6 @@
 package gj.demo.config;
 
-import gj.pf4j.anonymous.PluginAnonymousPathRegistry;
+import gj.pf4j.core.PluginAnonymousPathRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
@@ -11,6 +11,13 @@ import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import reactor.core.publisher.Mono;
 
+/**
+ * WebFlux security configuration.
+ * <p>
+ * {@code PluginDelegatingAuthWebFilter} and the six-position composite
+ * {@code WebFilter} beans are auto-discovered by Spring WebFlux —
+ * no explicit registration needed.
+ */
 @Configuration
 @EnableWebFluxSecurity
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.REACTIVE)

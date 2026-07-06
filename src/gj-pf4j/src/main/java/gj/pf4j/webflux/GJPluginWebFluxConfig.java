@@ -4,9 +4,9 @@
 
 package gj.pf4j.webflux;
 
-import gj.pf4j.anonymous.PluginAnonymousPathRegistrar;
+import gj.pf4j.core.PluginAnonymousPathRegistrar;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication.Type;
 import org.springframework.boot.autoconfigure.web.reactive.WebFluxRegistrations;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,7 +14,7 @@ import org.springframework.web.reactive.accept.RequestedContentTypeResolverBuild
 import org.springframework.web.reactive.result.method.annotation.RequestMappingHandlerAdapter;
 
 @Configuration
-@ConditionalOnWebApplication(type = Type.REACTIVE)
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.REACTIVE)
 public class GJPluginWebFluxConfig {
 
     @Bean("pluginWebFluxRequestMappingHandlerMapping")
@@ -31,6 +31,7 @@ public class GJPluginWebFluxConfig {
     }
 
     @Bean
+    @ConditionalOnMissingBean
     WebFluxRegistrations webFluxRegistrations() {
         return new WebFluxRegistrations() {
             @Override

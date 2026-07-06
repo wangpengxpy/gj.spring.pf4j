@@ -22,6 +22,7 @@ A lightweight, modular plugin framework powered by PF4J and Spring, with no heav
 </p>
 
 - **[Plugin Extensions](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Plugin-Extensions)** — pluggable extension points; any component (MongoDB, Kafka, MQTT, gRPC, etc.) integrates via `PluginResourceRegistrar` without framework changes
+- **[Plugin Authentication](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Plugin-Authentication)** — pluggable auth; plugins declare custom authentication (API Key, JWT, OAuth2, HMAC webhooks) via SPI; chained provider model with pluggable strategy; seven-position filter extension points with host-controlled "install ≠ enable" model
 - **[Plugin Lifecycle Management](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Plugin-Lifecycle)** — install, disable, restart, unload, and delete plugins at runtime
 - **[Plugin Hot-Reload](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Plugin-Hot-Reload)** — hot-reload via API-driven workflow or file watcher; lifecycle events for custom orchestration
 - **[Runtime Plugin Management API](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Runtime-Management-API)** — `GJPluginService` provides lock-controlled runtime management APIs

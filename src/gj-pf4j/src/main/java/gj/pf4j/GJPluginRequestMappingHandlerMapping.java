@@ -4,9 +4,10 @@
 
 package gj.pf4j;
 
-import gj.pf4j.anonymous.AllowAnonymous;
-import gj.pf4j.anonymous.AnonymousPathEntry;
-import gj.pf4j.anonymous.PluginAnonymousPathRegistrar;
+import gj.pf4j.core.AllowAnonymous;
+import gj.pf4j.core.AnonymousPathEntry;
+import gj.pf4j.core.PluginAnonymousPathRegistrar;
+import gj.pf4j.core.PluginAuthenticated;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aop.support.AopUtils;
@@ -31,6 +32,16 @@ public class GJPluginRequestMappingHandlerMapping extends RequestMappingHandlerM
     private static final Logger log = LoggerFactory.getLogger(GJPluginRequestMappingHandlerMapping.class);
 
     private final MultiValueMap<String, RequestMappingInfo> pluginMappingInfo = new LinkedMultiValueMap<>();
+
+    /** pluginId → (HTTP method → path patterns) — all plugin routes */
+    private final Map<String, Map<String, Set<String>>> pluginPaths = new LinkedHashMap<>();
+
+    /** pluginId → (HTTP method → path patterns) — only @PluginAuthenticated routes */
+    private final Map<String, Map<String, Set<String>>> pluginAuthenticatedPaths = new LinkedHashMap<>();
+
+    public MultiValueMap<String, RequestMappingInfo> getPluginMappingInfo() {
+        return pluginMappingInfo;
+    }
 
     private PluginAnonymousPathRegistrar anonymousPathRegistrar;
 
@@ -94,8 +105,9 @@ public class GJPluginRequestMappingHandlerMapping extends RequestMappingHandlerM
                     userType,
                     metadataLookup
             );
-            // Check class-level @AllowAnonymous
+            // Check class-level annotations
             AllowAnonymous classAnno = userType.getAnnotation(AllowAnonymous.class);
+            PluginAuthenticated classAuthAnno = userType.getAnnotation(PluginAuthenticated.class);
 
             // Track anonymous endpoint count for this controller
             int[] anonymousCount = {0};
@@ -107,6 +119,18 @@ public class GJPluginRequestMappingHandlerMapping extends RequestMappingHandlerM
                 // Core 2: Call registerHandlerMethod directly and pass in the plugin's Bean instance
                 super.registerHandlerMethod(controller, invocableMethod, mapping);
                 pluginMappingInfo.add(pluginId, mapping);
+
+                // Collect all route patterns for auth routing
+                collectPluginPaths(pluginId, mapping);
+
+                // Collect @PluginAuthenticated paths
+                PluginAuthenticated methodAuthAnno = method.getAnnotation(PluginAuthenticated.class);
+                if (methodAuthAnno != null || classAuthAnno != null) {
+                    // Exclude paths that are also @AllowAnonymous
+                    if (!(method.getAnnotation(AllowAnonymous.class) != null || classAnno != null)) {
+                        collectPluginAuthenticatedPaths(pluginId, mapping);
+                    }
+                }
 
                 // Core 3: Scan @AllowAnonymous and register to registry
                 if (anonymousPathRegistrar != null) {
@@ -187,6 +211,8 @@ public class GJPluginRequestMappingHandlerMapping extends RequestMappingHandlerM
         if (anonymousPathRegistrar != null) {
             anonymousPathRegistrar.unregister(pluginId);
         }
+        pluginPaths.remove(pluginId);
+        pluginAuthenticatedPaths.remove(pluginId);
         List<RequestMappingInfo> mappings = pluginMappingInfo.remove(pluginId);
         if (mappings == null) {
             return;
@@ -194,4 +220,50 @@ public class GJPluginRequestMappingHandlerMapping extends RequestMappingHandlerM
         mappings.forEach(this::unregisterMapping);
         log.debug("Unregistered {} routes for plugin: {}", mappings.size(), pluginId);
     }
+
+    // ──── Path collection for auth routing ───────────────────────
+
+    public Map<String, Set<String>> getPluginPaths(String pluginId) {
+        return pluginPaths.getOrDefault(pluginId, Map.of());
+    }
+
+    public Map<String, Set<String>> getPluginAuthenticatedPaths(String pluginId) {
+        return pluginAuthenticatedPaths.getOrDefault(pluginId, Map.of());
+    }
+
+    private void collectPluginPaths(String pluginId, RequestMappingInfo mapping) {
+        Set<String> patterns = mapping.getPatternValues();
+        if (patterns == null || patterns.isEmpty()) return;
+        Set<RequestMethod> methods = mapping.getMethodsCondition().getMethods();
+        Map<String, Set<String>> pluginMap = pluginPaths.computeIfAbsent(pluginId,
+                k -> new LinkedHashMap<>());
+        if (methods.isEmpty()) {
+            for (String m : ALL_METHODS) {
+                pluginMap.computeIfAbsent(m, k -> new LinkedHashSet<>()).addAll(patterns);
+            }
+        } else {
+            for (RequestMethod rm : methods) {
+                pluginMap.computeIfAbsent(rm.name(), k -> new LinkedHashSet<>()).addAll(patterns);
+            }
+        }
+    }
+
+    private void collectPluginAuthenticatedPaths(String pluginId, RequestMappingInfo mapping) {
+        Set<String> patterns = mapping.getPatternValues();
+        if (patterns == null || patterns.isEmpty()) return;
+        Set<RequestMethod> methods = mapping.getMethodsCondition().getMethods();
+        Map<String, Set<String>> pluginMap = pluginAuthenticatedPaths.computeIfAbsent(pluginId,
+                k -> new LinkedHashMap<>());
+        if (methods.isEmpty()) {
+            for (String m : ALL_METHODS) {
+                pluginMap.computeIfAbsent(m, k -> new LinkedHashSet<>()).addAll(patterns);
+            }
+        } else {
+            for (RequestMethod rm : methods) {
+                pluginMap.computeIfAbsent(rm.name(), k -> new LinkedHashSet<>()).addAll(patterns);
+            }
+        }
+    }
+
+    private static final List<String> ALL_METHODS = List.of("GET", "POST", "PUT", "DELETE", "PATCH");
 }

@@ -22,6 +22,7 @@
 </p>
 
 - **[插件扩展](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Plugin-Extensions_CN)** — 可插拔扩展点；任意组件（如 MongoDB、Kafka、MQTT、gRPC 等）通过 `PluginResourceRegistrar` 接入，无需修改框架源码
+- **[插件认证](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Plugin-Authentication_CN)** — 可插拔鉴权；插件通过 SPI 声明自定义认证（API Key、JWT、OAuth2、HMAC Webhook）；链式 Provider 模型与可插拔策略；七位置 Filter 扩展点，宿主"安装≠启用"编排模型
 - **[插件生命周期管理](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Plugin-Lifecycle_CN)** — 运行时安装、禁用、重启、卸载和删除插件
 - **[插件热加载](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Plugin-Hot-Reload_CN)** — 通过 API 驱动工作流或文件监听实现热加载；生命周期事件支持自定义编排逻辑
 - **[插件运行时管理 API](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Runtime-Management-API_CN)** — `GJPluginService` 提供加锁控制的运行时管理 API

@@ -4,9 +4,9 @@
 
 package gj.pf4j.lifecycle;
 
-import gj.pf4j.anonymous.AnonymousPathEntry;
-import gj.pf4j.anonymous.AnonymousRouteDeclaration;
-import gj.pf4j.anonymous.PluginAnonymousPathRegistrar;
+import gj.pf4j.core.AnonymousPathEntry;
+import gj.pf4j.core.AnonymousRouteDeclaration;
+import gj.pf4j.core.PluginAnonymousPathRegistrar;
 import gj.pf4j.webflux.GJRouterFunctions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

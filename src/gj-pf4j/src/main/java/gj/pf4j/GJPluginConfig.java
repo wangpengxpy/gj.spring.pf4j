@@ -6,9 +6,9 @@ package gj.pf4j;
 
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import gj.pf4j.anonymous.DefaultPluginAnonymousPathRegistry;
-import gj.pf4j.anonymous.PluginAnonymousPathRegistrar;
-import gj.pf4j.anonymous.PluginAnonymousPathRegistry;
+import gj.pf4j.core.DefaultPluginAnonymousPathRegistry;
+import gj.pf4j.core.PluginAnonymousPathRegistrar;
+import gj.pf4j.core.PluginAnonymousPathRegistry;
 import gj.pf4j.eventbus.GJPluginLocalEventBus;
 import gj.pf4j.hotreload.GJPluginHotReloadManager;
 import gj.pf4j.i18n.GJI18nProperties;

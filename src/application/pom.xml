@@ -5,7 +5,7 @@
     <parent>
         <groupId>io.github.wangpengxpy</groupId>
         <artifactId>gj-dependencies</artifactId>
-        <version>1.0.10</version>
+        <version>1.0.15</version>
         <relativePath>../gj-parent/pom.xml</relativePath>
     </parent>
     <artifactId>gj-application</artifactId>
@@ -16,9 +16,10 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
-        <gj.pf4j.version>1.9.0</gj.pf4j.version>
+        <gj.pf4j.version>2.0.0</gj.pf4j.version>
+        <gj.pf4j.security.version>1.0.0</gj.pf4j.security.version>
         <gj.data.version>0.0.1-SNAPSHOT</gj.data.version>
-        <gj.modelmapper.version>1.0.6</gj.modelmapper.version>
+        <gj.modelmapper.version>1.0.8</gj.modelmapper.version>
     </properties>
     <dependencies>
         <!-- MVC -->
@@ -72,6 +73,11 @@
             <groupId>io.github.wangpengxpy</groupId>
             <artifactId>gj-pf4j</artifactId>
             <version>${gj.pf4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.wangpengxpy</groupId>
+            <artifactId>gj-pf4j-security</artifactId>
+            <version>${gj.pf4j.security.version}</version>
         </dependency>
         <dependency>
             <groupId>io.github.wangpengxpy</groupId>

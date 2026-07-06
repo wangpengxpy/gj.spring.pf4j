@@ -74,3 +74,16 @@ gj:
     connection-ttl: 3600      # Connection mapping Redis key TTL (seconds)
     cluster:
       enabled: false          # Cluster mode, requires Redis
+
+# ─── Plugin Authentication ──────────────────────────────────────────
+# Filter extensions are disabled by default — enable per-position, per-plugin.
+# Authentication SPI (IPluginAuthenticationProvider) requires no configuration.
+plugin:
+  security:
+    filter:
+      enabled: true
+      allowed-positions: FIRST, LAST
+    plugins:
+      gj.plugin.demo:
+        filter:
+          positions: FIRST, LAST

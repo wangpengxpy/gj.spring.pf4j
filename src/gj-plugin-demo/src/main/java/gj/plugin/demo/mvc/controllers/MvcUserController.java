@@ -1,6 +1,7 @@
 package gj.plugin.demo.mvc.controllers;
 
-import gj.pf4j.anonymous.AllowAnonymous;
+import gj.pf4j.core.AllowAnonymous;
+import gj.pf4j.core.PluginAuthenticated;
 import gj.plugin.demo.mvc.dto.MvcUserCreateRequest;
 import gj.plugin.demo.mvc.dto.MvcUserResponse;
 import gj.plugin.demo.mvc.service.MvcUserService;
@@ -12,7 +13,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@Tag(name = "MVC用户管理", description = "基于 MyBatis-Plus 的用户 CRUD 接口")
+@PluginAuthenticated
+@Tag(name = "MVC用户管理", description = "OR 鉴权示例：Session 用户直接放行，外部调用需 X-Demo-Api-Key")
 @RestController
 @RequestMapping("/api/v1/mvc/users")
 @RequiredArgsConstructor

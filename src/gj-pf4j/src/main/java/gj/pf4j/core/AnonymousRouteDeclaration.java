@@ -2,7 +2,7 @@
  * Copyright (c) 2025 grejeff.
  */
 
-package gj.pf4j.anonymous;
+package gj.pf4j.core;
 
 /**
  * A plugin's declaration of a single anonymous route.
