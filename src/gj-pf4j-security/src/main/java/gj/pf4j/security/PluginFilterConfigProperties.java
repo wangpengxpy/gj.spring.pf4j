@@ -5,6 +5,8 @@
 package gj.pf4j.security;
 
 import gj.pf4j.GJPluginFilterPosition;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.util.*;
@@ -22,37 +24,36 @@ import java.util.*;
  * <p>
  * All filter positions default to <strong>disabled</strong>.
  */
-@ConfigurationProperties(prefix = "plugin.security")
+@Getter
+@ConfigurationProperties(prefix = "gj.plugin.security")
 public class PluginFilterConfigProperties {
 
+    @Setter
     private FilterConfig filter = new FilterConfig();
+
     private final Map<String, PluginSecurityConfig> plugins = new HashMap<>();
 
-    public FilterConfig getFilter() { return filter; }
-    public void setFilter(FilterConfig filter) { this.filter = filter; }
-    public Map<String, PluginSecurityConfig> getPlugins() { return plugins; }
     public void setPlugins(Map<String, PluginSecurityConfig> plugins) {
         this.plugins.clear();
         if (plugins != null) this.plugins.putAll(plugins);
     }
 
+    @Getter
+    @Setter
     public static class FilterConfig {
         private boolean enabled = false;
+
         private Set<GJPluginFilterPosition> allowedPositions = Collections.emptySet();
 
-        public boolean isEnabled() { return enabled; }
-        public void setEnabled(boolean enabled) { this.enabled = enabled; }
-        public Set<GJPluginFilterPosition> getAllowedPositions() { return allowedPositions; }
         public void setAllowedPositions(Set<GJPluginFilterPosition> allowedPositions) {
             this.allowedPositions = allowedPositions != null
                     ? allowedPositions : Collections.emptySet();
         }
     }
 
+    @Getter
+    @Setter
     public static class PluginSecurityConfig {
         private FilterConfig filter = new FilterConfig();
-
-        public FilterConfig getFilter() { return filter; }
-        public void setFilter(FilterConfig filter) { this.filter = filter; }
     }
 }
