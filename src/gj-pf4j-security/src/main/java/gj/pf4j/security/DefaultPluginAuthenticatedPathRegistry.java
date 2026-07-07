@@ -23,6 +23,11 @@ public class DefaultPluginAuthenticatedPathRegistry
     private final ConcurrentHashMap<String,
             ConcurrentHashMap<String, CopyOnWriteArrayList<String>>> registry =
             new ConcurrentHashMap<>();
+    /** Hot-path flat index: method → (pattern, pluginId) */
+    private final ConcurrentHashMap<String, CopyOnWriteArrayList<PathEntry>> flatIndex =
+            new ConcurrentHashMap<>();
+
+    private record PathEntry(String pattern, String pluginId) {}
 
     private final AntPathMatcher matcher = new AntPathMatcher();
 
@@ -32,14 +37,27 @@ public class DefaultPluginAuthenticatedPathRegistry
 
     @Override
     public void register(String pluginId, String method, String pattern) {
+        String m = method.toUpperCase();
         registry.computeIfAbsent(pluginId, k -> new ConcurrentHashMap<>())
-                .computeIfAbsent(method.toUpperCase(), k -> new CopyOnWriteArrayList<>())
+                .computeIfAbsent(m, k -> new CopyOnWriteArrayList<>())
                 .add(pattern);
+        flatIndex.computeIfAbsent(m, k -> new CopyOnWriteArrayList<>())
+                .add(new PathEntry(pattern, pluginId));
     }
 
     @Override
     public void unregister(String pluginId) {
-        registry.remove(pluginId);
+        ConcurrentHashMap<String, CopyOnWriteArrayList<String>> removed =
+                registry.remove(pluginId);
+        if (removed != null) {
+            removed.forEach((method, patterns) -> {
+                CopyOnWriteArrayList<PathEntry> entries = flatIndex.get(method);
+                if (entries != null) {
+                    entries.removeIf(e -> e.pluginId().equals(pluginId));
+                    flatIndex.computeIfPresent(method, (k, v) -> v.isEmpty() ? null : v);
+                }
+            });
+        }
     }
 
     @Override
@@ -47,16 +65,13 @@ public class DefaultPluginAuthenticatedPathRegistry
         if (method == null || path == null) {
             return false;
         }
-        String m = method.toUpperCase();
-        for (ConcurrentHashMap<String, CopyOnWriteArrayList<String>> pluginMap :
-                registry.values()) {
-            CopyOnWriteArrayList<String> patterns = pluginMap.get(m);
-            if (patterns != null) {
-                for (String pattern : patterns) {
-                    if (matcher.match(pattern, path)) {
-                        return true;
-                    }
-                }
+        CopyOnWriteArrayList<PathEntry> patterns = flatIndex.get(method.toUpperCase());
+        if (patterns == null) {
+            return false;
+        }
+        for (PathEntry entry : patterns) {
+            if (matcher.match(entry.pattern(), path)) {
+                return true;
             }
         }
         return false;

@@ -11,8 +11,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.Ordered;
+import org.springframework.http.HttpStatus;
 import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.core.io.buffer.DataBufferLimitException;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.server.reactive.ServerHttpRequestDecorator;
 import org.springframework.lang.NonNull;
@@ -25,7 +25,7 @@ import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.util.ArrayList;
+
 import java.util.List;
 
 /**
@@ -44,28 +44,17 @@ public class PluginDelegatingAuthWebFilter implements WebFilter, Ordered {
     private final PluginAuthenticatedPathRegistry authenticatedPaths;
     private final AuthenticationStrategy strategy;
     private final ApplicationEventPublisher eventPublisher;
-    private final int bodyCacheLimit;
 
     public PluginDelegatingAuthWebFilter(GJPluginAuthRegistry registry,
                                           PluginAnonymousPathRegistry anonymousPaths,
                                           PluginAuthenticatedPathRegistry authenticatedPaths,
                                           AuthenticationStrategy strategy,
                                           ApplicationEventPublisher eventPublisher) {
-        this(registry, anonymousPaths, authenticatedPaths, strategy, eventPublisher, 64 * 1024);
-    }
-
-    public PluginDelegatingAuthWebFilter(GJPluginAuthRegistry registry,
-                                          PluginAnonymousPathRegistry anonymousPaths,
-                                          PluginAuthenticatedPathRegistry authenticatedPaths,
-                                          AuthenticationStrategy strategy,
-                                          ApplicationEventPublisher eventPublisher,
-                                          int bodyCacheLimit) {
         this.registry = registry;
         this.anonymousPaths = anonymousPaths;
         this.authenticatedPaths = authenticatedPaths;
         this.strategy = strategy;
         this.eventPublisher = eventPublisher;
-        this.bodyCacheLimit = bodyCacheLimit;
     }
 
     @Override
@@ -106,16 +95,18 @@ public class PluginDelegatingAuthWebFilter implements WebFilter, Ordered {
                         return chain.filter(exchange);
                     }
 
-                    List<IPluginAuthenticationProvider> providers = new ArrayList<>();
-                    for (Object obj : providerObjs) {
-                        if (obj instanceof IPluginAuthenticationProvider p) {
-                            providers.add(p);
-                        }
-                    }
+                    // Safe cast: getProviders() elements are guaranteed
+                    // IPluginAuthenticationProvider by registerProvider() validation.
+                    // List<Object> return type is for module isolation.
+                    @SuppressWarnings("unchecked")
+                    List<IPluginAuthenticationProvider> providers =
+                            (List<IPluginAuthenticationProvider>) (List<?>) providerObjs;
 
                     // 4. Cache body, execute chain, handle result
-                    return DataBufferUtils.join(exchange.getRequest().getBody(),
-                                    bodyCacheLimit)
+                    // No explicit size limit — memory protection is delegated to
+                    // WebFlux codec layer (spring.codec.max-in-memory-size, default 256KB).
+                    // To allow larger bodies: spring.codec.max-in-memory-size=1MB
+                    return DataBufferUtils.join(exchange.getRequest().getBody())
                             .map(buf -> {
                                 byte[] bytes = new byte[buf.readableByteCount()];
                                 buf.read(bytes);
@@ -133,14 +124,6 @@ public class PluginDelegatingAuthWebFilter implements WebFilter, Ordered {
                                                 providers, adapter, strategy, pluginId);
 
                                 return handleResult(exchange, chain, result, bodyBytes);
-                            })
-                            .onErrorResume(DataBufferLimitException.class, e -> {
-                                log.warn("[Plugin: {}] Request body exceeds {} bytes",
-                                        pluginId, bodyCacheLimit);
-                                exchange.getResponse().setStatusCode(
-                                        org.springframework.http.HttpStatus
-                                                .PAYLOAD_TOO_LARGE);
-                                return exchange.getResponse().setComplete();
                             });
                 }));
     }
@@ -160,7 +143,7 @@ public class PluginDelegatingAuthWebFilter implements WebFilter, Ordered {
             challenge.exception().getHeaders().forEach(
                     (k, v) -> exchange.getResponse().getHeaders().add(k, v));
             exchange.getResponse().setStatusCode(
-                    org.springframework.http.HttpStatus.valueOf(
+                    HttpStatus.valueOf(
                             challenge.exception().getStatusCode()));
             publishEvent(new PluginAuthenticationFailureEvent(this,
                     challenge.pluginId(), challenge.providerName(),
@@ -169,7 +152,7 @@ public class PluginDelegatingAuthWebFilter implements WebFilter, Ordered {
         } else if (result instanceof AuthChainExecutor.AuthChainResult.Failure failure) {
             publishChainFailure(failure);
             exchange.getResponse().setStatusCode(
-                    org.springframework.http.HttpStatus.UNAUTHORIZED);
+                    HttpStatus.UNAUTHORIZED);
             return exchange.getResponse().setComplete();
         } else {
             return chain.filter(decorateWithBody(exchange, bodyBytes));

@@ -8,6 +8,7 @@ import gj.pf4j.migration.DbType;
 import gj.pf4j.migration.script.ScriptRunner;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
+import org.springframework.scheduling.quartz.LocalDataSourceJobStore;
 import org.quartz.impl.StdSchedulerFactory;
 
 import org.slf4j.Logger;
@@ -89,7 +90,7 @@ public class GJQuartzConfig {
         DbType dbType = detectDbType(dataSource);
         Properties props = new Properties();
         props.setProperty("org.quartz.jobStore.class",
-                org.springframework.scheduling.quartz.LocalDataSourceJobStore.class.getName());
+                LocalDataSourceJobStore.class.getName());
         props.setProperty("org.quartz.jobStore.isClustered", "true");
         props.setProperty("org.quartz.jobStore.driverDelegateClass",
                 resolveDriverDelegate(dbType));

@@ -13,6 +13,7 @@ import org.springframework.util.AntPathMatcher;
 
 import javax.annotation.PreDestroy;
 import java.lang.reflect.InvocationTargetException;
+import java.util.concurrent.ExecutorService;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -188,8 +189,8 @@ public class GJPluginLocalEventBus {
 
     @PreDestroy
     private void shutdown() {
-        if (asyncExecutor instanceof java.util.concurrent.ExecutorService) {
-            ((java.util.concurrent.ExecutorService) asyncExecutor).shutdown();
+        if (asyncExecutor instanceof ExecutorService) {
+            ((ExecutorService) asyncExecutor).shutdown();
         }
     }
 

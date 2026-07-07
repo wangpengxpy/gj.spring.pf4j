@@ -5,6 +5,7 @@
 package gj.pf4j;
 
 import jakarta.servlet.Filter;
+import org.springframework.core.Ordered;
 import org.springframework.web.server.WebFilter;
 
 import java.util.*;
@@ -36,6 +37,9 @@ public class GJPluginFilterRegistry {
     /** pluginId → (position → webFilters) — reverse index for precise unregistration */
     private final Map<String, Map<GJPluginFilterPosition, List<WebFilter>>> pluginWebFilters =
             new ConcurrentHashMap<>();
+
+    /** filter instance → pluginId — for event correlation */
+    private final Map<Object, String> filterOwnerIndex = new ConcurrentHashMap<>();
 
     public GJPluginFilterRegistry() {
         for (GJPluginFilterPosition pos : GJPluginFilterPosition.values()) {
@@ -81,6 +85,7 @@ public class GJPluginFilterRegistry {
         pluginServletFilters.computeIfAbsent(pluginId, k -> new ConcurrentHashMap<>())
                 .computeIfAbsent(pos, k -> new CopyOnWriteArrayList<>())
                 .add(filter);
+        filterOwnerIndex.put(filter, pluginId);
     }
 
     private void recordPluginWebFilter(String pluginId, GJPluginFilterPosition pos,
@@ -89,6 +94,12 @@ public class GJPluginFilterRegistry {
         pluginWebFilters.computeIfAbsent(pluginId, k -> new ConcurrentHashMap<>())
                 .computeIfAbsent(pos, k -> new CopyOnWriteArrayList<>())
                 .add(webFilter);
+        filterOwnerIndex.put(webFilter, pluginId);
+    }
+
+    /** Look up which plugin registered a filter. */
+    public String getFilterPluginId(Object filter) {
+        return filterOwnerIndex.get(filter);
     }
 
     /** Remove all filters registered by a plugin. */
@@ -101,7 +112,10 @@ public class GJPluginFilterRegistry {
                     servletMap.entrySet()) {
                 List<Filter> sfList = servletFilters.get(entry.getKey());
                 if (sfList != null) {
-                    entry.getValue().forEach(sfList::remove);
+                    entry.getValue().forEach(f -> {
+                        sfList.remove(f);
+                        filterOwnerIndex.remove(f);
+                    });
                 }
             }
         }
@@ -114,7 +128,10 @@ public class GJPluginFilterRegistry {
                     webMap.entrySet()) {
                 List<WebFilter> wfList = webFilters.get(entry.getKey());
                 if (wfList != null) {
-                    entry.getValue().forEach(wfList::remove);
+                    entry.getValue().forEach(wf -> {
+                        wfList.remove(wf);
+                        filterOwnerIndex.remove(wf);
+                    });
                 }
             }
         }
@@ -125,22 +142,22 @@ public class GJPluginFilterRegistry {
     /** Get all servlet filters at a position (read-safe). */
     public List<Filter> getFilters(GJPluginFilterPosition pos) {
         List<Filter> list = servletFilters.get(pos);
-        return list != null ? List.copyOf(list) : List.of();
+        return list != null ? list : List.of();
     }
 
     /** Get all web filters at a position (read-safe). */
     public List<WebFilter> getWebFilters(GJPluginFilterPosition pos) {
         List<WebFilter> list = webFilters.get(pos);
-        return list != null ? List.copyOf(list) : List.of();
+        return list != null ? list : List.of();
     }
 
     private int getFilterOrder(Filter f) {
-        if (f instanceof org.springframework.core.Ordered o) return o.getOrder();
+        if (f instanceof Ordered o) return o.getOrder();
         return 0;
     }
 
     private int getWebFilterOrder(WebFilter wf) {
-        if (wf instanceof org.springframework.core.Ordered o) return o.getOrder();
+        if (wf instanceof Ordered o) return o.getOrder();
         return 0;
     }
 }

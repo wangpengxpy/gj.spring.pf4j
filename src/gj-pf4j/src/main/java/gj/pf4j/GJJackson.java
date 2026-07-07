@@ -8,6 +8,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import java.lang.reflect.Method;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
@@ -59,7 +60,7 @@ public final class GJJackson {
                     "org.springframework.http.converter.json.Jackson2ObjectMapperBuilder");
             Object builder = mainCtx.getBeanProvider(builderClass).getIfAvailable();
             if (builder != null) {
-                java.lang.reflect.Method buildMethod = builderClass.getMethod("build");
+                Method buildMethod = builderClass.getMethod("build");
                 ObjectMapper mapper = (ObjectMapper) buildMethod.invoke(builder);
                 log.info("Resolved ObjectMapper via Jackson2ObjectMapperBuilder from host context");
                 return mapper;

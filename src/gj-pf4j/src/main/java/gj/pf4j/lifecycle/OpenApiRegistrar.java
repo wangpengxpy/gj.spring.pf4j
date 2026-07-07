@@ -7,6 +7,7 @@ package gj.pf4j.lifecycle;
 import gj.pf4j.openapi.GJPluginOpenApiConfig;
 import gj.pf4j.openapi.GJPluginOpenApiInfo;
 import org.slf4j.Logger;
+import org.springframework.context.support.GenericApplicationContext;
 import org.slf4j.LoggerFactory;
 import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory;
@@ -60,7 +61,7 @@ class OpenApiRegistrar implements PluginResourceRegistrar {
         String pluginId = pluginCtx.getId();
         ApplicationContext hostCtx = pluginCtx.getParent();
 
-        ((AbstractAutowireCapableBeanFactory) ((org.springframework.context.support.GenericApplicationContext) hostCtx).getBeanFactory())
+        ((AbstractAutowireCapableBeanFactory) ((GenericApplicationContext) hostCtx).getBeanFactory())
                 .destroySingleton(GJPluginOpenApiConfig.PLUGIN_SWAGGER_BEAN_PREFIX + pluginId);
         GJPluginOpenApiConfig.unregisterPluginOpenApiBeans(pluginId);
         Object resource = GJPluginOpenApiConfig.findMultipleOpenApiResource(hostCtx);

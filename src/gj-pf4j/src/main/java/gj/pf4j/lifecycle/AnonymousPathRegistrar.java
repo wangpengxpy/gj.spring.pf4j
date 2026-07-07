@@ -8,6 +8,7 @@ import gj.pf4j.core.AnonymousPathEntry;
 import gj.pf4j.core.AnonymousRouteDeclaration;
 import gj.pf4j.core.PluginAnonymousPathRegistrar;
 import gj.pf4j.webflux.GJRouterFunctions;
+import java.time.LocalDateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
@@ -51,7 +52,7 @@ class AnonymousPathRegistrar implements PluginResourceRegistrar {
                             new AnonymousPathEntry(
                                     pluginCtx.getId(), decl.pathPattern(),
                                     decl.httpMethod(), null, null, decl.reason(),
-                                    java.time.LocalDateTime.now()));
+                                    LocalDateTime.now()));
                 }
             }
         }

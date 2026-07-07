@@ -12,6 +12,7 @@ import org.springframework.util.AntPathMatcher;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
 
 /**
  * Default implementation of {@link GJPluginAuthRegistry}.
@@ -34,7 +35,12 @@ class DefaultPluginAuthRegistry implements GJPluginAuthRegistry {
     /** pluginId → (HTTP method → Set<pattern>) */
     private final ConcurrentHashMap<String, Map<String, Set<String>>> routeTable =
             new ConcurrentHashMap<>();
+    /** Hot-path flat index: method → (pattern → pluginId) */
+    private final ConcurrentHashMap<String, CopyOnWriteArrayList<RouteEntry>> flatIndex =
+            new ConcurrentHashMap<>();
     private final AntPathMatcher pathMatcher;
+
+    private record RouteEntry(String pattern, String pluginId) {}
 
     public DefaultPluginAuthRegistry() {
         this.pathMatcher = new AntPathMatcher();
@@ -100,12 +106,34 @@ class DefaultPluginAuthRegistry implements GJPluginAuthRegistry {
         });
         log.info("[AuthRegistry] Registered {} route(s) for plugin '{}'",
                 totalPatterns, pluginId);
+
+        // Update flat index (hot-path acceleration)
+        methodPatterns.forEach((method, patterns) -> {
+            CopyOnWriteArrayList<RouteEntry> list =
+                    flatIndex.computeIfAbsent(method, k -> new CopyOnWriteArrayList<>());
+            for (String pattern : patterns) {
+                list.addIfAbsent(new RouteEntry(pattern, pluginId));
+            }
+        });
     }
 
     @Override
     public void unregister(String pluginId) {
+        // Routes MUST be removed before providers to close a TOCTOU window:
+        // if providers were removed first, a concurrent request could pass
+        // lookupPluginId (route still present) but get an empty provider list
+        // from getProviders() — silently bypassing authentication.
+        Map<String, Set<String>> removed = routeTable.remove(pluginId);
+        if (removed != null) {
+            removed.forEach((method, patterns) -> {
+                CopyOnWriteArrayList<RouteEntry> entries = flatIndex.get(method);
+                if (entries != null) {
+                    entries.removeIf(e -> e.pluginId().equals(pluginId));
+                    flatIndex.computeIfPresent(method, (k, v) -> v.isEmpty() ? null : v);
+                }
+            });
+        }
         providers.remove(pluginId);
-        routeTable.remove(pluginId);
         log.info("[AuthRegistry] Unregistered plugin '{}'", pluginId);
     }
 
@@ -126,20 +154,17 @@ class DefaultPluginAuthRegistry implements GJPluginAuthRegistry {
 
     private Optional<String> lookupByMethod(String method, String requestUri,
                                               boolean wildcard) {
+        CopyOnWriteArrayList<RouteEntry> entries = flatIndex.get(method);
+        if (entries == null || entries.isEmpty()) {
+            return Optional.empty();
+        }
         String bestMatch = null;
         int bestLength = -1;
-        for (Map.Entry<String, Map<String, Set<String>>> entry : routeTable.entrySet()) {
-            String pluginId = entry.getKey();
-            Set<String> patterns = entry.getValue().get(method);
-            if (patterns == null || patterns.isEmpty()) {
-                continue;
-            }
-            for (String pattern : patterns) {
-                if (pathMatcher.match(pattern, requestUri)) {
-                    if (pattern.length() > bestLength) {
-                        bestMatch = pluginId;
-                        bestLength = pattern.length();
-                    }
+        for (RouteEntry entry : entries) {
+            if (pathMatcher.match(entry.pattern(), requestUri)) {
+                if (entry.pattern().length() > bestLength) {
+                    bestMatch = entry.pluginId();
+                    bestLength = entry.pattern().length();
                 }
             }
         }
@@ -160,9 +185,13 @@ class DefaultPluginAuthRegistry implements GJPluginAuthRegistry {
     @Override
     public Collection<ProviderInfo> listProviders() {
         return providers.entrySet().stream()
-                .map(e -> new ProviderInfo(
-                        e.getKey(),
-                        e.getValue().isEmpty() ? 0 : e.getValue().get(0).getOrder()))
+                .map(e -> {
+                    List<IPluginAuthenticationProvider> list = e.getValue();
+                    String detail = list.stream()
+                            .map(p -> p.getClass().getSimpleName() + ":" + p.getOrder())
+                            .collect(Collectors.joining(", "));
+                    return new ProviderInfo(e.getKey(), list.size(), detail);
+                })
                 .sorted(Comparator.comparing(ProviderInfo::pluginId))
                 .toList();
     }

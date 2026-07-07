@@ -81,9 +81,7 @@ public class DefaultPluginAnonymousPathRegistry
             ConcurrentHashMap<String, AnonymousPathEntry> bucket = methodIndex.get(method);
             if (bucket != null) {
                 bucket.remove(pattern);
-                if (bucket.isEmpty()) {
-                    methodIndex.remove(method, new ConcurrentHashMap<>());
-                }
+                methodIndex.computeIfPresent(method, (k, v) -> v.isEmpty() ? null : v);
             }
         }
         log.info("[Plugin: {}] Unregistered {} anonymous endpoints", pluginId, keys.size());

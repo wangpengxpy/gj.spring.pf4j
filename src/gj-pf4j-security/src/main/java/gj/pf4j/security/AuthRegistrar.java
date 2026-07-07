@@ -127,11 +127,25 @@ public class AuthRegistrar implements PluginResourceRegistrar {
         }
 
         // 5. Coexistence check
+        // When both simple-layer (all paths) and advanced-layer
+        // (supports()-routed) providers exist without @PluginAuthenticated
+        // path partitioning, the simple provider is dropped by design:
+        // - Simple provider applies to ALL plugin paths unconditionally
+        // - Advanced providers may selectively handle paths via supports()
+        // - If both registered, their effective scope overlaps, causing
+        //   unpredictable ordering in the auth chain
+        // Resolution: drop simple provider, keep advanced ones.
+        // To use both: annotate paths with @PluginAuthenticated so the
+        // simple provider is scoped to those paths only.
         if (simpleProvider != null && !advancedProviders.isEmpty()
                 && authenticatedPaths.isEmpty()) {
-            log.warn("[Plugin: {}] Simple-layer provider ({}) found alongside {} advanced "
-                    + "provider(s) without @PluginAuthenticated annotation. "
-                    + "Skipping simple-layer to prevent conflict.",
+            log.error("[Plugin: {}] Simple-layer provider '{}' dropped because {} "
+                    + "advanced provider(s) exist without @PluginAuthenticated. "
+                    + "The simple provider applies to all plugin paths while advanced "
+                    + "providers use supports() routing — their scopes overlap, causing "
+                    + "unpredictable auth chain ordering. "
+                    + "Fix: add @PluginAuthenticated to partition which paths the simple "
+                    + "provider handles, separating its scope from advanced providers.",
                     pluginId, simpleProvider.getClass().getSimpleName(),
                     advancedProviders.size());
             simpleProvider = null;

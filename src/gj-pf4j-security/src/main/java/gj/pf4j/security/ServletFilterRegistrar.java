@@ -9,6 +9,7 @@ import gj.pf4j.GJPluginFilterRegistry;
 import gj.pf4j.lifecycle.PluginLifecyclePhase;
 import gj.pf4j.lifecycle.PluginResourceRegistrar;
 import gj.pf4j.security.servlet.*;
+import jakarta.servlet.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
@@ -89,7 +90,7 @@ public class ServletFilterRegistrar implements PluginResourceRegistrar {
             try {
                 var filter = bean.getClass().getMethod("getFilter").invoke(bean);
                 registry.registerServletFilter(pluginId, pos,
-                        (jakarta.servlet.Filter) filter, order);
+                        (Filter) filter, order);
                 log.info("[Plugin: {}] Registered {} filter at {} (order={})",
                         pluginId, bean.getClass().getSimpleName(), pos, order);
             } catch (Exception e) {

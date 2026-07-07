@@ -22,7 +22,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.util.ContentCachingRequestWrapper;
 
 import java.io.IOException;
-import java.util.ArrayList;
+
 import java.util.List;
 
 /**
@@ -104,13 +104,12 @@ public class PluginDelegatingAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Extract typed providers
-        List<IPluginAuthenticationProvider> providers = new ArrayList<>();
-        for (Object obj : providerObjs) {
-            if (obj instanceof IPluginAuthenticationProvider p) {
-                providers.add(p);
-            }
-        }
+        // Safe cast: getProviders() elements are guaranteed
+        // IPluginAuthenticationProvider by registerProvider() validation.
+        // List<Object> return type is for gj-pf4j / gj-pf4j-security module isolation.
+        @SuppressWarnings("unchecked")
+        List<IPluginAuthenticationProvider> providers =
+                (List<IPluginAuthenticationProvider>) (List<?>) providerObjs;
 
         // 4. Execute provider chain via shared engine
         AuthChainExecutor.AuthChainResult result = AuthChainExecutor.execute(

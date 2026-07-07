@@ -225,7 +225,7 @@ public class GJPluginModelMigrator {
 
     private static List<EntityTableMeta> mergeEntities(List<EntityTableMeta> mpEntities,
                                                         List<EntityTableMeta> jpaEntities) {
-        java.util.LinkedHashMap<String, EntityTableMeta> merged = new java.util.LinkedHashMap<>();
+        LinkedHashMap<String, EntityTableMeta> merged = new LinkedHashMap<>();
         for (EntityTableMeta e : mpEntities) {
             merged.put(e.tableName().toLowerCase(), e);
         }

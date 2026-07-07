@@ -21,6 +21,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
 
 /**
  * Auto-configuration for gj-pf4j-security.
@@ -80,43 +81,49 @@ public class GJSecurityAutoConfiguration {
     @Bean("pluginFirstFilter")
     @ConditionalOnMissingBean(name = "pluginFirstFilter")
     @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-    public PluginCompositeFilter pluginFirstFilter(GJPluginFilterRegistry registry) {
-        return new PluginCompositeFilter(registry, GJPluginFilterPosition.FIRST);
+    public PluginCompositeFilter pluginFirstFilter(GJPluginFilterRegistry registry,
+                                                    ApplicationEventPublisher eventPublisher) {
+        return new PluginCompositeFilter(registry, GJPluginFilterPosition.FIRST, eventPublisher);
     }
 
     @Bean("pluginSessionRestoreFilter")
     @ConditionalOnMissingBean(name = "pluginSessionRestoreFilter")
     @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-    public PluginCompositeFilter pluginSessionRestoreFilter(GJPluginFilterRegistry registry) {
-        return new PluginCompositeFilter(registry, GJPluginFilterPosition.SESSION_RESTORE);
+    public PluginCompositeFilter pluginSessionRestoreFilter(GJPluginFilterRegistry registry,
+                                                            ApplicationEventPublisher eventPublisher) {
+        return new PluginCompositeFilter(registry, GJPluginFilterPosition.SESSION_RESTORE, eventPublisher);
     }
 
     @Bean("pluginFormLoginFilter")
     @ConditionalOnMissingBean(name = "pluginFormLoginFilter")
     @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-    public PluginCompositeFilter pluginFormLoginFilter(GJPluginFilterRegistry registry) {
-        return new PluginCompositeFilter(registry, GJPluginFilterPosition.FORM_LOGIN);
+    public PluginCompositeFilter pluginFormLoginFilter(GJPluginFilterRegistry registry,
+                                                       ApplicationEventPublisher eventPublisher) {
+        return new PluginCompositeFilter(registry, GJPluginFilterPosition.FORM_LOGIN, eventPublisher);
     }
 
     @Bean("pluginAnonymousFilter")
     @ConditionalOnMissingBean(name = "pluginAnonymousFilter")
     @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-    public PluginCompositeFilter pluginAnonymousFilter(GJPluginFilterRegistry registry) {
-        return new PluginCompositeFilter(registry, GJPluginFilterPosition.ANONYMOUS);
+    public PluginCompositeFilter pluginAnonymousFilter(GJPluginFilterRegistry registry,
+                                                       ApplicationEventPublisher eventPublisher) {
+        return new PluginCompositeFilter(registry, GJPluginFilterPosition.ANONYMOUS, eventPublisher);
     }
 
     @Bean("pluginPreAuthorizeFilter")
     @ConditionalOnMissingBean(name = "pluginPreAuthorizeFilter")
     @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-    public PluginCompositeFilter pluginPreAuthorizeFilter(GJPluginFilterRegistry registry) {
-        return new PluginCompositeFilter(registry, GJPluginFilterPosition.PRE_AUTHORIZE);
+    public PluginCompositeFilter pluginPreAuthorizeFilter(GJPluginFilterRegistry registry,
+                                                          ApplicationEventPublisher eventPublisher) {
+        return new PluginCompositeFilter(registry, GJPluginFilterPosition.PRE_AUTHORIZE, eventPublisher);
     }
 
     @Bean("pluginLastFilter")
     @ConditionalOnMissingBean(name = "pluginLastFilter")
     @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-    public PluginCompositeFilter pluginLastFilter(GJPluginFilterRegistry registry) {
-        return new PluginCompositeFilter(registry, GJPluginFilterPosition.LAST);
+    public PluginCompositeFilter pluginLastFilter(GJPluginFilterRegistry registry,
+                                                  ApplicationEventPublisher eventPublisher) {
+        return new PluginCompositeFilter(registry, GJPluginFilterPosition.LAST, eventPublisher);
     }
 
     @Bean
@@ -146,48 +153,54 @@ public class GJSecurityAutoConfiguration {
     @Bean("pluginFirstWebFilter")
     @ConditionalOnMissingBean(name = "pluginFirstWebFilter")
     @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.REACTIVE)
-    public PluginCompositeWebFilter pluginFirstWebFilter(GJPluginFilterRegistry registry) {
+    public PluginCompositeWebFilter pluginFirstWebFilter(GJPluginFilterRegistry registry,
+                                                          ApplicationEventPublisher eventPublisher) {
         return new PluginCompositeWebFilter(registry, GJPluginFilterPosition.FIRST,
-                org.springframework.core.Ordered.HIGHEST_PRECEDENCE + 5);
+                Ordered.HIGHEST_PRECEDENCE + 5, eventPublisher);
     }
 
     @Bean("pluginSessionRestoreWebFilter")
     @ConditionalOnMissingBean(name = "pluginSessionRestoreWebFilter")
     @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.REACTIVE)
-    public PluginCompositeWebFilter pluginSessionRestoreWebFilter(GJPluginFilterRegistry registry) {
+    public PluginCompositeWebFilter pluginSessionRestoreWebFilter(GJPluginFilterRegistry registry,
+                                                                   ApplicationEventPublisher eventPublisher) {
         return new PluginCompositeWebFilter(registry, GJPluginFilterPosition.SESSION_RESTORE,
-                org.springframework.core.Ordered.HIGHEST_PRECEDENCE + 15);
+                Ordered.HIGHEST_PRECEDENCE + 15, eventPublisher);
     }
 
     @Bean("pluginFormLoginWebFilter")
     @ConditionalOnMissingBean(name = "pluginFormLoginWebFilter")
     @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.REACTIVE)
-    public PluginCompositeWebFilter pluginFormLoginWebFilter(GJPluginFilterRegistry registry) {
+    public PluginCompositeWebFilter pluginFormLoginWebFilter(GJPluginFilterRegistry registry,
+                                                              ApplicationEventPublisher eventPublisher) {
         return new PluginCompositeWebFilter(registry, GJPluginFilterPosition.FORM_LOGIN,
-                org.springframework.core.Ordered.HIGHEST_PRECEDENCE + 25);
+                Ordered.HIGHEST_PRECEDENCE + 25, eventPublisher);
     }
 
     @Bean("pluginAnonymousWebFilter")
     @ConditionalOnMissingBean(name = "pluginAnonymousWebFilter")
     @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.REACTIVE)
-    public PluginCompositeWebFilter pluginAnonymousWebFilter(GJPluginFilterRegistry registry) {
+    public PluginCompositeWebFilter pluginAnonymousWebFilter(GJPluginFilterRegistry registry,
+                                                              ApplicationEventPublisher eventPublisher) {
         return new PluginCompositeWebFilter(registry, GJPluginFilterPosition.ANONYMOUS,
-                org.springframework.core.Ordered.HIGHEST_PRECEDENCE + 35);
+                Ordered.HIGHEST_PRECEDENCE + 35, eventPublisher);
     }
 
     @Bean("pluginPreAuthorizeWebFilter")
     @ConditionalOnMissingBean(name = "pluginPreAuthorizeWebFilter")
     @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.REACTIVE)
-    public PluginCompositeWebFilter pluginPreAuthorizeWebFilter(GJPluginFilterRegistry registry) {
+    public PluginCompositeWebFilter pluginPreAuthorizeWebFilter(GJPluginFilterRegistry registry,
+                                                                 ApplicationEventPublisher eventPublisher) {
         return new PluginCompositeWebFilter(registry, GJPluginFilterPosition.PRE_AUTHORIZE,
-                org.springframework.core.Ordered.HIGHEST_PRECEDENCE + 45);
+                Ordered.HIGHEST_PRECEDENCE + 45, eventPublisher);
     }
 
     @Bean("pluginLastWebFilter")
     @ConditionalOnMissingBean(name = "pluginLastWebFilter")
     @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.REACTIVE)
-    public PluginCompositeWebFilter pluginLastWebFilter(GJPluginFilterRegistry registry) {
+    public PluginCompositeWebFilter pluginLastWebFilter(GJPluginFilterRegistry registry,
+                                                         ApplicationEventPublisher eventPublisher) {
         return new PluginCompositeWebFilter(registry, GJPluginFilterPosition.LAST,
-                org.springframework.core.Ordered.HIGHEST_PRECEDENCE + 55);
+                Ordered.HIGHEST_PRECEDENCE + 55, eventPublisher);
     }
 }

@@ -12,6 +12,8 @@ import org.springframework.web.server.ServerWebExchange;
 
 import java.io.*;
 import java.net.InetSocketAddress;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,7 +38,7 @@ class WebFluxHttpServletRequestAdapter implements HttpServletRequest {
         this.request = exchange.getRequest();
         this.cachedBody = cachedBody;
         this.cookies = buildCookies(request);
-        this.parameterMap = buildParameterMap(request);
+        this.parameterMap = buildParameterMap();
     }
 
     private static Cookie[] buildCookies(ServerHttpRequest request) {
@@ -56,29 +58,47 @@ class WebFluxHttpServletRequestAdapter implements HttpServletRequest {
         return list.toArray(new Cookie[0]);
     }
 
-    private static Map<String, String[]> buildParameterMap(ServerHttpRequest request) {
-        String query = request.getURI().getRawQuery();
-        if (query == null || query.isEmpty()) {
-            return Map.of();
-        }
+    private Map<String, String[]> buildParameterMap() {
         Map<String, List<String>> temp = new LinkedHashMap<>();
-        for (String pair : query.split("&")) {
-            int idx = pair.indexOf("=");
-            if (idx > 0) {
-                String key = java.net.URLDecoder.decode(pair.substring(0, idx),
-                        java.nio.charset.StandardCharsets.UTF_8);
-                String value = java.net.URLDecoder.decode(pair.substring(idx + 1),
-                        java.nio.charset.StandardCharsets.UTF_8);
-                temp.computeIfAbsent(key, k -> new ArrayList<>()).add(value);
-            } else if (idx < 0 && !pair.isEmpty()) {
-                String key = java.net.URLDecoder.decode(pair,
-                        java.nio.charset.StandardCharsets.UTF_8);
-                temp.computeIfAbsent(key, k -> new ArrayList<>()).add("");
-            }
+
+        // query string parameters first (Servlet spec order)
+        String query = request.getURI().getRawQuery();
+        if (query != null && !query.isEmpty()) {
+            parseFormEncoded(query, temp);
+        }
+
+        // form body parameters appended after query params
+        String contentType = request.getHeaders().getFirst("Content-Type");
+        if (contentType != null
+                && contentType.contains("application/x-www-form-urlencoded")
+                && cachedBody.length > 0) {
+            String body = new String(cachedBody, StandardCharsets.UTF_8);
+            parseFormEncoded(body, temp);
+        }
+
+        if (temp.isEmpty()) {
+            return Map.of();
         }
         Map<String, String[]> result = new LinkedHashMap<>();
         temp.forEach((k, v) -> result.put(k, v.toArray(new String[0])));
         return Collections.unmodifiableMap(result);
+    }
+
+    private static void parseFormEncoded(String data, Map<String, List<String>> temp) {
+        for (String pair : data.split("&")) {
+            int idx = pair.indexOf("=");
+            if (idx > 0) {
+                String key = URLDecoder.decode(pair.substring(0, idx),
+                        StandardCharsets.UTF_8);
+                String value = URLDecoder.decode(pair.substring(idx + 1),
+                        StandardCharsets.UTF_8);
+                temp.computeIfAbsent(key, k -> new ArrayList<>()).add(value);
+            } else if (idx < 0 && !pair.isEmpty()) {
+                String key = URLDecoder.decode(pair,
+                        StandardCharsets.UTF_8);
+                temp.computeIfAbsent(key, k -> new ArrayList<>()).add("");
+            }
+        }
     }
 
     @Override public String getHeader(String name) {

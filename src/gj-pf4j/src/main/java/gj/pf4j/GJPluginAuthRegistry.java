@@ -61,6 +61,6 @@ public interface GJPluginAuthRegistry {
     /** List all registered providers (for operational visibility). */
     Collection<ProviderInfo> listProviders();
 
-    /** Snapshot of a registered provider. */
-    record ProviderInfo(String pluginId, int order) {}
+    /** Per-plugin provider summary: how many, what type, in what order. */
+    record ProviderInfo(String pluginId, int providerCount, String providers) {}
 }

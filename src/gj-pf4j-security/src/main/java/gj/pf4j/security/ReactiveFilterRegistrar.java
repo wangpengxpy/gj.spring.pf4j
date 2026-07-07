@@ -10,6 +10,7 @@ import gj.pf4j.lifecycle.PluginLifecyclePhase;
 import gj.pf4j.lifecycle.PluginResourceRegistrar;
 import gj.pf4j.security.reactive.*;
 import org.slf4j.Logger;
+import org.springframework.web.server.WebFilter;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -89,7 +90,7 @@ public class ReactiveFilterRegistrar implements PluginResourceRegistrar {
             try {
                 var filter = bean.getClass().getMethod("getWebFilter").invoke(bean);
                 registry.registerWebFilter(pluginId, pos,
-                        (org.springframework.web.server.WebFilter) filter, order);
+                        (WebFilter) filter, order);
                 log.info("[Plugin: {}] Registered {} web filter at {} (order={})",
                         pluginId, bean.getClass().getSimpleName(), pos, order);
             } catch (Exception e) {

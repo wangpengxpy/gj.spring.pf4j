@@ -7,6 +7,7 @@ package gj.pf4j.socketio;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -156,7 +157,7 @@ public class GJExternalClientProxy implements GJClientProxy {
     /**
      * Chained call: execute callback after sending message (with result)
      */
-    public <T> CompletableFuture<T> sendAsyncThen(String method, Object[] args, java.util.function.Supplier<T> supplier) {
+    public <T> CompletableFuture<T> sendAsyncThen(String method, Object[] args, Supplier<T> supplier) {
         return sendAsync(method, args).thenApply(v -> supplier.get());
     }
 
