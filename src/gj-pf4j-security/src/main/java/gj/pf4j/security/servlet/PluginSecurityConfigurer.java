@@ -4,8 +4,6 @@
 
 package gj.pf4j.security.servlet;
 
-import gj.pf4j.core.PluginAnonymousPathRegistry;
-import gj.pf4j.utils.PluginHttpUtils;
 import org.springframework.context.ApplicationContext;
 import org.springframework.security.config.annotation.SecurityConfigurerAdapter;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -20,7 +18,7 @@ import org.springframework.security.web.access.intercept.AuthorizationFilter;
  * <ol>
  *   <li>Six-position composite filters</li>
  *   <li>Plugin authentication filter</li>
- *   <li>Anonymous path permitAll</li>
+ *   <li>Anonymous path permitAll (host must wire — see PluginAnonymousPathRegistry)</li>
  * </ol>
  *
  * <p><strong>Host usage:</strong>
@@ -28,7 +26,7 @@ import org.springframework.security.web.access.intercept.AuthorizationFilter;
  * @Bean
  * public SecurityFilterChain filterChain(HttpSecurity http,
  *         PluginSecurityConfigurer pluginSecurity) throws Exception {
- *     http.apply(pluginSecurity)
+ *     http.with(pluginSecurity, Customizer.withDefaults())
  *         .authorizeHttpRequests(auth -> auth
  *             .requestMatchers("/api/**").authenticated()
  *             .anyRequest().permitAll())
@@ -38,12 +36,6 @@ import org.springframework.security.web.access.intercept.AuthorizationFilter;
  */
 public class PluginSecurityConfigurer
         extends SecurityConfigurerAdapter<DefaultSecurityFilterChain, HttpSecurity> {
-
-    private final PluginAnonymousPathRegistry anonymousPaths;
-
-    public PluginSecurityConfigurer(PluginAnonymousPathRegistry anonymousPaths) {
-        this.anonymousPaths = anonymousPaths;
-    }
 
     @Override
     public void configure(HttpSecurity http) throws Exception {
@@ -79,14 +71,8 @@ public class PluginSecurityConfigurer
                 ctx.getBean("pluginLastFilter", PluginCompositeFilter.class),
                 AuthorizationFilter.class);
 
-        // 3. Anonymous paths — first matcher, highest priority
-        // Always registered: lambda evaluates at request time,
-        // so plugins loaded later are covered.
-        http.authorizeHttpRequests(auth -> auth
-                .requestMatchers(req ->
-                        anonymousPaths.isAnonymous(
-                                PluginHttpUtils.getPathWithinApplication(req),
-                                req.getMethod()))
-                .permitAll());
+        // Note: Anonymous path permitAll rules must be wired by the host
+        // as the first matcher in its own authorizeHttpRequests chain.
+        // See PluginAnonymousPathRegistry Javadoc for the correct pattern.
     }
 }

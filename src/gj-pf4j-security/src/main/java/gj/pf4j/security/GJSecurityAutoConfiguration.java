@@ -122,9 +122,8 @@ public class GJSecurityAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-    public PluginSecurityConfigurer pluginSecurityConfigurer(
-            PluginAnonymousPathRegistry anonymousPaths) {
-        return new PluginSecurityConfigurer(anonymousPaths);
+    public PluginSecurityConfigurer pluginSecurityConfigurer() {
+        return new PluginSecurityConfigurer();
     }
 
     // ──── WebFlux Filter ──────────────────────────────────────────

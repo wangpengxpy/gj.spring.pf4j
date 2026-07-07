@@ -120,11 +120,17 @@ public class GJPluginWebFluxRequestMappingHandlerMapping extends RequestMappingH
                 if (anonymousPathRegistrar != null) {
                     AllowAnonymous methodAnno = method.getAnnotation(AllowAnonymous.class);
                     if (methodAnno != null || classAnno != null) {
-                        String reason = methodAnno != null && !methodAnno.reason().isEmpty()
+                        String reason = methodAnno != null
                                 ? methodAnno.reason()
-                                : (classAnno != null ? classAnno.reason() : "");
-                        registerAnonymousPaths(pluginId, handlerType.getName(),
-                                method.getName(), mapping, reason);
+                                : classAnno.reason();
+                        if (reason.isBlank()) {
+                            log.warn("[Plugin: {}] @AllowAnonymous on {}.{}() has blank reason — " +
+                                    "registration as anonymous is blocked.",
+                                    pluginId, handlerType.getName(), method.getName());
+                        } else {
+                            registerAnonymousPaths(pluginId, handlerType.getName(),
+                                    method.getName(), mapping, reason);
+                        }
                     }
                 }
             });

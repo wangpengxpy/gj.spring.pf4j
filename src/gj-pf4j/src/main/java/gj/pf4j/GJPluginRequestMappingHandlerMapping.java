@@ -136,12 +136,18 @@ public class GJPluginRequestMappingHandlerMapping extends RequestMappingHandlerM
                 if (anonymousPathRegistrar != null) {
                     AllowAnonymous methodAnno = method.getAnnotation(AllowAnonymous.class);
                     if (methodAnno != null || classAnno != null) {
-                        String reason = methodAnno != null && !methodAnno.reason().isEmpty()
+                        String reason = methodAnno != null
                                 ? methodAnno.reason()
-                                : (classAnno != null ? classAnno.reason() : "");
-                        int count = registerAnonymousPaths(pluginId, controllerClassName,
-                                method.getName(), mapping, reason);
-                        anonymousCount[0] += count;
+                                : classAnno.reason();
+                        if (reason.isBlank()) {
+                            log.warn("[Plugin: {}] @AllowAnonymous on {}.{}() has blank reason — " +
+                                    "registration as anonymous is blocked.",
+                                    pluginId, controllerClassName, method.getName());
+                        } else {
+                            int count = registerAnonymousPaths(pluginId, controllerClassName,
+                                    method.getName(), mapping, reason);
+                            anonymousCount[0] += count;
+                        }
                     }
                 }
             });

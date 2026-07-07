@@ -62,10 +62,9 @@ public class DefaultPluginAnonymousPathRegistry
         String indexKey = toIndexKey(method, entry.pathPattern());
         pluginIndex.computeIfAbsent(pluginId, k -> ConcurrentHashMap.newKeySet()).add(indexKey);
 
-        String reasonPart = entry.reason().isEmpty() ? "" : " (reason: " + entry.reason() + ")";
-        log.info("[Plugin: {}] Registered anonymous endpoint: {} {} -> {}.{}(){}",
+        log.info("[Plugin: {}] Registered anonymous endpoint: {} {} -> {}.{}() (reason: {})",
                 pluginId, method, entry.pathPattern(),
-                entry.controllerClass(), entry.methodName(), reasonPart);
+                entry.controllerClass(), entry.methodName(), entry.reason());
     }
 
     @Override

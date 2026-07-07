@@ -84,12 +84,12 @@ class DefaultPluginAuthRegistry implements GJPluginAuthRegistry {
             if (existing == null) {
                 Map<String, Set<String>> m = new ConcurrentHashMap<>();
                 methodPatterns.forEach((method, patterns) ->
-                        m.put(method, Collections.unmodifiableSet(new HashSet<>(patterns))));
+                        m.put(method, Set.copyOf(patterns)));
                 return m;
             }
             methodPatterns.forEach((method, patterns) -> {
                 existing.merge(method,
-                        Collections.unmodifiableSet(new HashSet<>(patterns)),
+                        Set.copyOf(patterns),
                         (oldSet, newSet) -> {
                             Set<String> combined = new HashSet<>(oldSet);
                             combined.addAll(newSet);

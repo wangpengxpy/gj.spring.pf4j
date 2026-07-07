@@ -43,9 +43,7 @@ class AnonymousPathRegistrar implements PluginResourceRegistrar {
             if (rf instanceof GJRouterFunctions.AnnotatedRouterFunction arf) {
                 for (AnonymousRouteDeclaration decl : arf.getDeclarations()) {
                     if (decl.reason() == null || decl.reason().isBlank()) {
-                        log.warn("[Plugin: {}] Anonymous functional route {}:{} has blank reason — " +
-                                "registration as anonymous is blocked. " +
-                                "A non-empty reason is required for audit.",
+                        log.debug("[Plugin: {}] Skipping non-anonymous functional route {}:{}",
                                 pluginCtx.getId(), decl.httpMethod(), decl.pathPattern());
                         continue;
                     }

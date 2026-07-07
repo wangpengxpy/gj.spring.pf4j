@@ -25,7 +25,7 @@ import java.util.Collection;
  *         http.authorizeHttpRequests(auth -> auth
  *             .requestMatchers(req ->
  *                 anonymousPathRegistry.isAnonymous(
- *                     req.getRequestURI(), req.getMethod())
+ *                     PluginHttpUtils.getPathWithinApplication(req), req.getMethod())
  *             ).permitAll()
  *             // ... other rules
  *         );
