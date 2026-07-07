@@ -103,9 +103,9 @@ public class PluginDelegatingAuthWebFilter implements WebFilter, Ordered {
                             (List<IPluginAuthenticationProvider>) (List<?>) providerObjs;
 
                     // 4. Cache body, execute chain, handle result
-                    // No explicit size limit — memory protection is delegated to
-                    // WebFlux codec layer (spring.codec.max-in-memory-size, default 256KB).
-                    // To allow larger bodies: spring.codec.max-in-memory-size=1MB
+                    // No size limit — body size limits are the responsibility of
+                    // upstream infrastructure (reverse proxy, gateway, etc.).
+                    // The auth filter only reads what the platform allows through.
                     return DataBufferUtils.join(exchange.getRequest().getBody())
                             .map(buf -> {
                                 byte[] bytes = new byte[buf.readableByteCount()];

@@ -78,11 +78,15 @@ public class DefaultPluginAnonymousPathRegistry
             if (parts == null) continue;
             String method = parts[0];
             String pattern = parts[1];
-            ConcurrentHashMap<String, AnonymousPathEntry> bucket = methodIndex.get(method);
-            if (bucket != null) {
-                bucket.remove(pattern);
-                methodIndex.computeIfPresent(method, (k, v) -> v.isEmpty() ? null : v);
-            }
+            // Atomic remove + cleanup in a single compute() call to prevent
+            // a race: if remove and computeIfPresent were separate, a concurrent
+            // register could insert into the empty bucket between them, then
+            // have its entry lost when computeIfPresent removes the bucket.
+            methodIndex.compute(method, (k, v) -> {
+                if (v == null) return null;
+                v.remove(pattern);
+                return v.isEmpty() ? null : v;
+            });
         }
         log.info("[Plugin: {}] Unregistered {} anonymous endpoints", pluginId, keys.size());
     }
