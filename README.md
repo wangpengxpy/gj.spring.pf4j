@@ -7,6 +7,8 @@
 
 A lightweight, modular plugin framework powered by PF4J and Spring, with no heavyweight Spring Boot dependency. Pluggable extension points enable any third-party component to integrate into the plugin lifecycle without modifying framework source code. Supports both Spring MVC and Spring WebFlux routing — auto-adapts to the host application's web stack.
 
+Open plugin authentication lets plugins define their own auth logic through an SPI; a provider chain with pluggable strategy delegates requests; six-position filter slots let hosts compose arbitrary security filters — all governed by a host-controlled "install ≠ enable" model.
+
 > [中文文档](README_CN.md) | [Full Documentation → Wiki](https://github.com/wangpengxpy/gj.spring.pf4j/wiki)
 
 <p align="center">
@@ -20,25 +22,6 @@ A lightweight, modular plugin framework powered by PF4J and Spring, with no heav
 <p align="center">
   <img src="images/capabilities.png" alt="Plugin Core Capabilities" width="90%">
 </p>
-
-- **[Plugin Extensions](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Plugin-Extensions)** — pluggable extension points; any component (MongoDB, Kafka, MQTT, gRPC, etc.) integrates via `PluginResourceRegistrar` without framework changes
-- **[Plugin Authentication](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Plugin-Authentication)** — pluggable auth; plugins declare custom authentication (API Key, JWT, OAuth2, HMAC webhooks) via SPI; chained provider model with pluggable strategy; seven-position filter extension points with host-controlled "install ≠ enable" model
-- **[Plugin Lifecycle Management](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Plugin-Lifecycle)** — install, disable, restart, unload, and delete plugins at runtime
-- **[Plugin Hot-Reload](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Plugin-Hot-Reload)** — hot-reload via API-driven workflow or file watcher; lifecycle events for custom orchestration
-- **[Runtime Plugin Management API](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Runtime-Management-API)** — `GJPluginService` provides lock-controlled runtime management APIs
-- **[REST Endpoints](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/REST-Endpoints)** — `@RestController` beans auto-detected and registered into the main app's route table, supporting both MVC and WebFlux
-- **[Dual Routing Mode](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/REST-Endpoints#52-spring-mvc-vs-webflux-dual-routing)** — Spring MVC (Servlet) and Spring WebFlux (Reactive); plugins require zero changes
-- **[OpenAPI Documentation](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/OpenAPI)** — SpringDoc-powered; each plugin auto-generates an independent `GroupedOpenApi`
-- **[MyBatis-Plus Data Access](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Data-Access)** — per-plugin `SqlSessionFactory`, `SqlSessionTemplate`, and `TransactionManager`, sharing host `DataSource`
-- **[JPA Data Access](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Data-Access)** — Hibernate-powered per-plugin `EntityManagerFactory` and `JpaTransactionManager`; coexists with MyBatis-Plus
-- **[SQL Keyword Quoting](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Data-Access)** — auto-wraps column names with DB-specific quote characters via MyBatis-Plus `InnerInterceptor`
-- **[Database Auto-Migration](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Database-Auto-Migration)** — automatic `@TableName` entity schema migration (CREATE TABLE / ADD COLUMN only), 7 databases, production-safe
-- **[Object Mapping](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Object-Mapping)** — ModelMapper; plugins implement `GJPluginModelMapperConfig`, auto-discovered via Spring bean scanning
-- **[Import/Export](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Import-Export)** — EasyExcel multi-sheet read/write with automatic i18n header translation
-- **[Real-Time Communication](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Real-Time-Communication)** — netty-socketio Hub pattern (SignalR-style) with group and user-targeted messaging
-- **[Scheduled Tasks](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Scheduled-Tasks)** — Quartz-based cron, fixed-interval, and run-once execution
-- **[In-Process Event Bus](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Event-Bus)** — sync/async publishing with Ant-style wildcard matching
-- **[Internationalization (i18n)](https://github.com/wangpengxpy/gj.spring.pf4j/wiki/Internationalization)** — per-plugin `messages.properties` with fallback to the host application
 
 ---
 

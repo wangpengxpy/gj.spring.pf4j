@@ -25,7 +25,7 @@ import java.util.*;
  * All filter positions default to <strong>disabled</strong>.
  */
 @Getter
-@ConfigurationProperties(prefix = "gj.plugin.security")
+@ConfigurationProperties(prefix = "gj.security")
 public class PluginFilterConfigProperties {
 
     @Setter
