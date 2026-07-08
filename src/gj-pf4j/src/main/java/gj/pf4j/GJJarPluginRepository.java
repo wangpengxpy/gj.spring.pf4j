@@ -43,14 +43,8 @@ public class GJJarPluginRepository extends JarPluginRepository {
             return false;
         }
 
-        Path parentDir = pluginPath.getParent();
-        if (parentDir == null) {
-            log.warn("Plugin path has no parent directory (e.g., root path), cannot delete: {}", pluginPath);
-            return false;
-        }
-
         try {
-            Files.walkFileTree(parentDir, new SimpleFileVisitor<>() {
+            Files.walkFileTree(pluginPath, new SimpleFileVisitor<>() {
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                     try {
@@ -73,10 +67,10 @@ public class GJJarPluginRepository extends JarPluginRepository {
                     return FileVisitResult.CONTINUE;
                 }
             });
-            log.info("Successfully deleted plugin directory: {}", parentDir);
+            log.info("Successfully deleted plugin directory: {}", pluginPath);
             return true;
         } catch (IOException e) {
-            log.error("Unexpected I/O error while deleting plugin directory: {}", parentDir, e);
+            log.error("Unexpected I/O error while deleting plugin directory: {}", pluginPath, e);
             return false;
         }
     }

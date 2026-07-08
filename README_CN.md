@@ -3,7 +3,6 @@
 [![Java](https://img.shields.io/badge/Java-17%2B-orange)](https://adoptium.net/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/wangpengxpy/gj.spring.pf4j/blob/main/LICENSE)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.wangpengxpy/gj-pf4j?color=green)](https://central.sonatype.com/artifact/io.github.wangpengxpy/gj-pf4j)
-[![Stars](https://img.shields.io/github/stars/wangpengxpy/gj.spring.pf4j?style=social)](https://github.com/wangpengxpy/gj.spring.pf4j/stargazers)
 
 基于 PF4J 与 Spring 的轻量级模块化插件框架，无 Spring Boot 重依赖。可插拔扩展点允许任意第三方组件以零框架改动的方式接入插件生命周期。支持 Spring MVC 与 Spring WebFlux 双路由模式，自动适配主应用架构。
 

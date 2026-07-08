@@ -3,7 +3,6 @@
 [![Java](https://img.shields.io/badge/Java-17%2B-orange)](https://adoptium.net/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/wangpengxpy/gj.spring.pf4j/blob/main/LICENSE)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.wangpengxpy/gj-pf4j?color=green)](https://central.sonatype.com/artifact/io.github.wangpengxpy/gj-pf4j)
-[![Stars](https://img.shields.io/github/stars/wangpengxpy/gj.spring.pf4j?style=social)](https://github.com/wangpengxpy/gj.spring.pf4j/stargazers)
 
 A lightweight, modular plugin framework powered by PF4J and Spring, with no heavyweight Spring Boot dependency. Pluggable extension points enable any third-party component to integrate into the plugin lifecycle without modifying framework source code. Supports both Spring MVC and Spring WebFlux routing — auto-adapts to the host application's web stack.
 

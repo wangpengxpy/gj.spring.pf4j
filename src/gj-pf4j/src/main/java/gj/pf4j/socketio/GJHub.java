@@ -399,17 +399,7 @@ public abstract class GJHub implements GJSocketIOHub {
     // ================ Utility Methods ================
 
     private ExecutorService createExecutor() {
-        int corePoolSize = Math.max(2, Runtime.getRuntime().availableProcessors() / 2);
-        int maxPoolSize = Runtime.getRuntime().availableProcessors() * 2;
-
-        return new ThreadPoolExecutor(
-                corePoolSize,
-                maxPoolSize,
-                60L, TimeUnit.SECONDS,
-                new LinkedBlockingQueue<>(1000),
-                threadFactory,
-                new ThreadPoolExecutor.CallerRunsPolicy()
-        );
+        return Executors.newSingleThreadExecutor(threadFactory);
     }
 
     private Map<String, String> extractQueryParams(SocketIOClient client) {
