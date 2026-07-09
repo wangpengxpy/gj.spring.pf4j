@@ -40,28 +40,17 @@ public class PluginDelegatingAuthFilter extends OncePerRequestFilter {
     private final PluginAuthenticatedPathRegistry authenticatedPaths;
     private final AuthenticationStrategy strategy;
     private final ApplicationEventPublisher eventPublisher;
-    private final int bodyCacheLimit;
 
     public PluginDelegatingAuthFilter(GJPluginAuthRegistry registry,
                                        PluginAnonymousPathRegistry anonymousPaths,
                                        PluginAuthenticatedPathRegistry authenticatedPaths,
                                        AuthenticationStrategy strategy,
                                        ApplicationEventPublisher eventPublisher) {
-        this(registry, anonymousPaths, authenticatedPaths, strategy, eventPublisher, 64 * 1024);
-    }
-
-    public PluginDelegatingAuthFilter(GJPluginAuthRegistry registry,
-                                       PluginAnonymousPathRegistry anonymousPaths,
-                                       PluginAuthenticatedPathRegistry authenticatedPaths,
-                                       AuthenticationStrategy strategy,
-                                       ApplicationEventPublisher eventPublisher,
-                                       int bodyCacheLimit) {
         this.registry = registry;
         this.anonymousPaths = anonymousPaths;
         this.authenticatedPaths = authenticatedPaths;
         this.strategy = strategy;
         this.eventPublisher = eventPublisher;
-        this.bodyCacheLimit = bodyCacheLimit;
     }
 
     @Override
@@ -71,7 +60,7 @@ public class PluginDelegatingAuthFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         ContentCachingRequestWrapper wrappedRequest =
-                new ContentCachingRequestWrapper(request, bodyCacheLimit);
+                new ContentCachingRequestWrapper(request);
         String path = PluginHttpUtils.getPathWithinApplication(wrappedRequest);
 
         // 1. @AllowAnonymous → skip

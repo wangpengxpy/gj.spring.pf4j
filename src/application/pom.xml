@@ -17,7 +17,7 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <gj.pf4j.version>2.0.0</gj.pf4j.version>
-        <gj.pf4j.security.version>1.0.0</gj.pf4j.security.version>
+        <gj.pf4j.security.version>1.0.1</gj.pf4j.security.version>
         <gj.data.version>0.0.1-SNAPSHOT</gj.data.version>
         <gj.modelmapper.version>1.0.8</gj.modelmapper.version>
     </properties>
