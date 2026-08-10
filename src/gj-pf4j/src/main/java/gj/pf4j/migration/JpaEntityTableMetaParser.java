@@ -5,6 +5,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
@@ -132,6 +133,16 @@ class JpaEntityTableMetaParser {
                 }
             }
 
+            ColumnMeta.PrimaryKeyStrategy colPkStrategy = null;
+            if (isPrimaryKey) {
+                GeneratedValue gvAnn = field.getAnnotation(GeneratedValue.class);
+                if (gvAnn != null && gvAnn.strategy() == GenerationType.IDENTITY) {
+                    colPkStrategy = ColumnMeta.PrimaryKeyStrategy.AUTO;
+                } else {
+                    colPkStrategy = ColumnMeta.PrimaryKeyStrategy.INPUT;
+                }
+            }
+
             columns.add(new ColumnMeta(
                     columnName,
                     field.getName(),
@@ -139,7 +150,8 @@ class JpaEntityTableMetaParser {
                     columnTypeOverride,
                     null,  // jdbcType — JPA does not use MyBatis jdbcType
                     isPrimaryKey,
-                    insertStrategy
+                    insertStrategy,
+                    colPkStrategy
             ));
         }
 
@@ -163,7 +175,8 @@ class JpaEntityTableMetaParser {
                 ColumnMeta old = columns.get(idIndex);
                 columns.set(idIndex, new ColumnMeta(
                         old.columnName(), old.fieldName(), old.type(),
-                        old.columnTypeOverride(), old.jdbcType(), true, old.insertStrategy()
+                        old.columnTypeOverride(), old.jdbcType(), true, old.insertStrategy(),
+                        ColumnMeta.PrimaryKeyStrategy.AUTO
                 ));
                 primaryKeyColumn = old.columnName();
                 primaryKeyType = old.type().getSimpleName();

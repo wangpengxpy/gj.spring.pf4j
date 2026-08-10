@@ -42,7 +42,9 @@ class HubRegistrar implements PluginResourceRegistrar {
             return;
         }
         if (log.isDebugEnabled()) {
-            String hubNames = String.join(", ", hubs.keySet());
+            String hubNames = hubs.values().stream()
+                    .map(GJHub::getHubName)
+                    .collect(java.util.stream.Collectors.joining(", "));
             log.debug("[Plugin: {}] Found {} Hubs, preparing for registration: {}",
                     pluginId, hubs.size(), hubNames);
         }
@@ -61,8 +63,8 @@ class HubRegistrar implements PluginResourceRegistrar {
             return;
         }
         GJHubManager hubManager = hostCtx.getBean(GJHubManager.class);
-        for (String hubName : hubs.keySet()) {
-            hubManager.unregisterHub(hubName);
+        for (GJHub hub : hubs.values()) {
+            hubManager.unregisterHub(hub.getHubName());
         }
     }
 }

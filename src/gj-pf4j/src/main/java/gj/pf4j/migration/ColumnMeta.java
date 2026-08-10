@@ -14,6 +14,13 @@ public record ColumnMeta(
     String columnTypeOverride,
     JdbcType jdbcType,
     boolean isPrimaryKey,
-    FieldStrategy insertStrategy
+    FieldStrategy insertStrategy,
+    PrimaryKeyStrategy primaryKeyStrategy
 ) {
+
+    public enum PrimaryKeyStrategy {
+        AUTO,
+        INPUT,
+        NONE
+    }
 }
