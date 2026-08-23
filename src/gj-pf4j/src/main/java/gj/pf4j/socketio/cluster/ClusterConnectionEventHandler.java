@@ -101,7 +101,12 @@ public class ClusterConnectionEventHandler implements IConnectionEventHandler {
                 }
                 SocketIOClient client = hubClients.get(msg.getConnectionId());
                 if (client != null && client.isChannelOpen()) {
-                    client.sendEvent(msg.getMethod(), msg.getData());
+                    if (msg.isBinary()) {
+                        // Binary broadcast: deliver raw byte[] frame
+                        client.sendEvent(msg.getMethod(), msg.getBinaryData());
+                    } else {
+                        client.sendEvent(msg.getMethod(), msg.getData());
+                    }
                 }
             } catch (Exception e) {
                 log.warn("Failed to process broadcast message: {}", e.getMessage());

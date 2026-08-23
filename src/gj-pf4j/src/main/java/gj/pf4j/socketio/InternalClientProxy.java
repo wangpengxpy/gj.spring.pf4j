@@ -75,6 +75,31 @@ class InternalClientProxy implements GJClientProxy {
         }, asyncExecutor);
     }
 
+    @Override
+    public CompletableFuture<Void> sendBinaryAsync(String eventName, byte[] data) {
+        return CompletableFuture.runAsync(() -> {
+            try {
+                List<SocketIOClient> targetClients = getTargetClients();
+                for (SocketIOClient client : targetClients) {
+                    if (client.isChannelOpen()) {
+                        try {
+                            // Raw payload, no JSON envelope: binary clients expect the bare frame.
+                            client.sendEvent(eventName, data);
+                        } catch (Exception e) {
+                            log.error("Failed to send binary to client: {} in hub {}:{} ",
+                                    client.getSessionId(), hubName, eventName, e);
+                        }
+                    }
+                }
+                log.debug("Sent binary {} to {} clients in hub {}",
+                        eventName, targetClients.size(), hubName);
+            } catch (Exception e) {
+                log.error("Failed to send binary {} in hub {}", eventName, hubName, e);
+                throw new RuntimeException("Failed to send binary", e);
+            }
+        }, asyncExecutor);
+    }
+
     /**
      * Calculate target client list, query through GJHubManager, and apply exclusion logic.
      */

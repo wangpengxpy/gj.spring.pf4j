@@ -19,4 +19,12 @@ public interface GJClientProxy {
     default void send(String method, Object data) {
         sendAsync(method, data);
     }
+
+    /**
+     * Async send a raw binary payload to client. Default no-op so existing
+     * implementations (NoopGJClientProxy etc.) are unaffected.
+     */
+    default CompletableFuture<Void> sendBinaryAsync(String eventName, byte[] data) {
+        return CompletableFuture.completedFuture(null);
+    }
 }

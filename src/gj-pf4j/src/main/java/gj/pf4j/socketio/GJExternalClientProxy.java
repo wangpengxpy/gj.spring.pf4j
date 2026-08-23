@@ -97,6 +97,32 @@ public class GJExternalClientProxy implements GJClientProxy {
         }
     }
 
+    @Override
+    public CompletableFuture<Void> sendBinaryAsync(String eventName, byte[] data) {
+        log.debug("ExternalClientProxy[{}] - Sending binary: {} to targets: {}",
+                hubName, eventName, getTargetDescription());
+        if (data == null) {
+            return CompletableFuture.completedFuture(null);
+        }
+        return hubManager.sendBinaryAsync(
+                hubName,
+                eventName,
+                data,
+                targetConnectionIds,
+                targetGroups,
+                excludedConnectionIds,
+                targetUserIds,
+                excludedUserIds
+        ).thenAccept(result -> {
+            log.debug("ExternalClientProxy[{}] - Binary sent successfully event={}, count={}",
+                    hubName, eventName, result);
+        }).exceptionally(throwable -> {
+            log.error("ExternalClientProxy[{}] - Binary send failed event={}, exception:{}",
+                    hubName, eventName, throwable.getMessage());
+            return null;
+        });
+    }
+
     // ================ Helper Methods ================
 
     private String getTargetDescription() {

@@ -30,6 +30,9 @@ public abstract class GJHub implements GJSocketIOHub {
     // Invocation method cache
     private final Map<String, DataListener<Object>> methodHandlers = new ConcurrentHashMap<>();
 
+    // Binary invocation method cache: event name -> listener
+    private final Map<String, DataListener<byte[]>> binaryMethodHandlers = new ConcurrentHashMap<>();
+
     // Connection management
     protected final Map<String, GJHubConnectionContext> connections = new ConcurrentHashMap<>();
     protected final Map<String, Set<String>> userConnections = new ConcurrentHashMap<>();
@@ -62,6 +65,7 @@ public abstract class GJHub implements GJSocketIOHub {
     @PostConstruct
     public void initialize() {
         registerAnnotatedMethods(this);
+        registerAnnotatedBinaryMethods(this);
         this.threadFactory = new GJSocketIOThreadFactory.Builder()
                 .setNameFormat("hub-" + hubName + "-%d")
                 .setDaemon(true)
@@ -120,6 +124,51 @@ public abstract class GJHub implements GJSocketIOHub {
         long durationNanos = System.nanoTime() - startTime;
         long durationMillis = TimeUnit.NANOSECONDS.toMillis(durationNanos);
         log.info("Hub '{}' registered {} @GJHubMethod(s) in {} ms", hubName, methodCount, durationMillis);
+    }
+
+    /**
+     * Scans methods annotated with {@link GJHubBinaryMethod} on this hub's own
+     * class and registers them. Method signature is fixed to {@code void xxx(byte[] data)}.
+     */
+    private void registerAnnotatedBinaryMethods(Object target) {
+        int methodCount = 0;
+        for (Method method : target.getClass().getDeclaredMethods()) {
+            if (!method.isAnnotationPresent(GJHubBinaryMethod.class)) {
+                continue;
+            }
+            GJHubBinaryMethod anno = method.getAnnotation(GJHubBinaryMethod.class);
+            if (anno == null) {
+                continue;
+            }
+            String eventName = anno.value();
+            if (eventName == null || eventName.isEmpty()) {
+                log.warn("binary event name is null or empty for hub: {}, skipping method: {}",
+                        hubName, method.getName());
+                continue;
+            }
+            eventName = eventName.toLowerCase();
+            String finalEventName = eventName;
+            DataListener<byte[]> listener = (client, data, ack) -> {
+                try {
+                    method.setAccessible(true);
+                    method.invoke(target, (Object) data);
+                } catch (Exception e) {
+                    throw new RuntimeException("Error invoking hub (" + getHubName()
+                            + ") binary method: " + finalEventName, e);
+                }
+            };
+            binaryMethodHandlers.put(eventName, listener);
+            methodCount++;
+        }
+        log.info("Hub '{}' registered {} @GJHubBinaryMethod(s)", hubName, methodCount);
+    }
+
+    /**
+     * Returns the binary event names declared by this hub (for HubManager
+     * listener registration and cross-hub conflict detection).
+     */
+    Set<String> getBinaryEventNames() {
+        return Collections.unmodifiableSet(binaryMethodHandlers.keySet());
     }
 
     private DataListener<Object> getHandler(String methodName) {
@@ -254,6 +303,49 @@ public abstract class GJHub implements GJSocketIOHub {
 
     int getConnectedClientsCount() {
         return connections.size();
+    }
+
+    /**
+     * Handles a binary event message: routes it to the matching binary method by event name.
+     * Reuses the connection context injection (ThreadLocal) so that getClients()/getGroups()
+     * remain callable inside binary methods.
+     *
+     * <p>All binary upstream frames are prefixed with a 1-byte 0x01 header by protocol
+     * convention, which is validated and stripped by {@code GJHubManager} before entering
+     * this method (a workaround for the netty-socketio 2.0.13 defect where the first
+     * byte == 0 causes a binary frame to be misjudged as a string frame). If a client
+     * violates the convention and the first byte happens to be 0, the frame is dropped
+     * during Netty decoding and never reaches this method.</p>
+     */
+    void onClientBinaryMessage(SocketIOClient client, String eventName, byte[] data) {
+        String connectionId = client.getSessionId().toString();
+        totalMessages.incrementAndGet();
+        GJHubConnectionContext context = connections.get(connectionId);
+        if (context == null) {
+            log.warn("Received binary message from unknown client: {}", connectionId);
+            return;
+        }
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
+        try {
+            context.updateLastActivity();
+            setCurrentContext(context);
+            DataListener<byte[]> handler = binaryMethodHandlers.get(eventName);
+            if (handler == null) {
+                log.warn("Hub binary method not found: hub={}, event={}", getHubName(), eventName);
+                return;
+            }
+            handler.onData(client, data, null);
+            stopWatch.stop();
+            log.debug("Invoked hub binary method: hub={}, event={}, size={}B, duration={}ms",
+                    getHubName(), eventName, data == null ? 0 : data.length, stopWatch.getTotalTimeMillis());
+        } catch (Exception e) {
+            stopWatch.stop();
+            log.error("Error invoking hub binary method: hub={}, event={}, error={}",
+                    getHubName(), eventName, e.getMessage(), e);
+        } finally {
+            clearCurrentContext();
+        }
     }
 
     // ================ Context Management ================
@@ -464,6 +556,7 @@ public abstract class GJHub implements GJSocketIOHub {
             connections.clear();
             userConnections.clear();
             methodHandlers.clear();
+            binaryMethodHandlers.clear();
             log.debug("Hub {} shutdown completed", hubName);
         } catch (Exception e) {
             log.error("Error during hub {} shutdown", hubName, e);

@@ -26,4 +26,19 @@ public class DefaultMessageRouter implements IMessageRouter {
         }
         return false;
     }
+
+    @Override
+    public boolean sendBinaryToConnection(String hubName, String connectionId,
+                                          String eventName, byte[] data) {
+        Map<String, SocketIOClient> hubClients = clientRegistry.get(hubName);
+        if (hubClients == null) {
+            return false;
+        }
+        SocketIOClient client = hubClients.get(connectionId);
+        if (client != null && client.isChannelOpen()) {
+            client.sendEvent(eventName, data);
+            return true;
+        }
+        return false;
+    }
 }

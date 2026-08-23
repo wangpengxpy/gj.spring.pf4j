@@ -62,6 +62,13 @@ public class GJHubManager {
     // Connection info cache: connection ID -> connection info
     private final Map<String, GJSocketConnectionInfo> connectionInfoCache = new ConcurrentHashMap<>();
 
+    // Binary event name -> hub name (for cross-hub conflict detection)
+    private final Map<String, String> binaryEventToHub = new ConcurrentHashMap<>();
+
+    // Event names already registered on the server (server.addEventListener is
+    // global; same-name listeners across hubs would overwrite each other)
+    private final Set<String> registeredBinaryEvents = ConcurrentHashMap.newKeySet();
+
     // ================ Cluster Strategy Injection ================
 
     private final IMessageRouter messageRouter;
@@ -226,6 +233,8 @@ public class GJHubManager {
             clientRegistry.put(hubName, new ConcurrentHashMap<>());
             // 4. Create Hub context
             createHubContext(hub);
+            // 5. Register binary event listeners
+            registerBinaryEvents(hub);
             log.info("Hub registered: {} (type: {})",
                     hubName, hub.getClass().getSimpleName());
             return true;
@@ -260,7 +269,9 @@ public class GJHubManager {
             }
             // 5. Clean up Hub context
             hubContexts.remove(hubName);
-            // 6. Clean up Hub connection info cache
+            // 6. Unregister binary event listeners
+            unregisterBinaryEvents(hub);
+            // 7. Clean up Hub connection info cache
             cleanupConnectionInfoForHub(hubName);
             log.debug("Hub unregistered: {}", hubName);
 
@@ -542,6 +553,89 @@ public class GJHubManager {
         }, asyncExecutor);
     }
 
+    /**
+     * Synchronously sends a raw binary payload to the target connections of a hub.
+     */
+    void sendBinary(String hubName,
+                    String eventName,
+                    byte[] data,
+                    Collection<String> targetConnectionIds,
+                    Collection<String> targetGroups,
+                    Collection<String> excludedConnectionIds,
+                    Collection<String> targetUserIds,
+                    Collection<String> excludedUserIds) {
+        if (!hubRegistry.containsKey(hubName)) {
+            log.warn("Cannot send binary to unregistered hub: {}", hubName);
+            return;
+        }
+        Set<String> targetConnections = calculateTargetConnections(
+                hubName, targetConnectionIds, targetGroups, excludedConnectionIds,
+                targetUserIds, excludedUserIds
+        );
+        if (targetConnections.isEmpty()) {
+            log.debug("No target connections found for hub: {}, event: {}", hubName, eventName);
+            return;
+        }
+        int successCount = sendToConnectionsBinary(eventName, hubName, targetConnections, data);
+        totalMessagesSent.addAndGet(successCount);
+    }
+
+    /**
+     * Asynchronously sends a raw binary payload to the target connections of a hub.
+     */
+    CompletableFuture<Integer> sendBinaryAsync(String hubName,
+                                               String eventName,
+                                               byte[] data,
+                                               Collection<String> targetConnectionIds,
+                                               Collection<String> targetGroups,
+                                               Collection<String> excludedConnectionIds,
+                                               Collection<String> targetUserIds,
+                                               Collection<String> excludedUserIds) {
+        if (!hubRegistry.containsKey(hubName)) {
+            log.warn("Cannot send binary to unregistered hub={} event={}", hubName, eventName);
+            return CompletableFuture.completedFuture(0);
+        }
+        return CompletableFuture.supplyAsync(() -> {
+            Set<String> targetConnections = calculateTargetConnections(
+                    hubName, targetConnectionIds, targetGroups, excludedConnectionIds,
+                    targetUserIds, excludedUserIds
+            );
+            if (targetConnections.isEmpty()) {
+                return 0;
+            }
+            return sendToConnectionsBinary(eventName, hubName, targetConnections, data);
+        }, asyncExecutor);
+    }
+
+    /**
+     * Sends a raw binary payload to the given connections via the message router,
+     * cleaning up failed connections (mirrors the JSON sendToConnections path).
+     */
+    private int sendToConnectionsBinary(String eventName, String hubName,
+                                        Set<String> connectionIds, byte[] data) {
+        Map<String, SocketIOClient> hubClients = clientRegistry.get(hubName);
+        if (hubClients == null) {
+            return 0;
+        }
+        int successCount = 0;
+        List<String> failedConnections = new ArrayList<>();
+        for (String connectionId : connectionIds) {
+            if (messageRouter.sendBinaryToConnection(hubName, connectionId, eventName, data)) {
+                successCount++;
+            } else {
+                failedConnections.add(connectionId);
+            }
+        }
+        if (!failedConnections.isEmpty()) {
+            asyncExecutor.submit(() -> {
+                for (String failedConn : failedConnections) {
+                    cleanupStaleConnection(failedConn);
+                }
+            });
+        }
+        return successCount;
+    }
+
     // ================ Group Management (global single source of truth) ================
 
     /**
@@ -806,6 +900,93 @@ public class GJHubManager {
             log.debug("Created HubContext for: {}", hubName);
         } catch (Exception e) {
             log.error("Failed to create HubContext for {}: {}", hubName, e.getMessage());
+        }
+    }
+
+    /**
+     * Registers binary event listeners for the given hub. Performs cross-hub
+     * conflict detection (an event name must be unique across all hubs) and
+     * deduplication (server.addEventListener is global; registering the same
+     * event twice would silently overwrite the previous listener).
+     */
+    private void registerBinaryEvents(GJHub hub) {
+        String hubName = hub.getHubName();
+        Set<String> eventNames = hub.getBinaryEventNames();
+        for (String eventName : eventNames) {
+            // Cross-hub conflict detection
+            String existing = binaryEventToHub.putIfAbsent(eventName, hubName);
+            if (existing != null && !existing.equals(hubName)) {
+                log.error("Binary event '{}' already registered by hub '{}', skipping hub '{}'",
+                        eventName, existing, hubName);
+                continue;
+            }
+            // Deduplication: only register on the server once
+            if (!registeredBinaryEvents.add(eventName)) {
+                log.warn("Binary event '{}' already registered on server, skipping listener", eventName);
+                continue;
+            }
+            // Closure captures eventName: the netty-socketio callback does not carry it.
+            server.addEventListener(eventName, byte[].class,
+                    (client, data, ack) -> handleClientBinaryMessage(client, eventName, data));
+            log.debug("Registered binary event '{}' for hub '{}'", eventName, hubName);
+        }
+    }
+
+    /**
+     * Unregisters binary event listeners for the given hub. Only removes the
+     * server-level listener when no other hub still occupies the event name.
+     */
+    private void unregisterBinaryEvents(GJHub hub) {
+        String hubName = hub.getHubName();
+        for (String eventName : hub.getBinaryEventNames()) {
+            binaryEventToHub.remove(eventName, hubName);
+            // If the event is still occupied by another hub, keep the listener.
+            if (binaryEventToHub.containsKey(eventName)) {
+                continue;
+            }
+            registeredBinaryEvents.remove(eventName);
+            server.removeAllListeners(eventName);
+            log.debug("Unregistered binary event '{}' for hub '{}'", eventName, hubName);
+        }
+    }
+
+    /**
+     * Handles an inbound binary event: validates and strips the 1-byte 0x01 frame
+     * header, then routes to the owning hub's binary method.
+     *
+     * <p>Binary upstream frames are prefixed with a 1-byte 0x01 header by protocol
+     * convention, validated and stripped here (a workaround for the netty-socketio
+     * 2.0.13 defect where the first byte == 0 causes a binary frame to be misjudged
+     * as a string frame). The plugin-facing {@code GJHub.onClientBinaryMessage}
+     * therefore always receives a clean payload.</p>
+     */
+    private void handleClientBinaryMessage(SocketIOClient client, String eventName, byte[] data) {
+        totalMessagesReceived.incrementAndGet();
+        String connectionId = client.getSessionId().toString();
+        GJSocketConnectionInfo connectionInfo = connectionInfoCache.get(connectionId);
+        if (connectionInfo == null) {
+            log.error("No connection info for binary message from client: {}", connectionId);
+            return;
+        }
+        String hubName = connectionInfo.getHubName();
+        GJHub hub = hubRegistry.get(hubName);
+        if (hub == null) {
+            log.warn("Hub not found for binary message from client {}: {}", connectionId, hubName);
+            return;
+        }
+        // Validate and strip the 0x01 frame header (see Javadoc).
+        if (data == null || data.length < 1 || data[0] != 0x01) {
+            log.warn("Binary frame header check failed, dropped: client={}, hub={}, event={}, size={}, firstByte={}",
+                    connectionId, hubName, eventName, data == null ? 0 : data.length,
+                    (data == null || data.length < 1) ? -1 : data[0]);
+            return;
+        }
+        byte[] payload = Arrays.copyOfRange(data, 1, data.length);
+        try {
+            hub.onClientBinaryMessage(client, eventName, payload);
+        } catch (Exception e) {
+            log.error("Error processing binary message from client: {} to hub {}: {}",
+                    connectionId, hubName, eventName, e);
         }
     }
 

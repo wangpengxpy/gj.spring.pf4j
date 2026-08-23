@@ -74,12 +74,64 @@ public class ClusterMessageRouter implements IMessageRouter {
         }
     }
 
+    @Override
+    public boolean sendBinaryToConnection(String hubName, String connectionId,
+                                          String eventName, byte[] data) {
+        // 1. Try local delivery
+        Map<String, SocketIOClient> hubClients = clientRegistry.get(hubName);
+        if (hubClients != null) {
+            SocketIOClient client = hubClients.get(connectionId);
+            if (client != null && client.isChannelOpen()) {
+                try {
+                    client.sendEvent(eventName, data);
+                    return true;
+                } catch (Exception e) {
+                    log.error("Failed to send binary to local connection {} in hub={}: {}",
+                            connectionId, hubName, e.getMessage());
+                    return false;
+                }
+            }
+        }
+
+        // 2. Look up remote node
+        Object nodeIdObj = redisService.get(CONN_KEY_PREFIX + connectionId);
+        if (nodeIdObj == null) {
+            log.debug("Connection {} not found in Redis, binary message dropped", connectionId);
+            return false;
+        }
+        String nodeId = nodeIdObj.toString();
+
+        // 3. Self but local client gone — stale
+        if (selfNodeId.equals(nodeId)) {
+            return false;
+        }
+
+        // 4. Check target node heartbeat
+        if (!redisService.exists(HEARTBEAT_KEY_PREFIX + nodeId + HEARTBEAT_SUFFIX)) {
+            log.debug("Target node {} heartbeat lost, discarding binary message to {}", nodeId, connectionId);
+            return false;
+        }
+
+        // 5. Publish cross-node binary broadcast (binary flag + payload; byte[] is
+        //    base64-encoded by the JSON serializer automatically)
+        try {
+            var broadcastMsg = BroadcastMessage.binary(nodeId, hubName, connectionId, eventName, data);
+            busService.publishAsync(BROADCAST_CHANNEL, broadcastMsg);
+            return true;
+        } catch (Exception e) {
+            log.error("Failed to publish binary broadcast message for {}", connectionId, e);
+            return false;
+        }
+    }
+
     public static class BroadcastMessage {
         private String targetNodeId;
         private String hubName;
         private String connectionId;
         private String method;
         private Map<String, Object> data;
+        private boolean binary;      // true if this is a binary broadcast
+        private byte[] binaryData;   // binary payload (auto base64 by JSON serializer)
 
         public BroadcastMessage() {}
 
@@ -90,6 +142,19 @@ public class ClusterMessageRouter implements IMessageRouter {
             this.connectionId = connectionId;
             this.method = method;
             this.data = data;
+            this.binary = false;
+        }
+
+        static BroadcastMessage binary(String targetNodeId, String hubName, String connectionId,
+                                       String eventName, byte[] binaryData) {
+            BroadcastMessage msg = new BroadcastMessage();
+            msg.targetNodeId = targetNodeId;
+            msg.hubName = hubName;
+            msg.connectionId = connectionId;
+            msg.method = eventName;
+            msg.binary = true;
+            msg.binaryData = binaryData;
+            return msg;
         }
 
         public String getTargetNodeId() { return targetNodeId; }
@@ -106,5 +171,11 @@ public class ClusterMessageRouter implements IMessageRouter {
 
         public Map<String, Object> getData() { return data; }
         public void setData(Map<String, Object> data) { this.data = data; }
+
+        public boolean isBinary() { return binary; }
+        public void setBinary(boolean binary) { this.binary = binary; }
+
+        public byte[] getBinaryData() { return binaryData; }
+        public void setBinaryData(byte[] binaryData) { this.binaryData = binaryData; }
     }
 }
